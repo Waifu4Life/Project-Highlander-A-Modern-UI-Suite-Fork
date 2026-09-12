@@ -1,24 +1,27 @@
 # Project Highlander — A Modern UI Suite Fork
 
-Version **0.03** for [Gen1Recomp](https://github.com/).
+Version **0.03** for Gen1Recomp.
 
 A fork of Ish's [Modern UI Suite](https://github.com/piftee/gen1recomp-modern-ui-suite) with Highlander QoL, Gen 1 All Pokémon quests, Steel/Fairy type charts, and bundled Crystal Animated Sprites (TRW, v2.0.3).
 
-**GitHub repo:** https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
+**Download:** [0.03 release](https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork/releases/tag/0.03) — use **Project_Highlander-0.03.zip**, not Source code.
 
 ## Install
 
-1. Remove or disable `modern_ui_suite` and standalone `crystal_animated_sprites_with_shiny_visuals` (this package conflicts with both).
-2. Drop `Project_Highlander-0.03.zip` into your Recomp `mods` folder.
-3. Restart Gen1Recomp.
-4. Options → **PROJECT HIGHLANDER**.
+Drop `Project_Highlander-0.03.zip` in your Recomp `mods` folder, restart, then open **Options → PROJECT HIGHLANDER**.
 
-The playable zip is built from this project; upload it as a GitHub Release when you are ready to share a download.
+## Conflicts — turn these off first
+
+- Modern UI Suite
+- Crystal Animated Sprites with Shiny Visuals (standalone)
+- STEEL/FAIRY AND TYPING CHARTS (standalone)
+
+You can keep large packs such as Wilds of Kanto or a Voxel set. Other small QoL mods that patch the same menus, types, or sprites will fight this package.
 
 ## Credits
 
 - Ish / piftee — Modern UI Suite
 - Waifu4Life — Highlander QoL and quests
-- zyrancz — Steel/Fairy and Typing Charts (integrated with permission)
-- TRW — Crystal Animated Sprites with Shiny Visuals 2.0.3 (integrated with permission)
+- zyrancz — Steel/Fairy and Typing Charts (permission)
+- TRW — Crystal Animated Sprites with Shiny Visuals 2.0.3 (permission)
 - masterwebx — Controller Rumble (MIT)

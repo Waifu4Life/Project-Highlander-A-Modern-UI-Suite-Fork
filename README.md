@@ -4,8 +4,6 @@ Version **0.46** for Gen1Recomp.
 
 A fork of Ish's [Modern UI Suite](https://github.com/piftee/gen1recomp-modern-ui-suite) with Highlander QoL, Gen 1 All Pokémon quests, Steel/Fairy type charts, and bundled Crystal Animated Sprites (TRW, v2.0.3).
 
-**Download:** [0.46 release](https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork/releases/tag/0.46) — use **Project_Highlander-0.46.zip**, not Source code.
-
 ## Install
 
 Drop `Project_Highlander-0.03.zip` in your Recomp `mods` folder, restart, then open **Options → PROJECT HIGHLANDER**.

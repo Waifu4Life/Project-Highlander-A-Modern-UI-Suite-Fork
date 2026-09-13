@@ -6,7 +6,7 @@ A fork of Ish's [Modern UI Suite](https://github.com/piftee/gen1recomp-modern-ui
 
 ## Install
 
-Drop `Project_Highlander-0.03.zip` in your Recomp `mods` folder, restart, then open **Options → PROJECT HIGHLANDER**.
+Drop `Project_Highlander` in your Recomp `mods` folder, restart, then open **Options → PROJECT HIGHLANDER**.
 
 ## Conflicts — turn these off first
 

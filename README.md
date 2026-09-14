@@ -9,7 +9,6 @@ Do not install next to `modern_ui_suite`. This package conflicts with it.
 ## New in 0.01 (from Ish 0.1.31)
 
 - Gen 2 Expanded Boxes 0.2.0: 50-slot windows, scrollbar, party row stays clear
-- Shiny dex history per save, markers, Left/Right shiny-only filter
 - Gen 2 Bag uses the Gen 1 modern bag presentation
 - Fill / 16:9 / 4:3 aspect rows on Battle HUD and other modern windows
 

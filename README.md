@@ -1,25 +1,20 @@
-# Project Highlander — A Modern UI Suite Fork
+# Project Highlander - A Modern UI Suite Fork
 
-Version **0.46** for Gen1Recomp.
+Version **0.01**
 
-A fork of Ish's [Modern UI Suite](https://github.com/piftee/gen1recomp-modern-ui-suite) with Highlander QoL, Gen 1 All Pokémon quests, Steel/Fairy type charts, and bundled Crystal Animated Sprites (TRW, v2.0.3).
+Fork of Ish's Modern UI Suite with Waifu4Life Highlander QoL (from 0.2.32) plus selected 0.1.31 presentation work.
 
-## Install
+Do not install next to `modern_ui_suite`. This package conflicts with it.
 
-Drop `Project_Highlander` in your Recomp `mods` folder, restart, then open **Options → PROJECT HIGHLANDER**.
+## New in 0.01 (from Ish 0.1.31)
 
-## Conflicts — turn these off first
+- Gen 2 Expanded Boxes 0.2.0: 50-slot windows, scrollbar, party row stays clear
+- Shiny dex history per save, markers, Left/Right shiny-only filter
+- Gen 2 Bag uses the Gen 1 modern bag presentation
+- Fill / 16:9 / 4:3 aspect rows on Battle HUD and other modern windows
 
-- Modern UI Suite
-- Crystal Animated Sprites with Shiny Visuals (standalone)
-- STEEL/FAIRY AND TYPING CHARTS (standalone)
+All prior Highlander QoL is unchanged (All PKMN, Link C, Steel/Fairy, running, rematch, etc.).
 
-You can keep large packs such as Wilds of Kanto or a Voxel set. Other small QoL mods that patch the same menus, types, or sprites will fight this package.
+## Menu
 
-## Credits
-
-- Ish / piftee — Modern UI Suite
-- Waifu4Life — Highlander QoL and quests
-- zyrancz — Steel/Fairy and Typing Charts (permission)
-- TRW — Crystal Animated Sprites with Shiny Visuals 2.0.3 (permission)
-- masterwebx — Controller Rumble (MIT)
+Options → Mods → **PROJECT HIGHLANDER** (hub title **HIGHLANDER**).

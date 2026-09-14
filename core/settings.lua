@@ -1,0 +1,449 @@
+return function(parent, components)
+  local Settings = {
+    parent = parent,
+    components = components,
+    byId = {},
+    schemas = {},
+    activeGame = nil,
+  }
+
+  for _, component in ipairs(components) do
+    Settings.byId[component.id] = component
+  end
+
+  -- The manager renders schemas through the same 160x144 four-row option
+  -- boxes as the in-game menu.  Prefixing every imported label verbatim made
+  -- otherwise useful names such as "MOVE COLORS BATTLE OPACITY" run through
+  -- the right border.  Keep component pages concise (their title already
+  -- supplies the context), and use short, unambiguous labels in the flat
+  -- manager schema.
+  local MANAGER_PREFIX = {
+    start_menu = "START",
+    party = "PARTY",
+    bag = "BAG",
+    pc = "PC",
+    pokedex = "DEX",
+    battle_hud = "HUD",
+    move_colors = "MOVE",
+  }
+  local MANAGER_DETAIL = {
+    start_menu = {
+      theme = "COLOUR", theme_scope = "COLOUR SCOPE",
+      theme_by_game = "THEME BY GAME",
+      position = "POSITION", clock = "CLOCK",
+      pokebox = "POKEBOX",
+    },
+    crystal = {
+      crystalFront = "FRONT SPRITES",
+      crystalTrainers = "REPLACE",
+      crystalPlayerSprite = "PLAYER",
+      crystalBattlePic = "BATTLE PIC",
+      crystalAnimations = "ANIMATIONS",
+    },
+    steel = {
+      preset = "PRESET",
+      steel_type = "STEEL",
+      dark_type = "DARK",
+      fairy_type = "FAIRY",
+      ghost_vs_steel = "GHOST/STEEL",
+      dark_vs_steel = "DARK/STEEL",
+      ghost_vs_psychic = "GHOST/PSY",
+      bug_vs_poison = "BUG/POISON",
+      ice_vs_fire = "ICE/FIRE",
+    },
+    rumble = {
+      enabled = "RUMBLE", intensity = "INTENSITY",
+      battle_fx = "BATTLE FX", ambient = "AMBIENT",
+      story = "STORY", menus = "MENUS",
+    },
+    pokemoves = {
+      forgettable_hms = "FORGET HMS",
+      tms_forever = "TMS FOREVER",
+      instant_tmhm = "INSTANT TMS AND HMS",
+      no_learn_hms = "NO LEARN HMS",
+      move_relearning = "RELEARN",
+    },
+    qol = {
+      unlimited_pp = "UNLIMITED PP",
+      always_boosted_exp = "BOOSTED EXP",
+      modern_exp_share = "MODERN EXP",
+      running_shoes = "SHOES",
+      decapitalize = "DECAPITALIZE",
+      display_area_names = "AREA NAMES",
+      modern_stores = "STORES",
+      infinite_safari = "SAFARI",
+      sparkling_hidden = "SPARKLES",
+      rematch_anyone = "REMATCH",
+      pikachu_sound = "PIKACHU",
+      force_crystal_settings = "CRYSTAL",
+    },
+    party = {
+      card_color = "CARD COLOR", animate_icons = "ANIMATION",
+      sprite_source = "ICONS", hp_text = "HP DISPLAY", exp_text = "EXP",
+      exp_strip = "EXP STRIP", empty_slots = "EMPTY", pattern = "BACKDROP",
+      responsive = "WIDE", rename_style = "RENAME",
+    },
+    bag = { skin = "SKIN", hide_all = "HIDE ALL", open_on = "OPEN ON" },
+    pc = { box_exclusive = "BOX ONLY" },
+    pokedex = {
+      responsive = "WIDE", pattern = "BACKDROP", theme = "COLOURS",
+    },
+    battle_hud = {
+      enemy_hp_counter = "ENEMY HP",
+      low_hp_beep = "LOW HP BEEP",
+    },
+    move_colors = {
+      battle_colors = "BATTLE", layout = "LAYOUT", effect_hints = "EFFECT",
+      menu_colors = "MENUS", strength = "TINT", opacity = "OPACITY",
+      text_only = "TEXT ONLY",
+      text_position = "TEXT ALIGN", box_color = "BOX COLOR", info_position = "INFO SIDE",
+      colored_pokeballs = "POKEBALLS",
+      colored_pokemoves = "POKEMOVES",
+    },
+  }
+
+  local function copy(value, seen)
+    if type(value) ~= "table" then return value end
+    seen = seen or {}
+    if seen[value] then return seen[value] end
+    local out = {}
+    seen[value] = out
+    for key, item in pairs(value) do out[copy(key, seen)] = copy(item, seen) end
+    return out
+  end
+
+  local function componentFor(self, component)
+    if type(component) == "table" then return component end
+    return assert(self.byId[component], "unknown suite component: " .. tostring(component))
+  end
+
+  function Settings:keyFor(component, key)
+    component = componentFor(self, component)
+    if key == "__enabled" or key == component.enabledOption then
+      return component.key .. ".enabled"
+    end
+    return component.key .. "." .. key
+  end
+
+  function Settings:registerSchema(component, schema)
+    component = componentFor(self, component)
+    if component.aspectRatio then
+      schema = copy(schema or {})
+      local has = false
+      for _, row in ipairs(schema) do
+        if type(row)=="table" and row.key=="aspect_ratio" then has = true break end
+      end
+      if not has then
+        schema[#schema + 1] = {
+          key = "aspect_ratio", label = "ASPECT RATIO", type = "choice", default = "fill",
+          choices = { { "FILL", "fill" }, { "16:9", "16:9" }, { "4:3", "4:3" } },
+        }
+      end
+    end
+    self.schemas[component.id] = schema or {}
+    component.schema = schema or {}
+    component.defaults = component.defaults or {}
+    for _, row in ipairs(schema or {}) do
+      if type(row) == "table" and type(row.key) == "string" then
+        component.defaults[row.key] = row.default
+      end
+    end
+    return schema
+  end
+
+  function Settings:detailLabel(component, row)
+    component = componentFor(self, component)
+    local label = tostring(row.label or row.key or component.name)
+    -- These prefixes are useful when the standalone mod owns the page, but
+    -- duplicate the suite component title in this nested page.
+    label = label:gsub("^START MENU ", ""):gsub("^POKEDEX ", "")
+    return label
+  end
+
+  function Settings:managerLabel(component, row)
+    component = componentFor(self, component)
+    local prefix = MANAGER_PREFIX[component.key] or component.short
+    if not row then return component.managerEnabledLabel or (prefix .. " ENABLED") end
+    local details = MANAGER_DETAIL[component.key] or {}
+    local detail = row.key == "aspect_ratio" and "RATIO"
+      or details[row.key] or self:detailLabel(component, row)
+    -- Do not repeat a component prefix already present in a fallback label.
+    if detail:sub(1, #prefix + 1) == prefix .. " " then return detail end
+    return prefix .. " " .. detail
+  end
+
+
+  function Settings:isEnabled(component)
+    return self:get(component, "__enabled") ~= false
+  end
+
+  local function optionTables(game, suiteId, create)
+    local saved = game and game.save and game.save.options
+    local live = game and game.mods
+    local savedBucket, liveBucket
+    if saved then
+      if create then
+        saved.modOptions = saved.modOptions or {}
+        saved.modOptions[suiteId] = saved.modOptions[suiteId] or {}
+      end
+      savedBucket = saved.modOptions and saved.modOptions[suiteId]
+    end
+    if live then
+      if create then
+        live.modOptions = live.modOptions or {}
+        live.modOptions[suiteId] = live.modOptions[suiteId] or {}
+      end
+      liveBucket = live.modOptions and live.modOptions[suiteId]
+    end
+    return savedBucket, liveBucket
+  end
+
+  Settings._values = Settings._values or {}
+
+  function Settings:get(component, key)
+    component = componentFor(self, component)
+    local fullKey = self:keyFor(component, key)
+    if Settings._values[fullKey] ~= nil then return Settings._values[fullKey] end
+    local game = self.activeGame
+    if not (game and game.save) then
+      local ok, Game = pcall(require, "src.core.Game")
+      if ok then game = Game end
+    end
+    local saved, live = optionTables(game, self.parent.id, false)
+    if saved and saved[fullKey] ~= nil then return saved[fullKey] end
+    if live and live[fullKey] ~= nil then return live[fullKey] end
+    local value = self.parent.options:get(fullKey)
+    if value ~= nil then return value end
+    if key == "__enabled" or key == component.enabledOption then
+      return component.defaultEnabled ~= false
+    end
+    return component.defaults and component.defaults[key] or nil
+  end
+
+  function Settings:set(game, component, key, value, quiet)
+    component = componentFor(self, component)
+    game = game or self.activeGame
+    assert(game, "Modern UI Suite settings need the live game")
+    local fullKey = self:keyFor(component, key)
+    local saved, live = optionTables(game, self.parent.id, true)
+    -- Structured preferences (currently Start Menu icon overrides) must not
+    -- make the persisted save table and the live loader table aliases.
+    if saved then saved[fullKey] = copy(value) end
+    if live then live[fullKey] = copy(value) end
+    Settings._values[fullKey] = copy(value)
+    -- Keep the suite-wide options.lua row in sync so get() sees the write.
+    pcall(function()
+      if self.parent.options and type(self.parent.options.set) == "function" then
+        self.parent.options:set(game, fullKey, value)
+      end
+    end)
+    if not quiet and game.mods and game.mods.events then
+      game.mods.events:emit("mod.options_changed", {
+        mod = self.parent.id, key = fullKey, value = value,
+        component = component.id,
+      })
+      -- Existing integrations that only observe the old event identity keep
+      -- receiving a notification even though the suite bucket is canonical.
+      game.mods.events:emit("mod.options_changed", {
+        mod = component.id,
+        key = key == "__enabled" and "enabled" or key,
+        value = value,
+        suite = self.parent.id,
+      })
+    end
+    return true
+  end
+
+  function Settings:setEnabled(game, component, value, quiet)
+    return self:set(game, component, "__enabled", value ~= false, quiet)
+  end
+
+  local spriteSources = {
+    { "BATTLE ART", "battle_art" }, { "CRYSTAL", "crystal" },
+    { "DEFAULT", "default" },
+  }
+  function Settings:menuSpriteSource()
+    local value = self.parent.options:get("menu_sprite_source")
+    if value == "hgss" then return "default" end
+    for _, choice in ipairs(spriteSources) do
+      if value == choice[2] then return value end
+    end
+    return "battle_art"
+  end
+
+  function Settings:menuSpriteLabel()
+    for _, choice in ipairs(spriteSources) do
+      if self:menuSpriteSource() == choice[2] then return choice[1] end
+    end
+  end
+
+  function Settings:toggleMenuSpriteSource(game, direction)
+    local index = 1
+    for i, choice in ipairs(spriteSources) do
+      if self:menuSpriteSource() == choice[2] then index = i break end
+    end
+    local value = spriteSources[(index - 1 + (direction or 1)) % #spriteSources + 1][2]
+    local saved, live = optionTables(game, self.parent.id, true)
+    if saved then saved.menu_sprite_source = value end
+    if live then live.menu_sprite_source = value end
+    if game.mods and game.mods.events then
+      game.mods.events:emit("mod.options_changed", {
+        mod = self.parent.id, key = "menu_sprite_source", value = value,
+      })
+    end
+    return self:persist(game)
+  end
+
+  local iconSources = {
+    { "AUTO", "auto" }, { "ORIGINAL", "original" },
+    { "MENU PACK", "menu_pack" }, { "FOLLOWERS", "follower_pack" },
+  }
+  function Settings:menuIconLabel()
+    local value = self:get("modern_party_ui", "sprite_source")
+    for _, choice in ipairs(iconSources) do
+      if value == choice[2] then return choice[1] end
+    end
+    return "AUTO"
+  end
+  function Settings:toggleMenuIconSource(game, direction)
+    local index = 1
+    for i, choice in ipairs(iconSources) do
+      if self:get("modern_party_ui", "sprite_source") == choice[2] then index = i break end
+    end
+    self:set(game, "modern_party_ui", "sprite_source",
+      iconSources[(index - 1 + (direction or 1)) % #iconSources + 1][2])
+    return self:persist(game)
+  end
+
+  function Settings:setAll(game, value)
+    for _, component in ipairs(self.components) do
+      -- Bulk UI actions must not opt a player into gameplay changes or
+      -- disable an independently selected QoL option with the renderers.
+      if component.bulkUI ~= false then self:setEnabled(game, component, value, false) end
+    end
+    return true
+  end
+
+  function Settings:persist(game)
+    game = game or self.activeGame
+    if game and type(game.writeOptions) == "function" then
+      return pcall(game.writeOptions, game)
+    end
+    return false
+  end
+
+  function Settings:migrate(game)
+    if type(game) ~= "table" then return false end
+    self.activeGame = game
+    local saved, live = optionTables(game, self.parent.id, true)
+    if not saved and not live then return false end
+    local changed = false
+    -- qol.enabled used to be Unlimited PP and the component gate at once.
+    -- Keep the PP value on qol.unlimited_pp and turn the QoL component on.
+    for _, bucket in pairs({ saved, live }) do
+      if bucket then
+        if bucket["qol.unlimited_pp"] == nil and type(bucket["qol.enabled"]) == "boolean" then
+          bucket["qol.unlimited_pp"] = bucket["qol.enabled"]
+          changed = true
+        end
+        if bucket["qol.enabled"] == false then
+          bucket["qol.enabled"] = true
+          changed = true
+        end
+      end
+    end
+    -- Retire the former explicit HGSS source without altering other choices.
+    for _, bucket in pairs({ saved, live }) do
+      if bucket.menu_sprite_source == "hgss" then
+        bucket.menu_sprite_source = "default"
+        changed = true
+      end
+    end
+
+    local function targetMissing(fullKey)
+      return (not saved or saved[fullKey] == nil)
+        and (not live or live[fullKey] == nil)
+    end
+
+    local legacyTables = game.save and game.save.options
+      and game.save.options.modOptions or {}
+    local loaderTables = game.mods and game.mods.modOptions or {}
+    for _, component in ipairs(self.components) do
+      local legacySaved = legacyTables[component.id] or {}
+      local legacyLive = loaderTables[component.id] or {}
+      for _, row in ipairs(component.schema or {}) do
+        if row.key ~= component.enabledOption then
+          local fullKey = self:keyFor(component, row.key)
+          if targetMissing(fullKey) then
+            local value = legacyLive[row.key]
+            if value == nil then value = legacySaved[row.key] end
+            if value ~= nil then
+              value = copy(value)
+              if saved then saved[fullKey] = value end
+              if live then live[fullKey] = copy(value) end
+              changed = true
+            end
+          end
+        end
+      end
+      if component.enabledOption then
+        local fullKey = self:keyFor(component, "__enabled")
+        if targetMissing(fullKey) then
+          local value = legacyLive[component.enabledOption]
+          if value == nil then value = legacySaved[component.enabledOption] end
+          if value ~= nil then
+            if saved then saved[fullKey] = value ~= false end
+            if live then live[fullKey] = value ~= false end
+            changed = true
+          end
+        end
+      end
+      for _, key in ipairs(component.legacyExtras or {}) do
+        local fullKey = self:keyFor(component, key)
+        if targetMissing(fullKey) then
+          local value = legacyLive[key]
+          if value == nil then value = legacySaved[key] end
+          if value ~= nil then
+            value = copy(value)
+            if saved then saved[fullKey] = value end
+            if live then live[fullKey] = copy(value) end
+            changed = true
+          end
+        end
+      end
+    end
+    if saved then saved._migration_version = 1 end
+    if live then live._migration_version = 1 end
+    if changed then self:persist(game) end
+    return changed
+  end
+
+  function Settings:aggregateSchema()
+    local schema = {
+      { key = "menu_sprite_source", label = "MENU SPRITES", type = "choice",
+        default = "battle_art", choices = copy(spriteSources) },
+    }
+    for _, component in ipairs(self.components) do
+      schema[#schema + 1] = {
+        key = self:keyFor(component, "__enabled"),
+        label = self:managerLabel(component),
+        type = "toggle",
+        default = component.defaultEnabled ~= false,
+      }
+    end
+    for _, component in ipairs(self.components) do
+      for _, source in ipairs(component.schema or {}) do
+        if source.key ~= component.enabledOption
+            and source.key ~= "theme_by_game" then
+          local row = copy(source)
+          row.key = self:keyFor(component, source.key)
+          row.label = self:managerLabel(component, source)
+          schema[#schema + 1] = row
+        end
+      end
+    end
+    return schema
+  end
+
+  return Settings
+end

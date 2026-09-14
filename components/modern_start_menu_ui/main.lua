@@ -1,0 +1,668 @@
+-- StartMenu remains responsible for building actions and every other mod
+-- still contributes through ui.start_menu.items before this mod sees the
+-- final controller. New engines expose a dedicated presentation hook; the
+-- screen.pushed listener below keeps the same archive working on API 2 mobile
+-- builds released before that hook existed.
+return function(mod)
+  local optionSchema = {
+    { key = "theme", label = "START MENU COLOUR", type = "choice",
+      default = "red", choices = {
+        { "RED", "red" }, { "BLUE", "blue" }, { "GREEN", "green" },
+        { "YELLOW", "yellow" }, { "GOLD", "gold" },
+        { "SILVER", "silver" }, { "CRYSTAL", "crystal" },
+        { "DMG", "dmg" },
+      } },
+    { key = "theme_scope", label = "COLOUR SCOPE", type = "choice",
+      default = "game", choices = {
+        { "GAME", "game" }, { "SAVE", "save" },
+      } },
+    { key = "theme_by_game", label = "THEME BY GAME", type = "text",
+      default = "" },
+    { key = "position", label = "START MENU POSITION", type = "choice",
+      default = "right", choices = {
+        { "LEFT", "left" }, { "MID-L", "mid_left" },
+        { "CENTER", "center" }, { "MID-R", "mid_right" },
+        { "RIGHT", "right" },
+      } },
+    { key = "clock", label = "START MENU CLOCK", type = "choice",
+      default = "play", choices = {
+        { "PLAY", "play" }, { "DEVICE", "device" },
+      } },
+    { key = "pokebox", label = "POKEBOX", type = "toggle",
+      default = true },
+  }
+  mod.options:define(optionSchema)
+
+  local optionRows = {}
+  for _, row in ipairs(optionSchema) do optionRows[row.key] = row end
+
+  local ICON_CHOICES = {
+    { "AUTO", "auto" }, { "DEX", "pokedex" }, { "PKMN", "party" },
+    { "BAG", "bag" }, { "ID", "trainer" }, { "SAVE", "save" },
+    { "OPT", "options" }, { "GEAR", "pokegear" }, { "LINK", "link" },
+    { "MODS", "mods" }, { "QUIT", "quit" }, { "MENU", "generic" },
+    { "QUEST", "quest" }, { "MAP", "map" }, { "MUSIC", "music" },
+    { "CAMERA", "camera" }, { "TROPHY", "trophy" },
+    { "HEART", "heart" }, { "STAR", "star" }, { "TOOLS", "tools" },
+    { "KEY", "key" }, { "CLOCK", "clock" }, { "MAIL", "mail" },
+    { "CHAT", "chat" }, { "HOME", "home" }, { "SHOP", "shop" },
+    { "CHEST", "chest" }, { "BATTLE", "battle" },
+    { "POTION", "potion" }, { "BIKE", "bicycle" },
+    { "CRAFT", "craft" }, { "SEARCH", "search" },
+    { "BOX", "pokebox" },
+  }
+  local ICON_VALUES = {}
+  for _, choice in ipairs(ICON_CHOICES) do ICON_VALUES[choice[2]] = true end
+  local customEntries, customEntryOrder = {}, {}
+  local presentation
+  local liveMenus = setmetatable({}, { __mode = "k" })
+
+  local function setOption(game, key, value)
+    return mod.options:set(game, key, value)
+  end
+
+  local function savedOrder(game)
+    local order = mod.options:get("icon_order")
+    if type(order) ~= "table" then return {} end
+    local name = ""
+    if game and game.save and game.save.player then
+      name = tostring(game.save.player.name or ""):upper()
+    end
+    local out, seen = {}, {}
+    for _, key in ipairs(order) do
+      if type(key) ~= "string" then
+      elseif key == "builtin:trainer"
+          or key == "id:trainer" or key == "value:trainer"
+          or key == "value:status" or key == "id:status"
+          or (name ~= "" and (key == "label:" .. name
+            or key == "id:" .. name or key == "value:" .. name)) then
+        key = "builtin:trainer"
+      end
+      if type(key) == "string" and not seen[key] then
+        out[#out + 1] = key
+        seen[key] = true
+      end
+    end
+    return out
+  end
+
+  local function rememberLiveMenu(menu, game)
+    if not game then return end
+    local entries, byKey, occurrences = {}, {}, {}
+    for _, item in ipairs(menu.items) do
+      local base = presentation.entryKeyFor(item, game)
+      occurrences[base] = (occurrences[base] or 0) + 1
+      local key = base .. (occurrences[base] > 1 and ("#" .. occurrences[base]) or "")
+      local entry = { key = key, label = tostring(item.label or item.id or "MENU"), item = item }
+      entries[#entries + 1], byKey[key] = entry, entry
+    end
+    local ordered, used = {}, {}
+    local function isNameKey(key)
+      if type(key) ~= "string" then return false end
+      local label = key:match("^label:(.+)$") or key:match("^id:(.+)$") or key:match("^value:(.+)$")
+      if not label then return false end
+      label = label:upper()
+      if label == "TRAINER" or label == "STATUS" or label == "PLAYER" then return true end
+      return label:match("^[A-Z0-9]+$") ~= nil and #label <= 7
+        and label ~= "POKEDEX" and label ~= "PARTY" and label ~= "PKMN"
+        and label ~= "BAG" and label ~= "ITEM" and label ~= "ITEMS"
+        and label ~= "SAVE" and label ~= "OPTION" and label ~= "OPTIONS"
+        and label ~= "MODS" and label ~= "QUIT" and label ~= "LINK"
+        and label ~= "POKEBOX" and label ~= "BOX"
+    end
+    for _, key in ipairs(savedOrder(game)) do
+      if byKey[key] and not used[key] then
+        ordered[#ordered + 1], used[key] = byKey[key], true
+      elseif isNameKey(key) and byKey["builtin:trainer"] and not used["builtin:trainer"] then
+        ordered[#ordered + 1], used["builtin:trainer"] = byKey["builtin:trainer"], true
+      end
+    end
+    for _, entry in ipairs(entries) do
+      if not used[entry.key] then ordered[#ordered + 1] = entry end
+    end
+    -- Keep the original array shared with Gen 2's native list controller.
+    for index, entry in ipairs(ordered) do menu.items[index] = entry.item end
+    liveMenus[game] = ordered
+  end
+
+  local function liveEntries(game)
+    return liveMenus[game] or {}
+  end
+
+  local function setLiveOrder(game, entries)
+    local order, seen = {}, {}
+    for _, entry in ipairs(entries) do
+      order[#order + 1], seen[entry.key] = entry.key, true
+    end
+    -- Retain unavailable keys so temporarily hidden actions remain eligible
+    -- when the native START menu includes them again.
+    for _, key in ipairs(savedOrder(game)) do
+      if not seen[key] then order[#order + 1], seen[key] = key, true end
+    end
+    setOption(game, "icon_order", order)
+    local snapshot = {}
+    for i, entry in ipairs(entries) do snapshot[i] = entry end
+    liveMenus[game] = snapshot
+  end
+
+  local function choiceLabel(key)
+    local row = optionRows[key]
+    local current = mod.options:get(key)
+    for _, choice in ipairs(row.choices) do
+      if choice[2] == current then return choice[1] end
+    end
+    return row.choices[1][1]
+  end
+
+  local function stepChoice(game, key, direction)
+    local choices = optionRows[key].choices
+    local current, index = mod.options:get(key), 1
+    for i, choice in ipairs(choices) do
+      if choice[2] == current then index = i break end
+    end
+    index = (index - 1 + (direction or 1)) % #choices + 1
+    setOption(game, key, choices[index][2])
+    return true
+  end
+
+  local THEME_OK = {
+    red = true, blue = true, dmg = true,
+    green = true, yellow = true, gold = true, silver = true, crystal = true,
+  }
+  local themeCache = { byGame = {}, bySave = {} }
+
+  local function liveGame(game)
+    if game and game.save then return game end
+    local ok, Game = pcall(require, "src.core.Game")
+    if ok and type(Game) == "table" and Game.save then return Game end
+    return game
+  end
+
+  local function cartId(game)
+    game = liveGame(game)
+    local ok, GV = pcall(require, "src.core.GameVersion")
+    if ok and type(GV) == "table" then
+      local id
+      if type(GV.get) == "function" then id = GV.get() end
+      if type(id) == "string" and id ~= "" then
+        local name = tostring(GV.launcherName or GV.displayName or "")
+        if id == "blue" and name:lower():find("green", 1, true) then
+          return "green"
+        end
+        return id
+      end
+    end
+    if game and game.save and type(game.save.version) == "string" then
+      return game.save.version
+    end
+    return "red"
+  end
+
+  local function saveThemeBucket(game)
+    game = liveGame(game)
+    if not (game and game.save) then return nil end
+    game.save.modData = game.save.modData or {}
+    local bucket = game.save.modData.modern_ui_suite
+    if type(bucket) ~= "table" then
+      bucket = {}
+      game.save.modData.modern_ui_suite = bucket
+    end
+    return bucket
+  end
+
+  local function decodeByGame(raw)
+    local out = {}
+    if type(raw) ~= "string" or raw == "" then return out end
+    for pair in raw:gmatch("[^;]+") do
+      local k, v = pair:match("^%s*([%w_]+)%s*=%s*([%w_]+)%s*$")
+      if THEME_OK[v] then out[k] = v end
+    end
+    return out
+  end
+
+  local function encodeByGame(map)
+    local keys = {}
+    for k in pairs(map) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local parts = {}
+    for _, k in ipairs(keys) do
+      parts[#parts + 1] = k .. "=" .. map[k]
+    end
+    return table.concat(parts, ";")
+  end
+
+  local function saveSlotKey(game)
+    game = liveGame(game)
+    local save = game and game.save
+    local meta = save and save.meta
+    if type(meta) == "table" and type(meta.playthroughId) == "string"
+        and meta.playthroughId ~= "" then
+      return meta.playthroughId
+    end
+    local player = save and save.player
+    local name = player and tostring(player.name or "") or ""
+    local id = player and tostring(player.id or "") or ""
+    local play = save and tostring(save.playTime or "")
+    return cartId(game) .. ":" .. name .. ":" .. id .. ":" .. play
+  end
+
+  local function storedTheme(game)
+    game = liveGame(game)
+    local scope = mod.options:get("theme_scope")
+    local stored
+    if scope == "save" then
+      stored = themeCache.bySave[saveSlotKey(game)]
+      if not THEME_OK[stored] then
+        local bucket = saveThemeBucket(game)
+        stored = bucket and bucket.start_theme
+      end
+    else
+      local cart = cartId(game)
+      stored = themeCache.byGame[cart]
+      if not THEME_OK[stored] then
+        local map = decodeByGame(mod.options:get("theme_by_game"))
+        stored = map[cart]
+      end
+    end
+    if THEME_OK[stored] then return stored end
+    return "red"
+  end
+
+  local function currentTheme(game)
+    return storedTheme(game)
+  end
+
+  local function writeTheme(game, value)
+    if not THEME_OK[value] then return end
+    game = liveGame(game)
+    local scope = mod.options:get("theme_scope")
+    if scope == "save" then
+      themeCache.bySave[saveSlotKey(game)] = value
+      local bucket = saveThemeBucket(game)
+      if bucket then bucket.start_theme = value end
+    else
+      local cart = cartId(game)
+      themeCache.byGame[cart] = value
+      local map = decodeByGame(mod.options:get("theme_by_game"))
+      map[cart] = value
+      setOption(game, "theme_by_game", encodeByGame(map))
+    end
+  end
+
+  function mod.startMenuThemeFor()
+    return currentTheme(nil)
+  end
+
+  local function themeLabel()
+    local current = storedTheme()
+    for _, choice in ipairs(optionRows.theme.choices) do
+      if choice[2] == current then return choice[1] end
+    end
+    return "RED"
+  end
+  local function positionLabel() return choiceLabel("position") end
+  local function clockLabel() return choiceLabel("clock") end
+  local function scopeLabel() return choiceLabel("theme_scope") end
+  local function stepTheme(game, direction)
+    local choices = optionRows.theme.choices
+    local current, index = storedTheme(game), 1
+    for i, choice in ipairs(choices) do
+      if choice[2] == current then index = i break end
+    end
+    index = (index - 1 + (direction or 1)) % #choices + 1
+    writeTheme(game, choices[index][2])
+    return true
+  end
+  local function stepScope(game, direction)
+    return stepChoice(game, "theme_scope", direction)
+  end
+  local function stepPosition(game, direction)
+    return stepChoice(game, "position", direction)
+  end
+  local function stepClock(game, direction)
+    return stepChoice(game, "clock", direction)
+  end
+
+  local function iconTable(game, create)
+    local icons = mod.options:get("icons")
+    if type(icons) ~= "table" and create then
+      icons = {}
+      mod.options:set(game, "icons", icons)
+    end
+    return type(icons) == "table" and icons or nil
+  end
+
+  local function loaderIconTable(game, create)
+    return iconTable(game, create)
+  end
+
+  local function iconChoice(game, key)
+    local saved = iconTable(game, false)
+    local value = saved and saved[key]
+    if value == nil then
+      local live = loaderIconTable(game, false)
+      value = live and live[key]
+    end
+    return ICON_VALUES[value] and value or "auto"
+  end
+
+  local function setIconChoice(game, key, value)
+    value = ICON_VALUES[value] and value or "auto"
+    local saved, live = iconTable(game, true), loaderIconTable(game, true)
+    local stored = value ~= "auto" and value or nil
+    if saved then saved[key] = stored end
+    if live then live[key] = stored end
+    mod.options:set(game, "icons", saved)
+  end
+
+  local function stepIcon(game, key, direction)
+    local current, index = iconChoice(game, key), 1
+    for i, choice in ipairs(ICON_CHOICES) do
+      if choice[2] == current then index = i break end
+    end
+    index = (index - 1 + (direction or 1)) % #ICON_CHOICES + 1
+    setIconChoice(game, key, ICON_CHOICES[index][2])
+    return true
+  end
+
+  local function iconChoiceLabel(game, key)
+    local current = iconChoice(game, key)
+    for _, choice in ipairs(ICON_CHOICES) do
+      if choice[2] == current then return choice[1] end
+    end
+    return "AUTO"
+  end
+
+  local function selectorLabel(label)
+    local compact = presentation and presentation.normalizeText
+      and presentation.normalizeText(label) or tostring(label or "MENU"):upper()
+    if #compact > 10 then compact = compact:sub(1, 9) .. "." end
+    return "ICON " .. compact
+  end
+
+  local function loadModule(filename, label)
+    local source, readErr = mod:read(filename)
+    if not source then
+      mod.log:error("%s is missing (%s); reinstall the mod", filename,
+        tostring(readErr or "unknown read error"))
+      return nil
+    end
+    local chunk, compileErr = load(source, "@" .. mod.path .. "/" .. filename)
+    if not chunk then
+      mod.log:error("%s did not compile: %s", label, tostring(compileErr))
+      return nil
+    end
+    local ok, value = pcall(chunk)
+    if not ok then
+      mod.log:error("%s failed to load: %s", label, tostring(value))
+      return nil
+    end
+    return value
+  end
+
+  local icons = loadModule("icons.lua", "icon atlas metadata")
+  local makePresentation = loadModule("screen.lua", "menu presentation")
+  if type(icons) ~= "table" or type(makePresentation) ~= "function" then return end
+
+  local made
+  made, presentation = pcall(makePresentation, mod, icons)
+  if not made or type(presentation) ~= "table"
+      or type(presentation.decorate) ~= "function" then
+    mod.log:error("menu presentation factory failed: %s", tostring(presentation))
+    return
+  end
+
+  local settings
+  local makeSettings = loadModule("settings.lua", "settings interface")
+  if type(makeSettings) == "function" then
+    local ok, value = pcall(makeSettings, mod, presentation, {
+      themeLabel = themeLabel,
+      stepTheme = stepTheme,
+      scopeLabel = scopeLabel,
+      stepScope = stepScope,
+      positionLabel = positionLabel,
+      stepPosition = stepPosition,
+      clockLabel = clockLabel,
+      stepClock = stepClock,
+      liveEntries = liveEntries,
+      setLiveOrder = setLiveOrder,
+      customEntries = customEntries,
+      customEntryOrder = customEntryOrder,
+      iconChoices = ICON_CHOICES,
+      iconChoice = iconChoice,
+      setIconChoice = setIconChoice,
+      iconChoiceLabel = iconChoiceLabel,
+    })
+    if ok and type(value) == "table" then
+      settings = value
+    else
+      mod.log:error("settings interface failed: %s", tostring(value))
+    end
+  end
+
+  -- Keep the game's main Options screen tidy: every preference owned by this
+  -- mod now lives behind one row. API 2 builds without custom list screens
+  -- retain the older flat controls so theme and overrides remain reachable.
+  mod.hooks:wrap("ui.options.rows", function(next, game, rows)
+    local out = next(game, rows)
+    if type(out) ~= "table" then return out end
+    if settings and settings.available and game and game.stack
+        and type(game.stack.push) == "function" then
+      local openRow = {
+        id = "modern_start_menu_ui_settings_open",
+        label = "MODERN START MENU",
+        value = function() return "OPEN" end,
+        activate = function(g) return settings.open(g) end,
+        step = function(g) return settings.open(g) end,
+      }
+      if mod.ui and type(mod.ui.insertBefore) == "function" then
+        return mod.ui.insertBefore(out, "MODS", openRow)
+      end
+      out[#out + 1] = openRow
+      return out
+    end
+
+    out[#out + 1] = {
+      id = "modern_start_menu_ui_theme",
+      label = "PHONE COLOUR",
+      value = themeLabel,
+      step = stepTheme,
+    }
+    out[#out + 1] = {
+      id = "modern_start_menu_ui_theme_scope",
+      label = "COLOUR SCOPE",
+      value = scopeLabel,
+      step = stepScope,
+    }
+    out[#out + 1] = {
+      id = "modern_start_menu_ui_position",
+      label = "POSITION",
+      value = positionLabel,
+      step = stepPosition,
+    }
+    out[#out + 1] = {
+      id = "modern_start_menu_ui_clock",
+      label = "CLOCK",
+      value = clockLabel,
+      step = stepClock,
+    }
+    for index, key in ipairs(customEntryOrder) do
+      local entry = customEntries[key]
+      out[#out + 1] = {
+        id = "modern_start_menu_ui_icon_" .. index,
+        label = selectorLabel(entry.label),
+        value = function(g) return iconChoiceLabel(g, key) end,
+        step = function(g, direction) return stepIcon(g, key, direction) end,
+      }
+    end
+    return out
+  end)
+
+
+  -- screen.lua asks this callback at draw time, so choosing from the visual
+  -- picker updates the phone immediately without reopening START.
+  mod.startMenuIconOverrideFor = function(item, game)
+    local key = presentation.entryKeyFor(item, game)
+    local value = iconChoice(game, key)
+    return value ~= "auto" and value or nil
+  end
+
+  local function rememberCustomEntries(menu, game)
+    for _, item in ipairs(menu.items or {}) do
+      if presentation.isCustomItem(item, game) then
+        local key = presentation.entryKeyFor(item, game)
+        if not customEntries[key] then
+          customEntries[key] = {
+            label = tostring(item.label or item.shortLabel or item.id or "MENU"),
+          }
+          customEntryOrder[#customEntryOrder + 1] = key
+        end
+      end
+    end
+  end
+
+  local function decorate(menu, game, source)
+    if type(menu) ~= "table" or menu.modernStartMenuUI then return menu end
+    if type(menu.items) ~= "table" or type(menu.update) ~= "function"
+        or type(menu.draw) ~= "function" then
+      mod.log:warn("%s found an incompatible StartMenu controller; keeping it unchanged",
+        source)
+      return menu
+    end
+    rememberLiveMenu(menu, game or menu.game)
+    local ok, decorated = pcall(presentation.decorate, menu, game or menu.game)
+    if not ok then
+      mod.log:error("could not decorate START menu through %s: %s",
+        source, tostring(decorated))
+      return menu
+    end
+    rememberCustomEntries(menu, game or menu.game)
+    return type(decorated) == "table" and decorated or menu
+  end
+
+  local function pokeboxEnabled()
+    local ok, value = pcall(mod.options.get, mod.options, "pokebox")
+    return not ok or value ~= false
+  end
+
+  local function alreadyHasPokebox(items)
+    for _, item in ipairs(items or {}) do
+      if type(item) == "table" then
+        local id = item.id or item.value
+        local label = tostring(item.label or ""):upper()
+        if id == "pokebox" or label == "POKEBOX" or label == "PC" then
+          return true
+        end
+      end
+    end
+    return false
+  end
+
+  local function openPokebox(game)
+    local TextBox = require("src.render.TextBox")
+    local Strings = require("src.core.Strings")
+    local Screens = require("src.ui.Screens")
+    if game and Screens and type(Screens.push) == "function" then
+      pcall(function()
+        require("src.core.Sound").play(game.data, "Enter_PC")
+      end)
+      local ok = pcall(Screens.push, game, "BoxMenu")
+      if ok then return end
+    end
+    if game and game.stack and TextBox and TextBox.new then
+      game.stack:push(TextBox.new(game, Strings("PC is not\navailable now.")))
+    end
+  end
+
+  mod.hooks:wrap("ui.start_menu.items", function(next, game, items)
+    items = next(game, items) or items or {}
+    if pokeboxEnabled() and not alreadyHasPokebox(items) then
+      items[#items + 1] = {
+        id = "pokebox",
+        label = "POKEBOX",
+        shortLabel = "BOX",
+        keepOpen = true,
+        onSelect = function() openPokebox(game) end,
+      }
+    end
+    for _, item in ipairs(items) do
+      local label = tostring(item.label or ""):upper()
+      if item.id == "mods" or label == "MODS" then
+        item.keepOpen = true
+      end
+    end
+    return items
+  end)
+
+  mod.hooks:wrap("ui.start_menu.presentation",
+    function(next, game, menu)
+      local downstream = next(game, menu)
+      if type(downstream) ~= "table" then return downstream end
+      return decorate(downstream, game, "presentation hook")
+    end, 1000)
+
+  -- API 2 shipped screen lifecycle events before it shipped the dedicated
+  -- ui.start_menu.presentation seam. Screens.push stamps screenId before
+  -- screen.pushed fires, so this fallback receives the finished controller,
+  -- including rows contributed by third-party mods. Decoration is in-place
+  -- and idempotent, making this a no-op on engines that already ran the hook.
+  mod.events:on("screen.pushed", function(event)
+    local menu = type(event) == "table" and event.state or nil
+    if type(menu) ~= "table"
+        or (menu.screenId ~= "StartMenu"
+          and menu.screenId ~= "Gen2StartMenu")
+        or menu.modernStartMenuUI then return end
+    decorate(menu, menu.game, "screen.pushed compatibility fallback")
+  end, -1000)
+
+  -- Keep the native 160x144 stack stable so opening START cannot recalculate
+  -- the map, screen-position mode or Save overlays. On a genuinely wide
+  -- display, re-present only the phone in the final window-space HUD pass;
+  -- this gives Gen 1 and Gen 2 configurable horizontal placement without
+  -- resizing or anchoring the underlying game surface.
+  mod.hooks:wrap("render.hud", function(next, game, viewport)
+    local result = next(game, viewport)
+    local stack = game and game.stack
+    local menu = stack and stack.top and stack:top() or nil
+    if not (type(menu) == "table" and menu.modernStartMenuUI
+        and type(viewport) == "table") then
+      return result
+    end
+    local requestedWidth = presentation.responsiveSize
+      and select(1, presentation.responsiveSize(menu)) or 160
+    if requestedWidth <= 160 then return result end
+    local winW = tonumber(viewport.width) or love.graphics.getWidth()
+    local winH = tonumber(viewport.height) or love.graphics.getHeight()
+    local pixelScale = math.max(1, tonumber(viewport.scale) or 1)
+    local scaleX = pixelScale / math.max(1e-6, tonumber(viewport.dpiX) or 1)
+    local scaleY = pixelScale / math.max(1e-6, tonumber(viewport.dpiY) or 1)
+    local width = math.max(160, math.min(requestedWidth,
+      math.floor(winW / scaleX)))
+    menu.modernStartLastWideWidth = width
+    if width <= 160 then return result end
+    local ox = math.floor((winW - width * scaleX) / 2)
+    local oy = math.floor((winH - 144 * scaleY) / 2)
+    love.graphics.push("all")
+    love.graphics.translate(ox, oy)
+    love.graphics.scale(scaleX, scaleY)
+    menu.modernStartHudPass = true
+    if presentation.applyHudPalette then
+      local shader = presentation.applyHudPalette(menu)
+      if shader then love.graphics.setShader(shader) end
+    end
+    presentation.draw(menu)
+    menu.modernStartHudPass = nil
+    love.graphics.pop()
+    return result
+  end, 1000)
+
+  mod.exports.themeLabel = themeLabel
+  mod.exports.stepTheme = stepTheme
+  mod.exports.presentation = presentation
+  mod.exports.decorate = decorate
+  mod.exports.iconChoiceFor = iconChoice
+  mod.exports.customIconEntries = customEntries
+  mod.exports.settings = settings
+  mod.exports.iconChoices = ICON_CHOICES
+  mod.log:info("phone-panel START menu enabled (mobile compatibility active)")
+end

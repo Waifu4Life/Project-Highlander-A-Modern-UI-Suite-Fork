@@ -56,14 +56,17 @@ local function pulseHealFanfare()
 end
 
 function HpRumble.install(mod)
-  local BattleState = require("src.battle.BattleState")
-  local PartyMenu = require("src.ui.PartyMenu")
-  local Pokemon = require("src.pokemon.Pokemon")
   local Rumble = V.require("Rumble")
   local Extras = V.require("Extras")
 
-  local prevDrain = BattleState.stepHPDrain
-  function BattleState:stepHPDrain(...)
+  local function hookDrain(BattleState)
+    if type(BattleState) ~= "table" or type(BattleState.stepHPDrain) ~= "function" then
+      return
+    end
+    if BattleState._suiteHpRumble then return end
+    BattleState._suiteHpRumble = true
+    local prevDrain = BattleState.stepHPDrain
+    function BattleState:stepHPDrain(...)
     local beforeP = self.player and self.player.shownHP
     local beforeE = self.enemy and self.enemy.shownHP
     local busy = prevDrain(self, ...)
@@ -96,6 +99,22 @@ function HpRumble.install(mod)
   end
 
   -- Party-menu potion / revive bar fill (UpdateHPBar2).
+  end
+  pcall(function() hookDrain(require("src.battle.BattleState")) end)
+  pcall(function() hookDrain(require("src.ui.gen2.BattleState")) end)
+  pcall(function() hookDrain(require("src.battle.gen2.BattleState")) end)
+
+  local okParty, PartyMenu = pcall(require, "src.ui.PartyMenu")
+  if not okParty then
+    okParty, PartyMenu = pcall(require, "src.ui.gen2.PartyMenu")
+  end
+  local okPoke, Pokemon = pcall(require, "src.pokemon.Pokemon")
+  if not okPoke then
+    Pokemon = { heal = function() end }
+  end
+  if type(PartyMenu) ~= "table" or type(PartyMenu.update) ~= "function" then
+    return
+  end
   local prevPartyUpdate = PartyMenu.update
   function PartyMenu:update(dt)
     local heal = self.heal

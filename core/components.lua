@@ -53,7 +53,7 @@ return {
     short = "POKEDEX",
     version = "0.2.15",
     installOrder = 7,
-    files = { "main.lua", "screen.lua", "gen2.lua", "gen2_presentation.lua", "gen2_portrait_cutouts.lua" },
+    files = { "main.lua", "screen.lua", "locations.lua", "gen2.lua", "gen2_presentation.lua", "gen2_portrait_cutouts.lua" },
   },
   {
     id = "battle_info_hud",

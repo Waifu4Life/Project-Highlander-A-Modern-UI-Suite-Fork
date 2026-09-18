@@ -44,7 +44,10 @@ return function(mod, source)
     PURPLEMON={{255,239,255},{222,181,197},{173,123,189},{25,16,16}},
   }
   local deferred, owner
-  local loaded = loadFile("screen.lua")(mod, {
+  local wilds = mod.find and mod.find("overworld_wild_spawns")
+  local api = loadFile("screen.lua")(mod, {
+    wildsOfKanto = wilds ~= nil,
+    wildsOfKantoExports = wilds and wilds.exports or nil,
     formatText = function(text) return text:gsub("′", "'"):gsub("″", '\"') end,
     statRows = {
       {"HP","hp","GREENMON","HP"}, {"ATTACK","attack","REDMON","ATK"},
@@ -72,11 +75,7 @@ return function(mod, source)
     drawIcon = function(_, def, x, y, target, _, counter)
       deferred[#deferred + 1] = {def=def, icon=true, x=x, y=y, target=target, clock=counter}
     end,
-  })
-  local api = loaded and loaded.presentation
-  if not api then
-    return { draw = function() end, update = function() end, state = function() end }
-  end
+  }).presentation
 
   local function resetEntry(menu)
     menu.modernGen2Presentation = nil
@@ -147,10 +146,9 @@ return function(mod, source)
     local mon = {species=art.def.id, hp=1, stats={hp=1}}
     local x = art.x + math.floor((art.target-16)/2)
     local y = art.y + math.floor((art.target-16)/2)
-    if not (mod.suite and mod.suite.drawMenuIcon
-        and mod.suite.drawMenuIcon(menu.game, icons, mon, x, y)) then
-      icons:drawIcon(mon, x, y)
-    end
+    G.push("all"); G.setShader(); G.setColor(1,1,1,1)
+    icons:drawIcon(mon, x, y)
+    G.pop()
   end
   local function render(menu)
     local w = width(menu)
@@ -175,6 +173,9 @@ return function(mod, source)
       api.actions(actions,w)
       actionRect = api.actionGeometry(actions,state,api.listLayout(w))
     end
+    for _, art in ipairs(deferred) do
+      if art.icon then drawArt(menu, art) end
+    end
     G.setCanvas(previous);G.pop()
     local zones = isEntry and api.entryZones(state,menu.game,w) or api.listZones(state,menu.game,w)
     if actionRect then
@@ -182,20 +183,19 @@ return function(mod, source)
         colors=PaletteFX.GRAYS}
     end
     G.push("all");G.setColor(1,1,1,1)
-    local shader = PaletteFX.shader()
-    G.setShader(shader)
-    for _, zone in ipairs(zones) do
-      if shader then PaletteFX.sendColors(shader,zone.colors) end
-      local quad = G.newQuad(zone.x,zone.y,zone.w,zone.h,w,144)
-      G.draw(canvas,quad,zone.x,zone.y)
-    end
+    -- Software ramps already painted RGB into the canvas. A second
+    -- PaletteFX.shader pass is what washed Gen2 to orange/pink.
     G.setShader()
-    for _, art in ipairs(deferred) do drawArt(menu,art) end
+    G.draw(canvas, 0, 0)
+    for _, art in ipairs(deferred) do
+      if not art.icon then drawArt(menu, art) end
+    end
+    if isEntry and state.modernDexMap and api.drawDexMap then
+      api.drawDexMap(state)
+    end
     if actionRect then
-      -- Restore the dialog over artwork while retaining the visible parts
-      -- of the preview behind it, just as Gen 1's layered actions do.
-      G.setColor(1,1,1,1);G.setShader(shader)
-      if shader then PaletteFX.sendColors(shader,PaletteFX.GRAYS) end
+      G.setColor(1,1,1,1)
+      G.setShader()
       local r = actionRect
       G.draw(canvas,G.newQuad(r.x,r.y,r.w+2,r.h+2,w,144),r.x,r.y)
     end
@@ -240,6 +240,32 @@ return function(mod, source)
     end
     if menu.view == "list" or menu.view == "results" then
       if input:wasPressed("left") or input:wasPressed("right") then
+        local delta = input:wasPressed("left") and -1 or 1
+        local n = #(menu.rows or {})
+        local vis = 5
+        if type(menu.ensureVisible) == "function" then
+          pcall(function()
+            local width = menu.modernPokedexWideWidth or menu.modernPokedexLastWideWidth or 160
+            vis = source.listLayout and source.listLayout(width).rows or vis
+          end)
+        end
+        if vis < 1 then vis = 5 end
+        if n > 0 then
+          local idx = (menu.index or 1) + delta * vis
+          if idx < 1 then idx = 1 end
+          if idx > n then idx = n end
+          menu.index = idx
+          if type(menu.ensureVisible) == "function" then
+            pcall(menu.ensureVisible, menu)
+          else
+            local scroll = menu.scroll or 0
+            if menu.index <= scroll then
+              menu.scroll = math.max(0, menu.index - 1)
+            elseif menu.index > scroll + vis then
+              menu.scroll = menu.index - vis
+            end
+          end
+        end
         return true
       elseif input:wasPressed("a") then
         if menu:current() and menu:current().seen then actionsFor(menu) end
@@ -266,6 +292,61 @@ return function(mod, source)
         api.moveInfoScroll(state,state.modernInfoVisible);return true
       end
       return false
+    end
+    if input:wasPressed("start") and api.locationLines then
+      if state.modernDexMapLegend or state.modernDexMapSort then
+        state.modernDexMapLegend, state.modernDexMapSort = nil, nil
+      elseif state.modernDexMap then
+        state.modernDexMap = nil
+      else
+        state.modernDexMap = api.locationLines(menu.game, state.def and state.def.id)
+        state.modernDexMapScroll = 1
+        state.modernDexMapSortMode = "location"
+      end
+      return true
+    end
+    if state.modernDexMapLegend then
+      if input:wasPressed("b") or input:wasPressed("select") then
+        state.modernDexMapLegend = nil
+      end
+      return true
+    end
+    if state.modernDexMapSort then
+      local choices = api.SORT_CHOICES or {}
+      if input:wasPressed("b") then
+        state.modernDexMapSort = nil
+      elseif input:wasPressed("up") then
+        state.modernDexMapSortCursor = ((state.modernDexMapSortCursor or 1) - 2)
+          % math.max(1, #choices) + 1
+      elseif input:wasPressed("down") then
+        state.modernDexMapSortCursor = (state.modernDexMapSortCursor or 1)
+          % math.max(1, #choices) + 1
+      elseif input:wasPressed("a") and choices[state.modernDexMapSortCursor or 1] then
+        local choice = choices[state.modernDexMapSortCursor or 1]
+        state.modernDexMapSortMode = choice.id
+        if api.sortLocationRows then
+          state.modernDexMap = api.sortLocationRows(state.modernDexMap, choice.id)
+        end
+        state.modernDexMapScroll = 1
+        state.modernDexMapSort = nil
+      end
+      return true
+    end
+    if state.modernDexMap then
+      if input:wasPressed("b") then
+        state.modernDexMap = nil
+      elseif input:wasPressed("select") then
+        state.modernDexMapLegend = true
+      elseif input:wasPressed("a") then
+        state.modernDexMapSort = true
+        state.modernDexMapSortCursor = 1
+      elseif input:wasPressed("up") then
+        state.modernDexMapScroll = math.max(1, (state.modernDexMapScroll or 1) - 1)
+      elseif input:wasPressed("down") then
+        local maxs = math.max(1, #(state.modernDexMap or {}) - 7)
+        state.modernDexMapScroll = math.min(maxs, (state.modernDexMapScroll or 1) + 1)
+      end
+      return true
     end
     local page = state.modernDexPages[state.modernDexPage]
     if state.modernMoveDetail then

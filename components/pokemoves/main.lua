@@ -46,6 +46,12 @@ return function(mod)
     return type(id) == "string" and HM_MOVES[id] == true
   end
 
+  local gen2 = false
+  pcall(function()
+    local GV = require("src.core.GameVersion")
+    gen2 = GV.generation and GV.generation() == 2
+  end)
+
   local function isTmItem(data, itemId)
     if type(itemId) ~= "string" then return false end
     local item = data and data.items and data.items[itemId]
@@ -59,6 +65,7 @@ return function(mod)
   end
 
   local function installLearnMenu()
+    if gen2 then return end
     local ok, MoveLearnMenu = pcall(require, "src.ui.MoveLearnMenu")
     if not ok or type(MoveLearnMenu) ~= "table"
         or type(MoveLearnMenu.update) ~= "function" then
@@ -104,6 +111,7 @@ return function(mod)
   end
 
   local function installTms()
+    if gen2 then return end
     local ok, ItemEffects = pcall(require, "src.inventory.ItemEffects")
     if not ok or type(ItemEffects) ~= "table" or type(ItemEffects.use) ~= "function" then
       return
@@ -121,6 +129,7 @@ return function(mod)
   end
 
   local function installInstant()
+    if gen2 then return end
     local ok, OverworldState = pcall(require, "src.world.OverworldController")
     if not ok or type(OverworldState) ~= "table" then return end
     if OverworldState._suiteInstantTmHm then return end
@@ -290,7 +299,12 @@ return function(mod)
     local function hmForMove(data, moveId)
       local cache = {}
       for id, def in pairs((data and data.items) or {}) do
-        local m = def and def.machine
+        if type(def) ~= "table" then
+          if type(id) == "string" and id:match("^HM_") then
+            cache[id:gsub("^HM_", "")] = id
+          end
+        else
+        local m = def.machine
         if type(m) == "table" then
           local kind = tostring(m.kind or "HM"):upper()
           local move = m.move or m.id
@@ -300,6 +314,7 @@ return function(mod)
         end
         if type(id) == "string" and id:match("^HM_") then
           cache[id:gsub("^HM_", "")] = id
+        end
         end
       end
       return cache[moveId] or ("HM_" .. tostring(moveId))
@@ -323,6 +338,26 @@ return function(mod)
 
     local function badgeOwned(data, save, moveId)
       if not save then return false end
+      if gen2 then
+        local okF, F = pcall(require, "src.world.gen2.FieldMoves")
+        if okF and type(F) == "table" and type(F.hasBadge) == "function" then
+          local gate = F.BADGE and F.BADGE[moveId]
+          if gate ~= nil then
+            return F.hasBadge(save, gate) == true
+          end
+        end
+        local johto = save.player and save.player.badges
+        if type(johto) == "table" then
+          local map = {
+            FLASH = 1, CUT = 2, STRENGTH = 3, SURF = 4,
+            FLY = 5, WHIRLPOOL = 7, WATERFALL = 8,
+          }
+          local i = map[moveId]
+          if i and (johto[i] == true or johto[moveId] == true) then
+            return true
+          end
+        end
+      end
       if FieldDefaults and type(FieldDefaults.constant) == "function" then
         local gate = (FieldDefaults.constant(data, "hmBadges") or {})[moveId]
         if gate and gate.badge then
@@ -388,6 +423,8 @@ return function(mod)
       end
     end)
 
+    mod.exports.firstLearner = firstLearner
+    mod.exports.canLearn = canLearn
     pcall(function()
       local FIELD = {
         { move = "CUT", action = "cut" },
@@ -395,6 +432,8 @@ return function(mod)
         { move = "STRENGTH", action = "strength" },
         { move = "FLASH", action = "flash" },
         { move = "FLY", action = "fly" },
+        { move = "WHIRLPOOL", action = "whirlpool" },
+        { move = "WATERFALL", action = "waterfall" },
       }
       mod.hooks:wrap("ui.party.submenu", function(nextFn, g, items, mon, ctx)
         items = nextFn(g, items, mon, ctx) or {}
@@ -408,7 +447,9 @@ return function(mod)
         for _, field in ipairs(FIELD) do
           if not known[field.action] and canLearn(g.data, mon, field.move)
               and firstLearner(g.data, g.save, field.move) then
-            items[#items + 1] = { label = field.move, action = field.action }
+            items[#items + 1] = gen2
+              and { id = field.move, label = field.move, fieldMove = true }
+              or { label = field.move, action = field.action }
           end
         end
         return items
@@ -609,12 +650,110 @@ return function(mod)
     end)
   end
 
+
+  local function installSkipConfirm()
+    local ok, TextBox = pcall(require, "src.render.TextBox")
+    if not ok or type(TextBox) ~= "table" or type(TextBox.new) ~= "function" then
+      return
+    end
+    if TextBox._suiteSkipHmConfirm then return end
+    TextBox._suiteSkipHmConfirm = true
+    local orig = TextBox.new
+    local MOVES = {
+      CUT = true, SURF = true, STRENGTH = true, FLASH = true, FLY = true,
+      WHIRLPOOL = true, WATERFALL = true, DIG = true, TELEPORT = true,
+      HEADBUTT = true,
+      SWEET_SCENT = true, SWEETSCENT = true,
+    }
+    local function flatten(text)
+      if type(text) == "table" then
+        local parts = {}
+        for _, row in ipairs(text) do parts[#parts + 1] = flatten(row) end
+        return table.concat(parts, " ")
+      end
+      return tostring(text or "")
+    end
+    local function isHmFlavor(text)
+      local s = flatten(text):upper()
+      s = s:gsub("[\nvrft]", " ")
+      local hit = false
+      for name in pairs(MOVES) do
+        if s:find(name, 1, true) then hit = true; break end
+      end
+      if s:find("HEADBUTT", 1, true) then
+        return true
+      end
+      if not hit then return false end
+      return s:find("USE", 1, true) or s:find("USED", 1, true)
+        or s:find("WANT", 1, true) or s:find("?", 1, true)
+        or s:find("TREE", 1, true) or s:find("WATER", 1, true)
+        or s:find("BOULDER", 1, true) or s:find("ROCK", 1, true)
+        or s:find("DARK", 1, true) or s:find("CURRENT", 1, true)
+        or s:find("WHIRL", 1, true) or s:find("CALM", 1, true)
+        or s:find("CAN BE", 1, true) or s:find("SMASH", 1, true)
+        or s:find("HEADBUTT", 1, true) or s:find("SCENT", 1, true)
+    end
+    function TextBox.new(game, text, onDone, opts)
+      if not instantOn() or not isHmFlavor(text) then
+        return orig(game, text, onDone, opts)
+      end
+      local s = flatten(text):upper()
+      if s:find("ROCK SMASH", 1, true) or s:find("ROCKSMASH", 1, true)
+          or s:find("SMASH", 1, true) then
+        return orig(game, text, onDone, opts)
+      end
+      local choice = type(opts) == "table" and opts.choice
+      -- Dummy page: never mounts Yes/No. Pop first, then fire Yes/onDone
+      -- so the next field-move step is not popped with us.
+      local box = {
+        draw = function() end,
+        _suiteHmSkip = true,
+      }
+      function box:update()
+        if self._suiteHmFired then return end
+        self._suiteHmFired = true
+        if game and game.stack and game.stack.top
+            and game.stack:top() == self then
+          pcall(game.stack.pop, game.stack)
+        end
+        if type(choice) == "function" then
+          pcall(choice, true)
+        end
+        if type(onDone) == "function" then
+          pcall(onDone)
+        end
+      end
+      box.advance = box.update
+      return box
+    end
+        pcall(function()
+      local F = require("src.world.gen2.FieldMoves")
+      if type(F) ~= "table" or F._suiteSkipConfirm then return end
+      F._suiteSkipConfirm = true
+      for _, name in ipairs({ "confirm", "ask", "prompt", "confirmUse" }) do
+        local fn = F[name]
+        if type(fn) == "function" then
+          F[name] = function(...)
+            if instantOn() then return true end
+            return fn(...)
+          end
+        end
+      end
+    end)
+  end
+
   local function install()
+    installSkipConfirm()
     installLearnMenu()
     installTms()
     installInstant()
     installNoLearn()
     installRelearn()
+    if gen2 then
+      pcall(function()
+        mod:load("gen2.lua")(mod)
+      end)
+    end
   end
 
   pcall(function()

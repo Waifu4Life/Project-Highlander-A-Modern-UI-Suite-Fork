@@ -47,15 +47,28 @@ local function syncBattleFx(fx)
 end
 
 function ShakeSync.install()
-  local BattleState = require("src.battle.BattleState")
-  local ElevatorShake = require("src.world.ElevatorShake")
   local Rumble = V.require("Rumble")
   local Settings = V.require("Settings")
 
-  local prevUpdateFx = BattleState.updateFx
-  function BattleState:updateFx(...)
-    prevUpdateFx(self, ...)
-    syncBattleFx(self.fx)
+  local function hookFx(BattleState)
+    if type(BattleState) ~= "table" or type(BattleState.updateFx) ~= "function" then
+      return
+    end
+    if BattleState._suiteRumbleFx then return end
+    BattleState._suiteRumbleFx = true
+    local prevUpdateFx = BattleState.updateFx
+    function BattleState:updateFx(...)
+      prevUpdateFx(self, ...)
+      syncBattleFx(self.fx)
+    end
+  end
+  pcall(function() hookFx(require("src.battle.BattleState")) end)
+  pcall(function() hookFx(require("src.ui.gen2.BattleState")) end)
+  pcall(function() hookFx(require("src.battle.gen2.BattleState")) end)
+
+  local okEl, ElevatorShake = pcall(require, "src.world.ElevatorShake")
+  if not okEl then
+    return
   end
 
   local prevElevator = ElevatorShake.update

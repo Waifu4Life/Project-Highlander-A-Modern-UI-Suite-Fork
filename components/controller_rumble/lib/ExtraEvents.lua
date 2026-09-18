@@ -103,6 +103,27 @@ local SFX = {
   end,
 }
 
+local function hitPulse()
+  pulse("impact", 0.38, 0.52, 7, battleFxOn)
+end
+
+-- Gen 2 cartridge / recomp SFX names
+SFX.Hit = hitPulse
+SFX.HIT = hitPulse
+SFX.Damage = hitPulse
+SFX.DAMAGE = hitPulse
+SFX.SE_DAMAGE = hitPulse
+SFX.SE_M_HIT = hitPulse
+SFX.SE_M_TAKE_DOWN = hitPulse
+SFX.Attack_Hit = hitPulse
+SFX.Super_Effective = hitPulse
+SFX.Not_Very_Effective = function()
+  pulse("impact", 0.22, 0.3, 5, battleFxOn)
+end
+SFX.Battle_Damage = hitPulse
+SFX.Punch = hitPulse
+SFX.Tackle = hitPulse
+
 function ExtraEvents.install(mod)
   local Rumble = V.require("Rumble")
   local Extras = V.require("Extras")
@@ -144,15 +165,29 @@ function ExtraEvents.install(mod)
 
   -- ------- SFX fan-out
   mod.events:on("sound.played", function(payload)
-    local name = payload and payload.name
-    local fn = name and SFX[name]
+    local name = payload and (payload.name or payload.id or payload.sound)
+    if type(name) ~= "string" then return end
+    local fn = SFX[name] or SFX[name:gsub("[^%w]", "_")]
+    if not fn then
+      local upper = name:upper()
+      if upper:find("HIT", 1, true) or upper:find("DAMAGE", 1, true)
+          or upper:find("ATTACK", 1, true) then
+        fn = SFX.Hit
+      end
+    end
     if fn then fn() end
   end)
 
   -- ------- Fishing cast / bite / nibble
   do
-    local OverworldState = require("src.world.OverworldController")
-    local TextBox = require("src.render.TextBox")
+    local okOw, OverworldState = pcall(require, "src.world.OverworldController")
+    if not okOw then OverworldState = nil end
+    local okBox, TextBox = pcall(require, "src.render.TextBox")
+    if not (okBox and type(OverworldState) == "table"
+        and type(OverworldState.goFishing) == "function"
+        and type(TextBox) == "table" and type(TextBox.new) == "function") then
+      -- Gen 2 uses a different fishing controller
+    else
     local prevFish = OverworldState.goFishing
     local prevBoxNew = TextBox.new
     local fishListenUntil = 0
@@ -186,11 +221,15 @@ function ExtraEvents.install(mod)
       fishListenUntil = Extras.now() + 8
       return prevFish(self, rod)
     end
+    end
   end
 
   -- ------- Surf mount
   do
-    local OverworldState = require("src.world.OverworldController")
+    local okOw, OverworldState = pcall(require, "src.world.OverworldController")
+    if not okOw then OverworldState = nil end
+    if type(OverworldState) ~= "table" or type(OverworldState.trySurf) ~= "function" then
+    else
     local prev = OverworldState.trySurf
     function OverworldState:trySurf(...)
       if storyOn() then
@@ -199,11 +238,16 @@ function ExtraEvents.install(mod)
       end
       return prev(self, ...)
     end
+    end
   end
 
   -- ------- Safari bait / rock
   do
-    local BattleState = require("src.battle.BattleState")
+    local okBs, BattleState = pcall(require, "src.battle.BattleState")
+    if not okBs then BattleState = nil end
+    if type(BattleState) ~= "table" or type(BattleState.safariAction) ~= "function" then
+      -- Gen 2 has no Gen 1 BattleState safari hook
+    else
     local prev = BattleState.safariAction
     function BattleState:safariAction(choice)
       if battleFxOn() then
@@ -216,11 +260,15 @@ function ExtraEvents.install(mod)
       end
       return prev(self, choice)
     end
+    end
   end
 
   -- ------- Evolution stone / TM-HM teach start
   do
-    local ItemEffects = require("src.inventory.ItemEffects")
+    local okIe, ItemEffects = pcall(require, "src.inventory.ItemEffects")
+    if not okIe then ItemEffects = nil end
+    if type(ItemEffects) ~= "table" or type(ItemEffects.use) ~= "function" then
+    else
     local prev = ItemEffects.use
     function ItemEffects.use(data, save, itemId, target, battle, moveIndex, ow)
       local result, a, b = prev(data, save, itemId, target, battle, moveIndex, ow)
@@ -236,6 +284,7 @@ function ExtraEvents.install(mod)
         Rumble.pulse("story", 0.3, 0.4, 9)
       end
       return result, a, b
+    end
     end
   end
 end

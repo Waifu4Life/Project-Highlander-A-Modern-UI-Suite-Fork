@@ -6,12 +6,12 @@ return function(mod, source)
   local Menu=require('src.ui.Menu')
   local touch=mod.suite and mod.suite.touch
   local palettes={
-    BLUEMON={{255,239,255},{148,165,222},{90,123,189},{25,16,16}},
-    REDMON={{255,239,255},{255,165,82},{214,82,49},{25,16,16}},
-    CYANMON={{255,239,255},{173,206,239},{115,156,206},{25,16,16}},
-    BROWNMON={{255,239,255},{230,165,123},{173,115,74},{25,16,16}},
-    GREENMON={{255,239,255},{165,214,132},{74,165,90},{25,16,16}},
-    PURPLEMON={{255,239,255},{222,181,197},{173,123,189},{25,16,16}},
+    BLUEMON={{255,255,255},{72,168,255},{24,72,216},{8,8,16}},
+    REDMON={{255,255,255},{255,112,56},{216,32,24},{16,8,8}},
+    CYANMON={{255,255,255},{72,216,240},{16,140,204},{8,16,24}},
+    BROWNMON={{255,255,255},{240,168,72},{176,88,24},{16,8,0}},
+    GREENMON={{255,255,255},{80,216,80},{16,144,48},{8,16,8}},
+    PURPLEMON={{255,255,255},{224,112,224},{160,40,184},{16,8,16}},
   }
   local category={ALL='all',ITEMS='items',MEDICINE='medicine',BALL='balls',TM_HM='machines',KEY_ITEM='key'}
   local owner
@@ -19,13 +19,40 @@ return function(mod, source)
     presentationSize=function(state) return state.width,state.height end,
     categoryFor=function(_,id) return category[source.category(owner,id)] or 'items' end,
     capacity=function(state)
-      -- Four physical pockets retain their native capacities; All reports
-      -- occupied slots without implying one shared capacity.
-      return ('%d'):format(#source.order(state.nativeBag))
+      local used=#source.order(state.nativeBag)
+      return ('%d/%d'):format(used, 255)
     end,
     description=function(state,id)
       if not id then return 'Return to the previous screen.' end
-      return tostring(state.nativeBag:description() or ''):gsub('<NEXT>',' ')
+      local game=state.game
+      local items=(state.nativeBag and state.nativeBag.items)
+        or (game and game.data and game.data.items)
+      local def=type(items)=='table' and items[id] or nil
+      local teaches=def and def.teaches
+      local moves=game and game.data and game.data.moves
+      local move=teaches and type(moves)=='table' and moves[teaches]
+      if type(move)=='table' then
+        local text=move.description or move.effect or move.text
+        if type(text)=='string' and text~='' and text~='?' then
+          return text:gsub('<NEXT>',' '):gsub('<PARA>',' ')
+        end
+        if move.name then
+          return ('Teaches %s to a compatible POKeMON.'):format(tostring(move.name))
+        end
+      end
+      if state.nativeBag and type(state.nativeBag.description)=='function' then
+        local ok,text=pcall(function() return state.nativeBag:description() end)
+        text=ok and text or nil
+        if type(text)=='string' and text~='' and text~='?'
+            and text~='A useful item for your journey.' then
+          return text:gsub('<NEXT>',' ')
+        end
+      end
+      if type(def)=='table' and type(def.description)=='string'
+          and def.description~='' and def.description~='?' then
+        return def.description:gsub('<NEXT>',' ')
+      end
+      return 'A useful item for your journey.'
     end,
     palette=function(_,name) return palettes[name] or palettes.BLUEMON end,
   })
@@ -45,20 +72,19 @@ return function(mod, source)
     state.width,state.height=size(menu)
     state.modernBagPocket=menu.modernBagPocketIndex
     state.modernBagPockets={}
-    for _,pocket in ipairs(menu.modernBagPockets) do
+    for _,pocket in ipairs(menu.modernBagPockets or {}) do
       state.modernBagPockets[#state.modernBagPockets+1]=pocketByKey[pocket.key]
     end
     state.items={}
     for _,row in ipairs(menu.rows or {}) do
-      state.items[#state.items+1]={value=row.id,
-        label=row.tmhmLabel and (row.tmhmLabel..' '..tostring(row.teaches or row.name)) or row.name,
-        right=row.showCount and ('x'..tostring(row.count or 0)) or ''}
+      local id=row.id
+      if id and id~='CANCEL' and not row.cancel then
+        state.items[#state.items+1]={value=id,
+          label=row.tmhmLabel and (row.tmhmLabel..' '..tostring(row.teaches or row.name)) or row.name,
+          right=row.showCount and ('x'..tostring(row.count or 0)) or ''}
+      end
     end
-    -- B remains the normal exit, matching Gen 1's list. The native terminal
-    -- CANCEL row appears only while selected, preserving its controller.
-    if menu.index==menu:total() and #state.items>0 then
-      state.items[#state.items+1]={label='CANCEL',right=''}
-    end
+    -- No CANCEL row. B leaves the bag, same as Gen 1.
     state.index,state.scroll=menu.index,menu.scroll
     local prompt=menu.message or menu.confirm and menu.confirm.prompt
     state.modernBagPrompt=prompt and table.concat(prompt,' '):gsub('{PLAYER}',menu:playerName()) or nil
@@ -115,7 +141,7 @@ return function(mod, source)
     menu:ensureVisible()
     state.index,state.scroll=menu.index,menu.scroll
     local counts={}
-    for _,id in ipairs(source.order(menu)) do
+    for _,id in ipairs((source.order and source.order(menu)) or {}) do
       local key=category[source.category(menu,id)] or 'items'
       counts.all=(counts.all or 0)+1;counts[key]=(counts[key] or 0)+1
     end
@@ -127,9 +153,47 @@ return function(mod, source)
     end
     local previous=G.getCanvas()
     G.push('all');G.setCanvas(canvas);G.origin();G.setScissor();G.clear(0,0,0,0)
-    api.draw(state,counts)
-    local zones=api.zones(state,menu.game)
-    for _,zone in ipairs(overlays(menu,state,l)) do zones[#zones+1]=zone end
+    pcall(api.draw,state,counts)
+    local function ramp(name)
+      return palettes[name] or palettes.BLUEMON
+    end
+    local paper={{255,255,255},{236,236,236},{64,64,64},{0,0,0}}
+    local pocket=(state.modernBagPockets or {})[state.modernBagPocket or 1] or {}
+    local accent=ramp(pocket.palette or 'BLUEMON')
+    local zones
+    if l.skin=='classic_pocket' then
+      -- Black title / brown footer, blue woven rail, white item sheet.
+      -- Do not tint the sheet with BLUEMON or the empty pocket turns solid blue.
+      local headerH=l.headerH or 14
+      local footerY=l.footerY or ((l.height or 144)-16)
+      zones={
+        {x=0,y=0,w=l.width,h=l.canvasHeight or l.height or 144,colors=paper},
+        {x=0,y=0,w=l.width,h=headerH,colors=ramp('BROWNMON')},
+        {x=l.railX or 0,y=l.railY or headerH,w=l.railW or 48,h=l.railH or 80,colors=ramp('CYANMON')},
+        {x=l.listX or 48,y=l.listY or headerH,w=l.listW or 112,h=l.listH or 80,colors=paper},
+        {x=0,y=footerY,w=l.width,h=(l.canvasHeight or l.height or 144)-footerY,colors=ramp('BROWNMON')},
+      }
+    else
+      zones={
+        {x=0,y=0,w=l.width,h=l.canvasHeight or l.height or 144,colors=ramp('BLUEMON')},
+        {x=0,y=0,w=l.width,h=l.contentY or l.headerH or 16,colors=accent},
+      }
+      if l.showDetails and l.detailW then
+        zones[#zones+1]={x=l.detailX or 0,y=l.detailY or 0,
+          w=l.detailW,h=l.detailH or 40,colors=accent}
+      end
+      if state.items and #state.items>0 and l.listX then
+        local row=math.max(0,(state.index or 1)-(state.scroll or 0)-1)
+        zones[#zones+1]={
+          x=(l.listX or 0)+4,
+          y=(l.listY or 0)+3+row*15,
+          w=math.max(8,(l.listW or 80)-8),h=13,colors=accent}
+      end
+    end
+    for _,zone in ipairs(overlays(menu,state,l) or {}) do
+      zone.colors=zone.colors or paper
+      zones[#zones+1]=zone
+    end
     G.setCanvas(previous);G.pop()
     G.push('all');G.setColor(1,1,1,1)
     local shader=Palette.shader();G.setShader(shader)
@@ -143,8 +207,9 @@ return function(mod, source)
     if touch then
       touch.begin(menu,'window',function()return menu.qtyState or menu.message or menu.confirm or menu.submenu or menu.repeatSfx or menu.modernBagSortMenu or menu.tutorial end,
         function(key,press)press(menu,key)end)
-      local pockets=state.modernBagPockets
+      local pockets=state.modernBagPockets or {}
       local gap=l.width>=210 and 3 or 1
+      if #pockets<1 then pockets={{key="items"}} end
       local tabW=math.floor((l.width-8-gap*(#pockets-1))/#pockets)
       local x0=math.floor((l.width-(tabW*#pockets+gap*(#pockets-1)))/2)
       for i,pocket in ipairs(pockets) do

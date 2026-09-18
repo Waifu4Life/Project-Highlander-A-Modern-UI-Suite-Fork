@@ -44,6 +44,22 @@ return function(mod)
       type = "toggle", default = false },
     { key = "gen2_all_pkmn", label = "GEN2 GET ALL THE POKEMON",
       type = "toggle", default = false },
+    { key = "gen1_features_migrated", label = "GEN1 FEATURES MIGRATED",
+      type = "toggle", default = false },
+    { key = "gen1_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN1 GAMES",
+      type = "toggle", default = false },
+    { key = "gen1_starters", label = "OBTAIN ALL THE STARTERS PKMN (IN RED AND BLUE)",
+      type = "toggle", default = false },
+    { key = "gen1_fossil", label = "OBTAIN THE OTHER FOSSIL",
+      type = "toggle", default = false },
+    { key = "gen1_fighting", label = "OBTAIN THE OTHER FIGHTING PKMN",
+      type = "toggle", default = false },
+    { key = "gen1_eevee", label = "OBTAIN MORE EEVEES",
+      type = "toggle", default = false },
+    { key = "gen1_linkc", label = "TRADE WITH LINK C.",
+      type = "toggle", default = false },
+    { key = "gen1_mystery", label = "GET ???",
+      type = "toggle", default = false },
   })
 
   local function enabled()
@@ -454,6 +470,9 @@ return function(mod)
   end)
   pcall(function()
     mod.hooks:wrap("battle.exp_award", function(nextFn, ctx)
+      if generation == 2 then
+        return nextFn(ctx)
+      end
       if not modernExpShare() then
         return nextFn(ctx)
       end
@@ -495,10 +514,10 @@ return function(mod)
         local text
         if anyBoost then
           text = string.format(
-            "Non-fighting POKeMON\neach got %d boosted EXP.", amt)
+            "The others got\n%d boosted EXP.", amt)
         else
           text = string.format(
-            "Non-fighting POKeMON\neach got %d EXP.", amt)
+            "The others got\n%d EXP.", amt)
         end
         battle:sayNext(text)
       end
@@ -622,6 +641,12 @@ return function(mod)
   pcall(function()
     mod.hooks:wrap("input.step", function(nextFn, game, dt)
       local out = nextFn(game, dt)
+      if runTrigger() == "toggle" then
+        local input = game and game.input
+        if input and input.wasPressed and input:wasPressed("b") then
+          runToggled = not runToggled
+        end
+      end
       local ow = game and game.overworld
       local p = ow and ow.player
       if p and not p.moving then
@@ -1273,6 +1298,7 @@ return function(mod)
   loadSibling("map_icon.lua")
   loadSibling("sneakers.lua")
   loadSibling("game_corner.lua")
+  loadSibling("gen2_qol.lua")
 
   do
     local src = assert(mod:read("force_crystal.lua"), "force_crystal.lua missing")

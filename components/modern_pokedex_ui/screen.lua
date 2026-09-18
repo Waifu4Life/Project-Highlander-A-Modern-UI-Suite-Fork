@@ -20,6 +20,236 @@ return function(mod, compatibility)
   local Strings = require("src.core.Strings")
   local TypeChart = require("src.battle.TypeChart")
 
+  local LOCATION_DATA = {}
+  do
+    local ok, src = pcall(function() return mod:read("locations.lua") end)
+    if ok and type(src) == "string" then
+      local fn = load(src, "@locations")
+      if type(fn) == "function" then
+        local good, data = pcall(fn)
+        if good and type(data) == "table" then LOCATION_DATA = data end
+      end
+    end
+  end
+
+  local function gameVersionKey(game)
+    local v = tostring(game and (game.version or game.id) or ""):lower()
+    local s = tostring(game and game.save and (game.save.version or game.save.game) or ""):lower()
+    local blob = v .. " " .. s
+    if blob:find("yellow", 1, true) then return "yellow" end
+    if blob:find("crystal", 1, true) then return "crystal" end
+    if blob:find("silver", 1, true) then return "silver" end
+    if blob:find("gold", 1, true) then return "gold" end
+    if blob:find("blue", 1, true) then return "blue" end
+    return "red"
+  end
+
+  local function exclusiveOn(game)
+    local function read(id, key)
+      if mod.suite and mod.suite.option then
+        local ok, v = pcall(mod.suite.option, id, key)
+        if ok then return v end
+      end
+      return nil
+    end
+    local function on(key)
+      local v = read("unlimited_pp", key)
+      if v == nil then v = read("qol", key) end
+      if v == nil and mod.options and mod.options.get then
+        local ok, got = pcall(mod.options.get, mod.options, key)
+        if ok then v = got end
+      end
+      return v == true or v == "on" or v == "ON"
+    end
+    if on("gen1_features_migrated") then return on("gen1_exclusive") end
+    return on("gen1_exclusive") or on("gen1_all_pkmn")
+  end
+
+  local function speciesSeen(game, id)
+    if not (game and game.save and id) then return false end
+    local dex = game.save.pokedex or {}
+    local seen, owned = dex.seen or {}, dex.owned or {}
+    return seen[id] == true or owned[id] == true
+      or seen[tostring(id):lower()] == true or owned[tostring(id):lower()] == true
+  end
+
+  local function parseLocation(entry)
+    if type(entry) == "table" then
+      return {
+        loc = tostring(entry.loc or entry[1] or ""),
+        terrain = tostring(entry.terrain or entry[2] or ""),
+        level = tostring(entry.level or entry[3] or ""),
+        rate = tostring(entry.rate or entry[4] or ""),
+      }
+    end
+    local s = tostring(entry or "")
+    local terrain, level, rate = "", "", ""
+    local loc = s
+    local low = s:lower()
+    if low:find("evolve", 1, true) then terrain = "Evolve"
+    elseif low:find("trade", 1, true) then terrain = "Trade"
+    elseif low:find("prize", 1, true) then terrain = "Prize"
+    elseif low:find("gift", 1, true) or low:find("starter", 1, true) then terrain = "Gift"
+    elseif low:find("static", 1, true) then terrain = "Static"
+    elseif low:find("headbutt", 1, true) then terrain = "Headbutt"
+    elseif low:find("surf", 1, true) then terrain = "Surf"
+    elseif low:find("fish", 1, true) or low:find("rod", 1, true) then terrain = "Fish"
+    elseif low:find("safari", 1, true) then terrain = "Safari"
+    elseif low:find("cave", 1, true) or low:find("tower", 1, true)
+        or low:find("well", 1, true) or low:find("mansion", 1, true)
+        or low:find("tunnel", 1, true) then terrain = "Cave"
+    elseif low:find("grass", 1, true) then terrain = "Grass"
+    end
+    local a, b = s:match("[Ll][Vv]%s*(%d+)%s*%-%s*(%d+)")
+    if a and b then
+      level = a .. "-" .. b
+    else
+      local n = s:match("[Ll][Vv]%s*(%d+)")
+      if n then level = n end
+    end
+    local pct = s:match("(%d+)%%")
+    if pct then rate = pct .. "%" end
+    loc = s
+      :gsub("%s*[Ll][Vv]%s*%d+%s*%-%s*%d+", "")
+      :gsub("%s*[Ll][Vv]%s*%d+", "")
+      :gsub("%s*%d+%%", "")
+      :gsub("%s*grass", "")
+      :gsub("%s*Grass", "")
+    loc = loc:gsub("%s+$", ""):gsub("^%s+", "")
+    return { loc = loc, terrain = terrain, level = level, rate = rate }
+  end
+
+  local function inferLocationKind(row)
+    local t = tostring(row.terrain or ""):lower()
+    local loc = tostring(row.loc or ""):lower()
+    if t == "surf" or loc:find("surf", 1, true) then return "surf" end
+    if t == "fish" or loc:find("fish", 1, true) or loc:find("rod", 1, true) then
+      return "fish"
+    end
+    if t == "headbutt" or loc:find("headbutt", 1, true) then return "headbutt" end
+    if loc:find("contest", 1, true) then return "contest" end
+    if t == "prize" or loc:find("prize", 1, true)
+        or loc:find("game corner", 1, true) then
+      return "prize"
+    end
+    if loc:find("route", 1, true) or loc:find("forest", 1, true)
+        or loc:find("safari", 1, true) or loc:find("national park", 1, true)
+        then
+      return "grass"
+    end
+    return "cave"
+  end
+
+  local function natKey(text)
+    return tostring(text or ""):gsub("(%d+)", function(n)
+      return string.format("%08d", tonumber(n) or 0)
+    end)
+  end
+
+  local function firstLevel(row)
+    return tonumber(tostring(row.level or ""):match("%d+")) or 0
+  end
+
+  local function rateValue(row)
+    return tonumber(tostring(row.rate or ""):match("%d+")) or 0
+  end
+
+  local function sortLocationRows(rows, mode)
+    mode = mode or "location"
+    local copy = {}
+    for i = 1, #rows do copy[i] = rows[i] end
+    table.sort(copy, function(a, b)
+      if mode == "location" then
+        return natKey(a.loc) < natKey(b.loc)
+      elseif mode == "location_rev" then
+        return natKey(a.loc) > natKey(b.loc)
+      elseif mode == "level" then
+        if firstLevel(a) == firstLevel(b) then
+          return natKey(a.loc) < natKey(b.loc)
+        end
+        return firstLevel(a) < firstLevel(b)
+      elseif mode == "level_rev" then
+        if firstLevel(a) == firstLevel(b) then
+          return natKey(a.loc) < natKey(b.loc)
+        end
+        return firstLevel(a) > firstLevel(b)
+      elseif mode == "rate" then
+        if rateValue(a) == rateValue(b) then
+          return natKey(a.loc) < natKey(b.loc)
+        end
+        return rateValue(a) < rateValue(b)
+      elseif mode == "rate_rev" then
+        if rateValue(a) == rateValue(b) then
+          return natKey(a.loc) < natKey(b.loc)
+        end
+        return rateValue(a) > rateValue(b)
+      end
+      return natKey(a.loc) < natKey(b.loc)
+    end)
+    return copy
+  end
+
+  local KIND_RGB = {
+    grass = { 0.12, 0.84, 0.22 },
+    cave = { 0.62, 0.62, 0.66 },
+    headbutt = { 0.62, 0.40, 0.16 },
+    surf = { 0.12, 0.22, 0.72 },
+    fish = { 0.40, 0.72, 0.95 },
+    contest = { 0.05, 0.42, 0.16 },
+    prize = { 0.92, 0.78, 0.12 },
+  }
+
+  local SORT_CHOICES = {
+    { id = "location", label = "LOCATION" },
+    { id = "location_rev", label = "REVERSE LOCATION" },
+    { id = "level", label = "LEVEL" },
+    { id = "level_rev", label = "REVERSE LEVEL" },
+    { id = "rate", label = "RATE" },
+    { id = "rate_rev", label = "REVERSE RATE" },
+  }
+
+  local function locationLines(game, id)
+    if not speciesSeen(game, id) then
+      return { { loc = "No data.", terrain = "", level = "", rate = "" } }
+    end
+    local key = gameVersionKey(game)
+    local rec = LOCATION_DATA[id] or LOCATION_DATA[tostring(id or ""):upper()] or {}
+    local lines = {}
+    local function take(list)
+      for _, row in ipairs(list or {}) do
+        lines[#lines + 1] = parseLocation(row)
+      end
+    end
+    take(rec[key])
+    local gen1 = key == "red" or key == "blue" or key == "yellow"
+    if gen1 and exclusiveOn(game) then
+      take(rec["x" .. key])
+    end
+    local keep = {}
+    for _, row in ipairs(lines) do
+      local t = tostring(row.terrain or ""):lower()
+      local loc = tostring(row.loc or ""):lower()
+      local skip = t == "evolve" or t == "trade" or t == "gift" or t == "static"
+        or loc:find("evolve", 1, true) or loc:find("trade", 1, true)
+        or loc:find("gift", 1, true) or loc:find("starter", 1, true)
+        or loc:find("fossil", 1, true) or loc:find("old amber", 1, true)
+        or loc:find("revived", 1, true) or loc:find("event", 1, true)
+        or loc:find("quest", 1, true)
+      if not skip then keep[#keep + 1] = row end
+    end
+    if #keep == 0 then
+      return { { loc = "Unknown Location", terrain = "", level = "", rate = "", kind = "" } }
+    end
+    for _, row in ipairs(keep) do
+      row.kind = inferLocationKind(row)
+      if (row.loc or ""):find(" Surf", 1, true) then
+        row.loc = row.loc:gsub(" Surf", "")
+      end
+    end
+    return sortLocationRows(keep, "location")
+  end
+
+
   local SCREEN_H = 144
   local HEADER_H = 18
   local FOOTER_H = 12
@@ -80,8 +310,27 @@ return function(mod, compatibility)
     end)
   end
 
+  -- Gen2 adapter: paint SGB-style ramps as real RGB so GBC PaletteFX.shader
+  -- cannot flatten the page to orange/pink. Gen1 leaves this nil and keeps
+  -- grayscale + sgbPalettes.
+  local GEN2_RAMP = nil
+  local GEN2_VIVID = {
+    REDMON = { {255,236,80}, {255,176,40}, {228,28,28}, {16,16,16} },
+    CYANMON = { {186,255,255}, {72,214,230}, {32,96,214}, {16,16,16} },
+    BLUEMON = { {255,255,255}, {214,218,230}, {40,80,206}, {16,16,16} },
+  }
   local function gray(value)
-    love.graphics.setColor(value, value, value, 1)
+    if GEN2_RAMP then
+      local c
+      if value >= 0.9 then c = GEN2_RAMP[1]
+      elseif value >= 0.5 then c = GEN2_RAMP[2]
+      elseif value >= 0.15 then c = GEN2_RAMP[3]
+      else c = GEN2_RAMP[4]
+      end
+      love.graphics.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1)
+    else
+      love.graphics.setColor(value, value, value, 1)
+    end
   end
 
   local function setting(key, fallback)
@@ -152,6 +401,45 @@ return function(mod, compatibility)
 
   local function drawText(text, x, y, maxWidth, shade)
     return drawRawText(Strings(tostring(text or "")), x, y, maxWidth, shade)
+  end
+
+  local function drawMarqueeText(text, x, y, maxWidth, shade, clock)
+    text = tostring(text or "")
+    maxWidth = math.max(0, math.floor(maxWidth or Font.width(text)))
+    if Font.width(text) <= maxWidth then
+      return drawRawText(text, x, y, maxWidth, shade)
+    end
+    local src = text .. "   "
+    local start = (math.floor((clock or 0) / 8) % #src) + 1
+    local slice = (src .. src):sub(start)
+    local spans = Font.split(slice)
+    local n = Font.spansFitting(spans, maxWidth)
+    if n < 1 then return 0 end
+    return drawRawText(slice:sub(1, spans[n].to), x, y, maxWidth, shade)
+  end
+
+  local function drawMarqueeTint(text, x, y, maxWidth, rgb, clock)
+    text = tostring(text or "")
+    maxWidth = math.max(0, math.floor(maxWidth or Font.width(text)))
+    local shown = text
+    if Font.width(text) > maxWidth then
+      local src = text .. "   "
+      local start = (math.floor((clock or 0) / 8) % #src) + 1
+      local slice = (src .. src):sub(start)
+      local spans = Font.split(slice)
+      local n = Font.spansFitting(spans, maxWidth)
+      shown = n >= 1 and slice:sub(1, spans[n].to) or ""
+    end
+    local x0, y0 = math.floor(x), math.floor(y)
+    love.graphics.push("all")
+    local shader = shaderForInk()
+    if shader then love.graphics.setShader(shader) end
+    love.graphics.setColor(rgb[1], rgb[2], rgb[3], 1)
+    Font.draw(shown, x0, y0)
+    love.graphics.pop()
+    if PaletteFX.markTrueColor then
+      PaletteFX.markTrueColor(x0, y0, Font.width(shown), 8)
+    end
   end
 
   local function drawRight(text, right, y, maxWidth, shade)
@@ -309,9 +597,14 @@ return function(mod, compatibility)
     return TYPE_COLORS[tostring(id):upper()] or TYPE_COLORS.NORMAL
   end
 
+  local function uiPalette(game, name)
+    return compatibility.palette and compatibility.palette(game, name)
+      or PaletteFX.pal(game.data, name)
+  end
+
   local function basePalette(game)
-    return PaletteFX.pal(game.data, "BLUEMON")
-      or PaletteFX.pal(game.data, "MEWMON") or PaletteFX.GRAYS
+    return uiPalette(game, "BLUEMON")
+      or uiPalette(game, "MEWMON") or PaletteFX.GRAYS
   end
 
   local WARM_SGB_PORTRAITS = {
@@ -336,8 +629,13 @@ return function(mod, compatibility)
   end
 
   local function backdrop(layout)
+    local prev = GEN2_RAMP
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.BLUEMON
+    end
     gray(darkTheme() and BLACK or WHITE)
     love.graphics.rectangle("fill", 0, 0, layout.width, layout.height)
+    GEN2_RAMP = prev
     if setting("pattern", "grid") ~= "grid" then return end
     gray(darkTheme() and DARK or LIGHT)
     for x = -SCREEN_H, layout.width, 16 do
@@ -667,7 +965,7 @@ return function(mod, compatibility)
       math.max(1, math.floor(tonumber(def.frameHeight) or defaultFrameH)))
     local frame = 0
     if focused and frames >= 4
-        and math.floor((tonumber(counter) or 0) / 5) % 2 == 1 then
+        and math.floor((tonumber(counter) or 0) / 10) % 2 == 1 then
       frame = 3
     end
     frame = math.min(frames - 1, frame)
@@ -696,10 +994,15 @@ return function(mod, compatibility)
 
   local function drawIcon(game, def, x, y, target, selected, counter,
       regions)
-    if not (def and game.data.icons) then return end
+    if not def then return end
     local mon = syntheticMon(def)
     if compatibility.wildsOfKanto and drawWildsIcon(game, mon, x, y,
         target, selected, counter, regions) then return end
+    if compatibility.drawIcon then
+      return compatibility.drawIcon(game, def, x, y, target, selected,
+        counter, regions)
+    end
+    if not (game.data and game.data.icons) then return end
     local entry, path = iconEntry(game, mon)
     if isHgss(entry, path) and drawHgss(game, mon, entry, x, y, target,
         false, counter, regions) then return end
@@ -939,10 +1242,29 @@ return function(mod, compatibility)
         rect.w, DARK)
       return
     end
+    do
+      local crystal = mod.find and mod.find("crystal_animated_sprites_with_shiny_visuals")
+      local draw = crystal and crystal.exports and crystal.exports.drawPortrait
+      if type(draw) == "function" then
+        local ok, drew = pcall(draw, { species = def.id or def.species },
+          rect.x, rect.y, rect.w, rect.h)
+        if ok and drew then
+          if type(regions) == "table" then
+            regions[#regions + 1] = {
+              x = rect.x, y = rect.y, w = rect.w, h = rect.h,
+            }
+          end
+          return
+        end
+      end
+    end
     local image, protected, artPalette = spriteFor(game, def)
     if not image then return end
     local sw, sh = image:getDimensions()
-    local scale = math.min(1, rect.w / math.max(1, sw),
+    -- Gen 2 family/info cards are larger than the 40px sheets; allow
+    -- upscale there only. Gen 1 stays pixel-perfect (cap 1).
+    local cap = type(compatibility.palette) == "function" and 4 or 1
+    local scale = math.min(cap, rect.w / math.max(1, sw),
       rect.h / math.max(1, sh))
     local x = math.floor(rect.x + (rect.w - sw * scale) / 2 + 0.5)
     local y = math.floor(rect.y + (rect.h - sh * scale) / 2 + 0.5)
@@ -1265,6 +1587,10 @@ return function(mod, compatibility)
   end
 
   local function drawHeader(screen, layout)
+    local prev = GEN2_RAMP
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.REDMON
+    end
     gray(DARK)
     love.graphics.rectangle("fill", 0, 0, layout.width, HEADER_H)
     gray(LIGHT)
@@ -1278,6 +1604,7 @@ return function(mod, compatibility)
       drawRight(("%03d/%03d"):format(owned, total),
         layout.width - 5, 4, 56, WHITE)
     end
+    GEN2_RAMP = prev
   end
 
   local function rowRect(layout, visibleRow)
@@ -1298,6 +1625,12 @@ return function(mod, compatibility)
       if not row then break end
       local rect = rowRect(layout, visible)
       local selected = index == screen.index
+      local prevRow = GEN2_RAMP
+      if type(compatibility.palette) == "function" and row.seen then
+        GEN2_RAMP = paletteFor(row.def)
+      elseif type(compatibility.palette) == "function" then
+        GEN2_RAMP = GEN2_VIVID.BLUEMON
+      end
       panel(rect.x, rect.y, rect.w, rect.h, selected)
       local def = row.def
       local colors = row.seen and paletteFor(def) or basePalette(screen.game)
@@ -1383,6 +1716,10 @@ return function(mod, compatibility)
   end
 
   local function drawFooter(screen, layout)
+    local prev = GEN2_RAMP
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.CYANMON
+    end
     gray(DARK)
     love.graphics.rectangle("fill", 0, layout.footerY,
       layout.width, FOOTER_H)
@@ -1400,11 +1737,11 @@ return function(mod, compatibility)
       local filtered = screen.modernDexLetter or screen.modernDexType
       local seenLabel
       if screen.modernDexShinyOnly then
-        seenLabel = "SEL SEARCH"
+        seenLabel = "LR PAGE"
       elseif filtered then
         seenLabel = ("FOUND %03d"):format(#(screen.modernDexEntries or {}))
       else
-        seenLabel = "SEL SEARCH"
+        seenLabel = "LR PAGE"
       end
       local seenWidth = drawText(seenLabel,
         5, layout.footerY + 2, Font.width(seenLabel), WHITE)
@@ -1418,6 +1755,7 @@ return function(mod, compatibility)
     love.graphics.rectangle("fill", 5, layout.footerY, meterW, 1)
     gray(WHITE)
     love.graphics.rectangle("fill", 5, layout.footerY, ownedW, 1)
+    GEN2_RAMP = prev
   end
 
   local function drawActions(menu)
@@ -1446,12 +1784,12 @@ return function(mod, compatibility)
     gray(WHITE)
   end
 
-  local function paletteZones(screen, game)
-    local layout = activeLayout(screen)
+  local function paletteZones(screen, game, forcedWidth)
+    local layout = forcedWidth and layoutFor(forcedWidth) or activeLayout(screen)
     local base = basePalette(game)
     local zones = { { colors = base, x = 0, y = 0,
       w = layout.width, h = layout.height } }
-    zones[#zones + 1] = { colors = PaletteFX.pal(game.data, "REDMON") or base,
+    zones[#zones + 1] = { colors = uiPalette(game, "REDMON") or base,
       x = 0, y = 0, w = layout.width, h = HEADER_H }
     for visible = 1, layout.rows do
       local index = screen.scroll + visible
@@ -1475,7 +1813,7 @@ return function(mod, compatibility)
       zones[#zones + 1] = { colors = PaletteFX.GRAYS,
         x = rect.x, y = rect.y, w = rect.w + 2, h = rect.h + 2 }
     end
-    zones[#zones + 1] = { colors = PaletteFX.pal(game.data, "CYANMON") or base,
+    zones[#zones + 1] = { colors = uiPalette(game, "CYANMON") or base,
       x = 0, y = layout.footerY, w = layout.width, h = FOOTER_H }
     return zones
   end
@@ -1592,6 +1930,28 @@ return function(mod, compatibility)
         require("src.core.Sound").play(self.game.data, "Press_AB")
         return
       elseif input:wasPressed("left") or input:wasPressed("right") then
+        local delta = input:wasPressed("left") and -1 or 1
+        local n = #(self.items or self.modernDexEntries or {})
+        local vis = tonumber(self.modernDexVisibleRows) or tonumber(self.rows) or 7
+        if vis < 1 then vis = 7 end
+        if n > 0 then
+          local idx = (self.index or 1) + delta * vis
+          if idx < 1 then idx = 1 end
+          if idx > n then idx = n end
+          self.index = idx
+          local scroll = self.scroll or 0
+          if self.index <= scroll then
+            self.scroll = math.max(0, self.index - 1)
+          elseif self.index > scroll + vis then
+            self.scroll = self.index - vis
+          end
+          if type(self.ensureVisible) == "function" then
+            pcall(self.ensureVisible, self)
+          end
+          pcall(function()
+            require("src.core.Sound").play(self.game.data, "Press_AB")
+          end)
+        end
         return
       elseif #self.items == 0 and input:wasPressed("a") then
         openDexSearch(self)
@@ -1729,6 +2089,10 @@ return function(mod, compatibility)
   end
 
   local function drawEntryHeader(state, layout)
+    local prev = GEN2_RAMP
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.REDMON
+    end
     gray(DARK)
     love.graphics.rectangle("fill", 0, 0, layout.width, HEADER_H)
     if state.modernDexTabbed then
@@ -1809,6 +2173,9 @@ return function(mod, compatibility)
       }, regions, true, paletteFor(state.def), LIGHT,
         panelFaceProtection(profile.x, profile.y,
           profile.w, profile.h, true))
+      drawIcon(state.game, state.def,
+        profile.x + profile.w - 22, profile.y + profile.h - 22,
+        17, false, state.modernDexClock, regions)
     end
     panel(layout.info.x, layout.info.y, layout.info.w, layout.info.h, false)
     drawText(("No.%0" .. digits .. "d"):format(state.def.dex or 0),
@@ -1877,19 +2244,20 @@ return function(mod, compatibility)
             or ("%.0fkg"):format(e.weightKg)
         end
       elseif e.heightFt then
-        measurements[#measurements + 1] = layout.wide
-          and ("%d′%02d″"):format(e.heightFt, e.heightIn or 0)
-          or ("%d′%d″"):format(e.heightFt, e.heightIn or 0)
+        local inch = tonumber(e.heightIn) or 0
+        measurements[#measurements + 1] = string.format("%d", e.heightFt)
+          .. "'" .. string.format("%02d", inch) .. '"'
         if e.weight then
-          measurements[#measurements + 1] = layout.wide
-            and ("%.1flb"):format(e.weight / 10)
-            or ("%.0flb"):format(e.weight / 10)
+          measurements[#measurements + 1] = ("%.1flb"):format(e.weight / 10)
         end
       end
       if #measurements > 0 then
         measurements = table.concat(measurements, "  ")
-        drawRight(measurements,
-          descRight,
+        if compatibility.formatText then
+          measurements = compatibility.formatText(measurements)
+        end
+        local shown = fitText(measurements, descW)
+        drawRawText(shown, descRight - Font.width(shown),
           layout.description.y + 4, descW, DARK)
       end
     end
@@ -1956,7 +2324,7 @@ return function(mod, compatibility)
     end
   end
 
-  local STAT_ROWS = {
+  local STAT_ROWS = compatibility.statRows or {
     { "HP", "hp", "GREENMON", "HP" },
     { "ATTACK", "attack", "REDMON", "ATK" },
     { "DEFENSE", "defense", "BROWNMON", "DEF" },
@@ -2063,8 +2431,13 @@ return function(mod, compatibility)
       main = layout.statsMain
       if #availableRows == 0 then return end
       panel(main.x, main.y, main.w, main.h, false)
-      rowsY = main.y + 2
-      step = math.max(9, math.floor((main.h - 5) / #availableRows))
+      drawText("STATS", main.x + 6, main.y + 4, 56, DARK)
+      if #availableRows == #STAT_ROWS then
+        drawRight(Strings("TOTAL %d", total),
+          main.x + main.w - 6, main.y + 4, 72, DARK)
+      end
+      rowsY = main.y + 16
+      step = math.max(9, math.floor((main.h - 20) / #availableRows))
     end
     local labelW = layout.wide and 62 or 28
     local valueW = 24
@@ -2144,13 +2517,13 @@ return function(mod, compatibility)
     local gridH = layout.content.h - 41
     local zero = index - 1
     local col, row = zero % columns, math.floor(zero / columns)
-    local cellW = math.floor((layout.content.w - 10) / columns)
-    local cardW = math.min(layout.wide and 72 or 48, cellW - 3)
+    local cellW = math.floor((layout.content.w - 4) / columns)
+    local cardW = cellW - 1
     local groupW = cellW * columns
     local startX = layout.content.x
       + math.floor((layout.content.w - groupW) / 2)
     local cellH = math.floor(gridH / rows)
-    local cardH = math.min(60, cellH - 3)
+    local cardH = cellH - 1
     return {
       x = startX + col * cellW + math.floor((cellW - cardW) / 2),
       y = gridY + row * cellH + math.floor((cellH - cardH) / 2),
@@ -2200,8 +2573,8 @@ return function(mod, compatibility)
       panel(rect.x, rect.y, rect.w, rect.h, selected)
       if known then
         drawSprite(state.game, member.def, {
-          x = rect.x + 4, y = rect.y + 3,
-          w = rect.w - 8, h = rect.h - 17,
+          x = rect.x + 1, y = rect.y + 1,
+          w = rect.w - 2, h = rect.h - 12,
         }, regions, true, paletteFor(member.def),
           selected and LIGHT or WHITE,
           panelFaceProtection(rect.x, rect.y,
@@ -2236,10 +2609,12 @@ return function(mod, compatibility)
 
   local function machineSource(game, moveId)
     for _, item in pairs(game.data.items or {}) do
-      local machine = item.machine
-      if machine and machine.move == moveId then
-        local kind = tostring(machine.kind or "TM"):upper()
-        return kind, Strings("%s%02d", kind, machine.number or 0), "machine"
+      if type(item) == "table" then
+        local machine = item.machine
+        if type(machine) == "table" and machine.move == moveId then
+          local kind = tostring(machine.kind or "TM"):upper()
+          return kind, Strings("%s%02d", kind, machine.number or 0), "machine"
+        end
       end
     end
     if compatibility.crystal251 and CRYSTAL_TUTOR_MOVES[moveId] then
@@ -2249,6 +2624,7 @@ return function(mod, compatibility)
   end
 
   local function moveRows(state)
+    if compatibility.moveRows then return compatibility.moveRows(state) end
     local levelRows, machineRows = {}, {}
     local added = {}
     for _, id in ipairs(state.def.level1Moves or {}) do
@@ -2567,6 +2943,10 @@ return function(mod, compatibility)
       if not row then break end
       local move = row.move or { name = row.id }
       local selected = index == state.modernMoveCursor
+      local prevMove = GEN2_RAMP
+      if type(compatibility.palette) == "function" and move.type then
+        GEN2_RAMP = paletteFor({ types = { move.type } })
+      end
       gray(selected and DARK or (darkTheme() and BLACK or LIGHT))
       chamfer("fill", layout.content.x + 5, y,
         layout.content.w - 10, 12, 2)
@@ -2589,6 +2969,7 @@ return function(mod, compatibility)
           layout.content.x + layout.content.w - 9, y + 2, 24,
           selected and WHITE or DARK)
       end
+      GEN2_RAMP = prevMove
       y = y + 14
     end
   end
@@ -2807,6 +3188,118 @@ return function(mod, compatibility)
     end
   end
 
+  local function drawDexMap(state)
+    if state.modernDexMap then
+      local width = select(1, state:uiSize())
+      local layout = entryLayout(width)
+      local boxX, boxY = 4, 20
+      local boxW, boxH = layout.width - 8, 112
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.rectangle("fill", boxX, boxY, boxW, boxH)
+      love.graphics.setColor(0.15, 0.55, 0.20, 1)
+      love.graphics.rectangle("fill", boxX, boxY, 3, boxH)
+      love.graphics.setColor(0.15, 0.25, 0.85, 1)
+      love.graphics.rectangle("line", boxX, boxY, boxW, boxH)
+      love.graphics.rectangle("line", boxX + 1, boxY + 1, boxW - 2, boxH - 2)
+      local locX = boxX + 6
+      local lvlX = boxX + math.floor(boxW * 0.46)
+      local rateX = boxX + math.floor(boxW * 0.80)
+      gray(BLACK)
+      drawText("Locations", locX, boxY + 3, lvlX - locX - 4, BLACK)
+      drawText("Level", lvlX, boxY + 3, rateX - lvlX - 4, BLACK)
+      drawText("Rate", rateX, boxY + 3, boxX + boxW - rateX - 10, BLACK)
+      love.graphics.setColor(0, 0, 0, 1)
+      love.graphics.line(boxX + 3, boxY + 14, boxX + boxW - 1, boxY + 14)
+      local rows = state.modernDexMap
+      local visible, rowH = 8, 11
+      local start = math.max(1, state.modernDexMapScroll or 1)
+      local y = boxY + 16
+      local lastY = y
+      for i = start, math.min(#rows, start + visible - 1) do
+        local row = rows[i]
+        if type(row) ~= "table" then
+          row = { loc = tostring(row), terrain = "", level = "", rate = "" }
+        end
+        local level = tostring(row.level or ""):gsub(",%s+", ","):gsub("%s+,", ",")
+        local rate = tostring(row.rate or ""):gsub("%%", ""):gsub("%s+", "")
+        gray(BLACK)
+        local kind = row.kind or inferLocationKind(row)
+        local rgb = KIND_RGB[kind] or { 0, 0, 0 }
+        drawMarqueeTint(row.loc or "", locX, y, lvlX - locX - 4, rgb,
+          state.modernDexClock)
+        drawText(level, lvlX, y, rateX - lvlX - 6, BLACK)
+        if rate ~= "" then
+          drawRawText(rate, rateX, y, 24, BLACK)
+          local px = rateX + Font.width(rate) + 1
+          local py = y + 1
+          love.graphics.setColor(0, 0, 0, 1)
+          love.graphics.rectangle("fill", px, py, 2, 2)
+          love.graphics.rectangle("fill", px + 4, py + 4, 2, 2)
+          love.graphics.line(px + 5, py, px + 1, py + 6)
+        end
+        lastY = y
+        y = y + rowH
+      end
+      local moreDown = start + visible - 1 < #rows
+      local moreUp = start > 1
+      local ax = boxX + boxW - 8
+      local function arrow(cx, cy, down)
+        love.graphics.setColor(0, 0, 0, 1)
+        if down then
+          love.graphics.polygon("fill", cx, cy + 4, cx - 4, cy - 2, cx + 4, cy - 2)
+        else
+          love.graphics.polygon("fill", cx, cy - 4, cx - 4, cy + 2, cx + 4, cy + 2)
+        end
+      end
+      if moreUp then arrow(ax, boxY + 20, false) end
+      if moreDown then arrow(ax, lastY + 4, true) end
+      if state.modernDexMapLegend or state.modernDexMapSort then
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("fill", boxX + 10, boxY + 8, boxW - 20, boxH - 16)
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.rectangle("line", boxX + 10, boxY + 8, boxW - 20, boxH - 16)
+        local gen2 = gameVersionKey(state.game) == "gold"
+          or gameVersionKey(state.game) == "silver"
+          or gameVersionKey(state.game) == "crystal"
+        if state.modernDexMapLegend then
+          drawText("COLOR CODES", boxX + 16, boxY + 12, boxW - 32, BLACK)
+          local keys = {
+            { "grass", "GRASS" },
+            { "cave", "CAVES/INDOORS" },
+            { "surf", "SURF" },
+            { "fish", "FISHING ROD" },
+            { "prize", "PRIZE / SHOP" },
+          }
+          if gen2 then
+            keys[#keys + 1] = { "headbutt", "HEADBUTT TREES" }
+            keys[#keys + 1] = { "contest", "BUG CONTEST" }
+          end
+          local ly = boxY + 26
+          for _, item in ipairs(keys) do
+            drawMarqueeTint(item[2], boxX + 16, ly, boxW - 40,
+              KIND_RGB[item[1]], 0)
+            ly = ly + 11
+          end
+        else
+          drawText("SORT BY", boxX + 16, boxY + 12, boxW - 32, BLACK)
+          local cur = state.modernDexMapSortCursor or 1
+          local ly = boxY + 26
+          for i, item in ipairs(SORT_CHOICES) do
+            if i == cur then
+              love.graphics.setColor(0, 0, 0, 1)
+              love.graphics.polygon("fill",
+                boxX + 16, ly + 4,
+                boxX + 22, ly + 7,
+                boxX + 16, ly + 10)
+            end
+            drawText(item.label, boxX + 26, ly, boxW - 50, BLACK)
+            ly = ly + 11
+          end
+        end
+      end
+    end
+  end
+
   local function drawEntry(state, forcedWidth)
     clearInheritedUiTrueColor()
     local width = forcedWidth or select(1, state:uiSize())
@@ -2818,6 +3311,9 @@ return function(mod, compatibility)
     local regions = {}
     backdrop({ width = layout.width, height = SCREEN_H, footerY = 134 })
     drawEntryHeader(state, layout)
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.BLUEMON
+    end
     local page = entryPage(state)
     if page.id == "stats" then
       drawStatsPage(state, layout, regions)
@@ -2835,29 +3331,46 @@ return function(mod, compatibility)
       drawExtraPage(state, page, layout, regions)
     end
 
+    local prevFoot = GEN2_RAMP
+    if type(compatibility.palette) == "function" then
+      GEN2_RAMP = GEN2_VIVID.CYANMON
+    end
     gray(DARK)
     love.graphics.rectangle("fill", 0, layout.footerY,
       layout.width, SCREEN_H - layout.footerY)
     if state.modernDexTabbed then
       local tight = not layout.wide and layout.width < 176
       local right
-      if state.modernMoveDetail then
+      if state.modernDexMapLegend then
+        right = "B BACK"
+      elseif state.modernDexMapSort then
+        right = "A PICK B BACK"
+      elseif state.modernDexMap then
+        right = layout.wide and "A SORT B BACK" or "A SORT B"
+      elseif state.modernMoveDetail then
         right = "B LIST"
       elseif page.id == "family" then
-        right = layout.wide and "A VIEW B BACK" or "A VIEW B"
+        right = layout.wide and "START MAP A VIEW B BACK" or "START MAP A VIEW B"
       elseif page.id == "moves" then
-        right = layout.wide and "A VIEW B BACK" or "A VIEW B"
+        right = layout.wide and "START MAP A VIEW B BACK" or "START MAP A VIEW B"
       elseif page.footer then
-        right = type(page.footer) == "function"
+        local foot = type(page.footer) == "function"
           and page.footer(pageContext(state, layout, regions)) or page.footer
+        right = "START MAP " .. tostring(foot or "")
       elseif page.onAction then
-        right = tight and "A ACT B BACK" or "A ACTION  B BACK"
+        right = tight and "START MAP A ACT B" or "START MAP A ACTION B BACK"
       else
-        right = layout.wide and "A CRY  B BACK" or "A CRY B BACK"
+        right = layout.wide and "START MAP A CRY B BACK" or "START MAP A CRY B"
       end
       local left
       local roomy = layout.width >= 300
-      if state.modernMoveDetail then
+      if state.modernDexMapLegend then
+        left = ""
+      elseif state.modernDexMapSort then
+        left = "U/D"
+      elseif state.modernDexMap then
+        left = layout.wide and "U/D SELECT COLOR" or "U/D SELECT"
+      elseif state.modernMoveDetail then
         left = layout.wide and "MOVE DETAILS" or "MOVE DATA"
       elseif page.id == "family" then
         left = roomy and "L/R  U/D SELECT"
@@ -2866,14 +3379,20 @@ return function(mod, compatibility)
         left = roomy and "L/R  U/D MOVE"
           or tight and "LR UD" or "L/R U/D"
       elseif page.id == "info" and state.modernInfoCanScroll then
-        left = layout.wide and "L/R  U/D NOTES"
-          or tight and "LR UD" or "L/R U/D"
+        left = tight and "LR UD" or "L/R U/D"
       else
-        left = layout.wide and "LEFT/RIGHT TAB"
-          or tight and "LR TAB" or "L/R TAB"
+        left = "L/R"
       end
       local leftWidth = 0
-      if #entryPages(state) > 1 then
+      if state.modernDexMap and not state.modernDexMapLegend
+          and not state.modernDexMapSort then
+        leftWidth = drawText("U/D", 5, layout.footerY + 2,
+          Font.width("U/D"), WHITE)
+        local extra = "SELECT COLOR"
+        drawText(extra, 5 + leftWidth + 6, layout.footerY + 2,
+          Font.width(extra), LIGHT)
+        leftWidth = leftWidth + 6 + Font.width(extra)
+      elseif #entryPages(state) > 1 then
         leftWidth = drawText(left, 5, layout.footerY + 2,
           Font.width(left), WHITE)
       end
@@ -2900,22 +3419,25 @@ return function(mod, compatibility)
     for _, rect in ipairs(regions) do
       PaletteFX.markTrueColor(rect.x, rect.y, rect.w, rect.h)
     end
+    GEN2_RAMP = prevFoot
+    drawDexMap(state)
+    GEN2_RAMP = nil
     gray(WHITE)
   end
 
-  local function entryZones(state, game)
+  local function entryZones(state, game, forcedWidth)
     local width = select(1, state:uiSize())
     local renderer = game and game.renderer
     if renderer and renderer.uiSize then width = select(1, renderer:uiSize()) end
-    local layout = entryLayout(width)
+    local layout = entryLayout(forcedWidth or width)
     local base = basePalette(game)
     local primary = paletteFor(state.def)
     local page = entryPage(state)
     local zones = { { colors = base, x = 0, y = 0,
       w = layout.width, h = SCREEN_H },
-      { colors = PaletteFX.pal(game.data, "REDMON") or base,
+      { colors = uiPalette(game, "REDMON") or base,
         x = 0, y = 0, w = layout.width, h = HEADER_H },
-      { colors = PaletteFX.pal(game.data, "CYANMON") or base,
+      { colors = uiPalette(game, "CYANMON") or base,
         x = 0, y = layout.footerY, w = layout.width,
         h = SCREEN_H - layout.footerY },
     }
@@ -2957,7 +3479,7 @@ return function(mod, compatibility)
           and math.min(16, math.floor(82 / #availableRows))
           or math.max(9, math.floor((main.h - 5) / #availableRows))) or 16
       for _, row in ipairs(availableRows) do
-        zones[#zones + 1] = { colors = PaletteFX.pal(game.data, row[3])
+        zones[#zones + 1] = { colors = uiPalette(game, row[3])
             or primary, x = main.x, y = y,
           w = main.w, h = layout.wide and 12 or math.min(9, step) }
         y = y + step
@@ -3146,6 +3668,66 @@ return function(mod, compatibility)
         return
       end
       local input = self.game.input
+      if input:wasPressed("start") then
+        require("src.core.Sound").play(self.game.data, "Press_AB")
+        if self.modernDexMapLegend or self.modernDexMapSort then
+          self.modernDexMapLegend = nil
+          self.modernDexMapSort = nil
+        elseif self.modernDexMap then
+          self.modernDexMap = nil
+        else
+          self.modernDexMap = locationLines(self.game, self.def and self.def.id)
+          self.modernDexMapScroll = 1
+          self.modernDexMapSortMode = "location"
+        end
+        return
+      end
+      if self.modernDexMapLegend then
+        if input:wasPressed("b") or input:wasPressed("select") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          self.modernDexMapLegend = nil
+        end
+        return
+      end
+      if self.modernDexMapSort then
+        if input:wasPressed("b") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          self.modernDexMapSort = nil
+        elseif input:wasPressed("up") then
+          self.modernDexMapSortCursor = ((self.modernDexMapSortCursor or 1) - 2)
+            % #SORT_CHOICES + 1
+        elseif input:wasPressed("down") then
+          self.modernDexMapSortCursor = (self.modernDexMapSortCursor or 1)
+            % #SORT_CHOICES + 1
+        elseif input:wasPressed("a") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          local choice = SORT_CHOICES[self.modernDexMapSortCursor or 1]
+          self.modernDexMapSortMode = choice.id
+          self.modernDexMap = sortLocationRows(self.modernDexMap, choice.id)
+          self.modernDexMapScroll = 1
+          self.modernDexMapSort = nil
+        end
+        return
+      end
+      if self.modernDexMap then
+        if input:wasPressed("b") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          self.modernDexMap = nil
+        elseif input:wasPressed("select") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          self.modernDexMapLegend = true
+        elseif input:wasPressed("a") then
+          require("src.core.Sound").play(self.game.data, "Press_AB")
+          self.modernDexMapSort = true
+          self.modernDexMapSortCursor = 1
+        elseif input:wasPressed("up") then
+          self.modernDexMapScroll = math.max(1, (self.modernDexMapScroll or 1) - 1)
+        elseif input:wasPressed("down") then
+          local maxs = math.max(1, #self.modernDexMap - 8 + 1)
+          self.modernDexMapScroll = math.min(maxs, (self.modernDexMapScroll or 1) + 1)
+        end
+        return
+      end
       if self.modernMoveDetail then
         if input:wasPressed("b") then
           require("src.core.Sound").play(self.game.data, "Press_AB")
@@ -3223,6 +3805,10 @@ return function(mod, compatibility)
       buildPages = buildEntryPages, familySelection = familySelection,
       moveInfoScroll = moveInfoScroll, moveMoveSelection = moveMoveSelection,
       moveFamilySelection = moveFamilySelection, selectedMoveRow = selectedMoveRow,
+      drawDexMap = drawDexMap,
+      locationLines = locationLines,
+      sortLocationRows = sortLocationRows,
+      SORT_CHOICES = SORT_CHOICES,
       list = function(state, width)
         local layout, regions = layoutFor(width), {}
         backdrop(layout)

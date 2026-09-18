@@ -296,6 +296,45 @@ return function(mod)
     return text .. "."
   end
 
+  local function printScrollingCardInk(text, x, y, color, maxWidth)
+    text = tostring(text or "")
+    maxWidth = tonumber(maxWidth) or 999
+    if Font.width(text) <= maxWidth then
+      return printCardInk(text, x, y, color)
+    end
+    local overflow = Font.width(text) - maxWidth
+    local t = 0
+    if love and love.timer and love.timer.getTime then
+      t = love.timer.getTime()
+    end
+    -- Pause, slide left, pause, jump back.
+    local slide = 1.15 + overflow * 0.06
+    local cycle = slide + 1.4
+    local u = t % cycle
+    local offset = 0
+    if u > 0.7 and u < 0.7 + slide then
+      offset = math.floor(((u - 0.7) / slide) * (overflow + 6))
+    elseif u >= 0.7 + slide then
+      offset = overflow + 6
+    end
+    local G = love.graphics
+    G.push("all")
+    local x1, y1, x2, y2 = x, y - 1, x + maxWidth, y + 9
+    if G.transformPoint then
+      local sx, sy = G.transformPoint(x1, y1)
+      local ex, ey = G.transformPoint(x2, y2)
+      if G.intersectScissor then
+        G.intersectScissor(math.min(sx,ex), math.min(sy,ey),
+          math.abs(ex-sx), math.abs(ey-sy))
+      else
+        G.setScissor(math.min(sx,ex), math.min(sy,ey),
+          math.abs(ex-sx), math.abs(ey-sy))
+      end
+    end
+    printCardInk(text, x - offset, y, color)
+    G.pop()
+  end
+
   local function chamfer(mode, x, y, w, h, cut)
     cut = math.max(0, math.min(cut or 0, math.floor(math.min(w, h) / 2)))
     if cut == 0 or not love.graphics.polygon then
@@ -529,9 +568,8 @@ return function(mod)
         -- RBY parity: Power and PP belong to the selected-move information
         -- card, not redundantly inside every move button. Card colour already
         -- communicates type.
-        printCardInk(fit((def and def.name) or move.id,
-            moveNameBudget(colW, indicator)),
-          x + 7, textY, ink)
+        printScrollingCardInk((def and def.name) or move.id,
+          x + 7, textY, ink, moveNameBudget(colW, indicator))
         drawEffectIndicator(indicator, x, y, colW, rowH, ink)
       else
         printCardInk("--", x + 7, textY, ink)

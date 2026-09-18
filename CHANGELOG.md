@@ -1,4 +1,256 @@
+## [1.59.0] — milestone
+- GitHub-ready release (manifest github + semver 1.59.0).
+- Includes Gen2 Modern EXP Sharing, OG battle letterbox, Start Menu icon sheet, Gen2 move-name scroll, EXP text fixes.
+
+## [1.58.0]\n- Gen2 Modern EXP Sharing: one summary line with the half-EXP amount.\n\n## [1.57.0]\n- Gen2 Modern EXP Sharing: skip Gen1 award hook; class-level giveExperiencePass bench pass (Sweet Share method).\n\n## [1.56.0]\n- Gen2 Modern EXP Sharing: vanilla fighter award + giveExperiencePass bench half (Sweet Share 1.2 path).\n\n## [1.55.0]\n- Gen1 share summary fits the text box (The others got / N boosted EXP).\n- Gen2 Always Boosted EXP announces "gained a boosted N EXP".\n\n## [1.54.0]\n- Reverted Gen1 move-card experiment to 1.51.0.\n- Gen2 Typed Move Colors: long move names scroll in the card instead of ending with a dot.\n\n## [1.51.0]\n- Gen1 OG command menu is vanilla Fight/PKMN/ITEM/RUN; Typed Move Colors only on move select.\n\n## [1.50.0]\n- Gen2 OG battle layout: do not replace native drawWidescreen; restore 160x144 + letterbox.\n\n## [1.49.0]\n- Start Menu icon sheet: user Pokebox tile (frame 32).\n\n## [1.48.0]\n- Gen1 bag pocket L/R plays Crystal Sfx_SwitchPockets wav (not Tink/Swap).\n\n## [1.47.0]\n- Gen1 bag L/R sfx: do not treat a missing SwitchPockets play() as success; fall back to Tink/Swap.\n\n## [1.46.0]\n- Gen2 wild caught marker: red/white ball over native black ball.\n- Gen1 bag tab/pocket switch plays SwitchPockets (or Gen1 cursor fallback).\n\n## [1.45.0]\n- TM/HM bag text uses item.teaches -> move.description (PackMenu:moveOf). 255 cap unchanged.\n\n## [1.44.0]\n- LOCK Gen2 bag 255. TM/HM text uses native PackMenu description like Ish, then move data.\n\n## [1.43.0]\n- Gen2 now loads inventory.lua (Bag.capacity/add 255). TM text ignores native ?.\n\n## [1.42.0]\n- Gen2 bag: wrap Bag.capacity/add so ITEM pocket is 255 (engine Bag.lua, not Pack).\n- Patch TM/HM item descriptions on content so the pane is not ?.\n\n## [1.41.0]\n- Gen2 bag: wrap Pack total/isCancel (drop extra slot), wrap description for TMs, raise pack 20-caps.\n\n## [1.40.0]\n- Revert PC pane colors to 1.37.0.\n- Gen2 bag: 255 slot cap, no Cancel rows, TM/HM descriptions.\n\n## [1.37.0]\n- Fix modern_pc_ui screen.lua syntax (early return left dead locals).\n\n## [1.36.0]\n- Crystal portraits load raw PNGs (no Assets palette bake) and claim true-color regions.\n\n## [1.35.0]\n- Reverted Rock Smash skip to 1.33 behavior.\n- PC / Dex portraits and Party stats use Crystal animated front sprites.\n\n## [1.33.0]\n- core.update hook uses (game, dt) like the rest of Highlander.\n\n## [1.32.0]\n- Remove Game2.step wrap that crashed on nil dt. Rock Smash skip stays on core.update.\n\n## [1.31.0]\n- Rock Smash silent path: pop the real textbox and run onDone/choice (jj_auto_field_moves pattern).\n\n## [1.30.0]\n- Do not intercept Rock Smash dialogue; skipping it freezes the player.\n\n## [1.29.0]\n- Rock Smash keeps native box close (hidden auto-A) so the player does not freeze.\n\n## [1.28.0]\n- Select list is Flash/Fly/Dig/Teleport/Sweet Scent only. Headbutt and Rock Smash prompts skipped via Game2.say.\n\n## [1.27.0]\n- Gen2 Select field list sizes to its rows, adds Sweet Scent, silences Headbutt/Rock Smash prompts.\n\n## [1.26.0]\n- Instant HMs skip flavor + Yes/No. Dummy box pops before Yes so the player is not left frozen.\n\n## [1.25.0]\n- Instant HM text hidden via auto-A on real boxes so the player is not frozen.\n\n## [1.24.0]\n- Instant field HMs skip all Cut/Surf flavor text, not just Yes/No.\n\n## [1.23.0]\n- Instant TMs/HMs skips Cut/Surf/etc Yes/No prompts.\n\n## [1.22.1]\n- Guard Gen2 data.items numeric entries in hmForMove.\n\n## [1.22.0]\n- Fork Ish 0.1.33 Gen2 PokeMoves (forgettable HMs, TMs forever, instant TM/HM, no-learn HMs). Relearn kept.\n\n## [1.21.0]\n- Battle EXP bar arms on the second A of the EXP message.\n\n## [1.20.0]\n- EXP bar uses on-screen message only; arms on A, ▼, or EXP sound.\n\n## [1.19.0]\n- Battle EXP bar waits for A on the EXP message or the EXP fill sound.\n\n## [1.18.0]\n- Battle EXP bar only moves while the gained-EXP message is on screen.\n\n## [1.17.0]\n- Battle EXP hold until enemy HP is 0, then lerp.\n\n## [1.16.0]\n- Battle EXP bar lerps during award using battle.exp_gained.\n\n## [1.15.0]\n- Battle EXP uses party mon + HpBar.expFraction (same as party menu). No lerp/shownExp.\n\n## [1.14.0]\n- Restore battle XP well RTL 64px. Share uses fighter EXP delta on exp.gain.\n\n## [1.13.0]\n- Battle XP well 100%=track width, LTR fill. Share wraps giveExperiencePass. PC uses Wilds followers.\n\n## [1.12.0]\n- Battle XP handles into-level after level-up. Modern share also on exp.gain. Party EXP / enemy HP / sparkles / area / stores untouched.\n\n## [1.11.0]\n- 2-line area names. Party EXP numbers follow bar. Battle XP lerps. Share without applyShare. Enemy HP locked.\n\n## [1.10.0]\n- Gen2: Ish 0.1.32 hooks (hudHp, map.entered, World.drawWorldBody, Hidden.unfound, battle.exp_award, Gen2MartMenu).\n\n## [1.9.0]\n- Party LV two digits, clamp EXP text, battle HP lerp, freeze XP until faint, stop raw exp writes.\n\n## [1.8.0]\n- RTL black XP well, shown-only enemy HP, Game.draw toast/sparkles, Route30 hidden coords, Font.draw mart counts, battle-end EXP share.\n\n## [1.7.0] - 2026-09-17
+
+- Gen2 HUD: hide native HP duplicate, EXP numbers on the native well. Overworld draw wrap for area names/sparkles. Mart string lists. EXP share from fighter delta. Battle update rumble.
+
 # Changelog
+
+## [1.5.0] - 2026-09-16
+
+- Gen2 battle HUD numbers only (no black trough). Area names/sparkles on render.hud. Stores no longer paint the suite menu. Boosted EXP via OT mismatch. Rumble ticks on core.update.
+
+## [1.4.0] - 2026-09-16
+
+- Gen2 QoL: battle HUD meters + enemy HP, toggle-B run, rumble, area names, sparkles, mart counts, boosted/share EXP bridges.
+
+## [1.3.0] - 2026-09-16
+
+- Party HP/EXP bars start under Lv; Stats tab keeps those bars inside the Lv color box.
+
+## [1.2.0] - 2026-09-16
+
+- Gen2 party: EXP label no longer clips to E.; OT tab removed; Stats tab has HP+EXP bars with values.
+
+## [1.1.0] - 2026-09-16
+
+- Gen2 party roster: thicker HP/EXP bars, raised so both show, Values/Percent overlays.
+
+## [1.0.0] - 2026-09-16
+
+- Gen2 Modern Party roster uses the Gen1 2x3 card layout and follower icons.
+
+## [0.99] - 2026-09-16
+
+- Gen2 Modern Party summary header: Stats / Moves (plural).
+
+## [0.98] - 2026-09-16
+
+- Pokédex follower icons animate at half speed.
+
+## [0.97] - 2026-09-16
+
+- Gen2 dex list/info icons use overworld_wild_spawns follower sheets.
+- Family cards fill the grid and portraits can upscale to the card.
+
+## [0.96] - 2026-09-16
+
+- Fix screen.lua height string compile error.
+
+## [0.95] - 2026-09-16
+
+- Gen2 dex: list/info icons, ASCII height, Sp.Atk/Sp.Def + total, larger family cards.
+- Gen2 moves use native learnsets and type-coloured rows.
+
+## [0.94] - 2026-09-16
+
+- Gen2 Pokédex paints bright RGB chrome itself; GBC shader no longer flattens it.
+- Gen1 still uses grayscale + sgbPalettes. Start Map stays on top.
+
+## [0.93] - 2026-09-16
+
+- Start Map draws on top again in Gen1.
+- Gen2 dex palette zones use the canvas width like Suite 0.1.32.
+
+## [0.92] - 2026-09-16
+
+- Gen2 Pokédex chrome/portraits match Modern UI Suite 0.1.32.
+- Start Map and Gen1 dex presentation unchanged.
+
+## [0.91] - 2026-09-16
+
+- Fix screen.lua missing end after Start Map extract.
+
+## [0.90] - 2026-09-16
+
+- Gen2 dex uses bright Gen1-style header/footer ramps and true-color map overlay.
+- Gen2 dex portraits use mon palettes instead of uncoloured silhouettes.
+
+## [0.89] - 2026-09-16
+
+- Gen2 Pokédex uses Gen1 SGB UI colours; Start Map works on the entry tabs.
+
+## [0.88] - 2026-09-16
+
+- Gen2 Pokédex A-select no longer crashes on numeric item entries.
+
+## [0.87] - 2026-09-16
+
+- Start Map hides down-arrow on last row; Sea Routes split into Route 19/20.
+
+## [0.86] - 2026-09-16
+
+- Start Map adds fishing, Headbutt, Bug Contest, and Prize Corner Pokémon.
+
+## [0.85] - 2026-09-16
+
+- Color legend footer is only B BACK; leftover COLORS label removed.
+
+## [0.84] - 2026-09-16
+
+- Start Map legend Caves/Indoors; Power Plant and other non-field spots use that color.
+
+## [0.83] - 2026-09-16
+
+- Start Map colors use true-color text; footer Select matches other hints.
+- Sort menu uses a visible arrow and applies the chosen order.
+
+## [0.82] - 2026-09-16
+
+- Start Map color-coded places, Select legend, A sort, natural route order.
+- Exclusive locations now read the QoL Gen1 exclusive toggle.
+
+## [0.81] - 2026-09-16
+
+- Start Map filled from official RBY/GSC wild tables (pret), including exclusives.
+
+## [0.80] - 2026-09-16
+
+- Start Map location names marquee when they do not fit.
+
+## [0.79] - 2026-09-16
+
+- Start Map hides one-time/trade/evolve rows; compact levels; drawn % mark.
+
+## [0.78] - 2026-09-16
+
+- Start Map drops Terrain; wider Location/Level; Rate always shows %.
+
+## [0.77] - 2026-09-16
+
+- Fix locations.lua parse error after Oddish table insert.
+
+## [0.76] - 2026-09-16
+
+- Start Map table: Locations / Terrain / Level / Rate, slot-split rows, scroll arrow.
+
+## [0.75] - 2026-09-16
+
+- Start Map: one location per row; up/down arrows when the list scrolls.
+
+## [0.74] - 2026-09-16
+
+- Pokédex Start Map: per-game locations, unseen hides data, exclusives follow Gen1 toggle.
+
+## [0.73] - 2026-09-15
+
+- Pokédex Info footer uses the same L/R U/D spacing as Family/Moves.
+
+## [0.72] - 2026-09-15
+
+- Pokédex Info footer: drop NOTES. Stats footer: L/R instead of LEFT/RIGHT TAB.
+
+## [0.71] - 2026-09-15
+
+- Highlander hub: GEN1/GEN2 GET ALL THE POKEMON labels scroll.
+
+## [0.70] - 2026-09-15
+
+- Highlander hub: GEN1 GET ALL PKMN and GEN2 GET ALL PKMN sub-menus.
+- Gen 1 split into exclusive / starters / fossil / fighting / Eevees / Link C. / Get ???.
+
+## [0.69] - 2026-09-15
+
+- Gen 2 PC: hide release-cancelled, multi-select hint, multi-moved, and multi-cancelled boxes.
+
+## [0.68] - 2026-09-15
+
+- Gen 2 PC: no "Moved X" or "Move cancelled" boxes.
+
+## [0.67] - 2026-09-15
+
+- Gen 2 PC long names scroll by clipping glyphs (no window scissor).
+- Gen 2 no longer shows "Where should X go?" when picking a mon to move.
+
+## [0.66] - 2026-09-15
+
+- Gen 2 PC pane: Crystal portrait plus Chrome text (name/Lv/types visible again), type-colored stats.
+
+## [0.65] - 2026-09-15
+
+- Type labels drop the word Type (Psychic, not Psychic Type).
+- Gen 2 PC names use species name when nickname is blank; level/types use type color.
+
+## [0.64] - 2026-09-15
+
+- Gen 2 PC left pane uses the Gen 1 detail drawer (Crystal portrait, scrolling name).
+- Second type line omitted when it matches the first.
+
+## [0.63] - 2026-09-15
+
+- Fix Modern PC crash: drawMarquee now runs after drawText is defined.
+
+## [0.62] - 2026-09-15
+
+- Modern PC left pane: portrait, scrolling name, LV + gender, two type lines. No HP / party-or-box status.
+
+## [0.61] - 2026-09-15
+
+- Gen 2 Start Menu PokéBox opens Modern PC (Gen2BoxMenu), not OG Bill PC. Gen 1 still uses BoxMenu.
+
+## [0.60] - 2026-09-15
+
+- Start Icon Order: show Pokégear instead of <PO><KE>GEAR question marks. Gen 1 labels unchanged.
+
+## [0.59] - 2026-09-15
+
+- Restore ¥ on bag money in all games.
+- Gen 2 OG Pack money bar is only as wide as the amount.
+
+## [0.58] - 2026-09-15
+
+- Gen 2 POCKET skin is the OG Pack again.
+- Money bar widened so it covers the native POCKET label. Gen 1 bag unchanged.
+
+## [0.57] - 2026-09-15
+
+- Gen 2 POCKET skin: white item sheet (no blue wash), $ money, shorter footer.
+
+## [0.56] - 2026-09-15
+
+- Gen 2 bag: brighter pocket ramps (match Gen 1 SGB look).
+- Gen 2 POCKET skin uses the Suite classic-pocket presenter, not the OG Pack.
+
+## [0.55] - 2026-09-15
+
+- Gen 2 Modern Bag tabs use Gen 1 color ramps instead of grayscale.
+- SORT BY box no longer keeps empty shortcut rows.
+
+## [0.54] - 2026-09-15
+
+- Gen 2 Modern Bag tabs: blit the canvas when SGB zones are missing (white screen). Pocket skin unchanged.
+
+## [0.53] - 2026-09-15
+
+- Oak third-starter (rival baby after Mewtwo) plays Get_Key_Item fanfare.
+
+## [0.52] - 2026-09-15
+
+- Dojo second Hitmon ball: hide every Poké Ball on the Fighting Dojo after it is taken, every visit.
+
+## [0.51] - 2026-09-15
+
+- Oak leftover starter ball and Dojo second Hitmon ball stay hidden after you take them.
+
+## [0.50] - 2026-09-15
+
+- Restored PC / PokéBox detail portraits (battle front sprite, icon fallback).
+
+## [0.49] - 2026-09-15
+
+- Pokédex L/R pages through the list again (one screen at a time). Shiny-only list stays removed.
 
 ## [0.48] - 2026-09-13
 

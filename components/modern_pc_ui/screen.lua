@@ -87,6 +87,7 @@ return function(mod, genderExports, compatibility)
 
   local inkShader -- false if the host has no shader support
   local fittedHgssIcons = {}
+  local battleProfileSprites = {}
 
   local function iconAnimationEnabled(screen)
     if mod.suite and type(mod.suite.option) == "function" then
@@ -171,6 +172,32 @@ return function(mod, genderExports, compatibility)
     return text:sub(1, spans[count].to) .. "."
   end
 
+
+  local function typeKey(value)
+    local key = tostring(value or ""):upper()
+    key = key:gsub("_TYPE$", ""):gsub("%s+TYPE$", ""):gsub("TYPE$", "")
+    key = key:gsub("[^A-Z]", "")
+    return key
+  end
+
+  local function typeLabel(value)
+    local key = typeKey(value)
+    if key == "" then return "" end
+    return key:sub(1, 1) .. key:sub(2):lower()
+  end
+
+  local function typeRgb(value)
+    return TYPE_BASE[typeKey(value)] or TYPE_BASE.NORMAL
+  end
+
+  local function genderMark(mon)
+    if not mon then return "" end
+    local g = tostring(mon.gender or ""):lower()
+    if g == "male" or g == "m" then return "M" end
+    if g == "female" or g == "f" then return "F" end
+    return ""
+  end
+
   local function drawText(text, x, y, maxWidth, shade)
     text = fitText(text, maxWidth or Font.width(tostring(text or "")))
     love.graphics.push("all")
@@ -184,6 +211,64 @@ return function(mod, genderExports, compatibility)
     Font.draw(text, math.floor(x), math.floor(y))
     love.graphics.pop()
     return Font.width(text)
+  end
+
+  local function drawMarquee(screen, key, text, x, y, maxW, shade)
+    text = tostring(text or "")
+    if text == "" or maxW < 4 then return 0 end
+    if Font.width(text) <= maxW then
+      if type(shade) == "table" then
+        love.graphics.push("all")
+        if love.graphics.setShader then love.graphics.setShader() end
+        love.graphics.setColor((shade[1] or 255) / 255,
+          (shade[2] or 255) / 255, (shade[3] or 255) / 255, 1)
+        Font.draw(text, math.floor(x), math.floor(y))
+        love.graphics.pop()
+        return Font.width(text)
+      end
+      return drawText(text, x, y, maxW, shade)
+    end
+    screen.modernPCMarquee = screen.modernPCMarquee or {}
+    local now = screen.modernPCElapsed or 0
+    local st = screen.modernPCMarquee[key]
+    if not st or st.text ~= text then
+      st = { text = text, t0 = now }
+      screen.modernPCMarquee[key] = st
+    end
+    local gap = "   "
+    local loop = text .. gap
+    local loopW = math.max(1, Font.width(loop))
+    local speed, wait = 22, 0.7
+    local elapsed = math.max(0, now - st.t0)
+    local cycle = wait + loopW / speed
+    local t = elapsed % cycle
+    local ox = 0
+    if t > wait then ox = math.floor((t - wait) * speed) end
+    love.graphics.push("all")
+    if love.graphics.intersectScissor then
+      pcall(love.graphics.intersectScissor, math.floor(x), math.floor(y) - 1,
+        math.floor(maxW), 10)
+    elseif love.graphics.setScissor then
+      love.graphics.setScissor(math.floor(x), math.floor(y) - 1,
+        math.floor(maxW), 10)
+    end
+    if type(shade) == "table" then
+      if love.graphics.setShader then love.graphics.setShader() end
+      love.graphics.setColor((shade[1] or 255) / 255,
+        (shade[2] or 255) / 255, (shade[3] or 255) / 255, 1)
+    else
+      local shader = shaderForInk()
+      if shader then
+        love.graphics.setShader(shader)
+        gray(shade == nil and WHITE or shade)
+      else
+        gray(BLACK)
+      end
+    end
+    Font.draw(loop, math.floor(x - ox), math.floor(y))
+    Font.draw(loop, math.floor(x - ox + loopW), math.floor(y))
+    love.graphics.pop()
+    return maxW
   end
 
   local function drawCentered(text, cx, y, maxWidth, shade)
@@ -408,9 +493,13 @@ return function(mod, genderExports, compatibility)
   end
 
   local function monName(screen, mon)
-    local def = mon and screen.game.data.pokemon[mon.species]
-    return stripGenderSuffix(mon
-      and (mon.nickname or (def and def.name) or mon.species) or "")
+    if not mon then return "" end
+    local def = screen.game.data.pokemon[mon.species]
+    local raw = mon.nickname
+    if type(raw) ~= "string" or raw:match("^%s*$") then
+      raw = mon.name or (def and def.name) or mon.species
+    end
+    return stripGenderSuffix(tostring(raw or ""))
   end
 
   local function monPalette(screen, mon)
@@ -420,6 +509,123 @@ return function(mod, genderExports, compatibility)
       or PaletteFX.monPal(screen.game.data, mon and mon.species)
       or PaletteFX.pal(screen.game.data, "BLUEMON")
   end
+
+  local WARM_SGB_PORTRAITS = {
+    REDMON = true, YELLOWMON = true, BROWNMON = true,
+  }
+
+  local function portraitArtPalette(data, species)
+    local palette = PaletteFX.monPal(data, species)
+    local mode = PaletteFX.mode
+    if mode ~= "gbc" and mode ~= "gbc_inv" then return palette end
+    local name = PaletteFX.monPalName(data, species)
+    if not WARM_SGB_PORTRAITS[name] then return palette end
+    local pack = PaletteFX.gbcPack and PaletteFX.gbcPack() or nil
+    return pack and pack.palettes and pack.palettes[name] or palette
+  end
+
+  local function paletteKey(colors)
+    local out = {}
+    for i = 1, 4 do
+      local color = colors and colors[i] or {}
+      out[#out + 1] = tostring(color[1] or 0)
+      out[#out + 1] = tostring(color[2] or 0)
+      out[#out + 1] = tostring(color[3] or 0)
+    end
+    return table.concat(out, ":")
+  end
+
+  local function battleProfileSprite(screen, mon)
+    local selected = mod.suite and mod.suite.battlePortrait
+      and mod.suite.battlePortrait(screen.game, mon)
+    if selected then return selected end
+    local path, trueColor = Sprites.path(screen.game.data, mon.species,
+      "front", { mon = mon, kind = "battle" })
+    if not path then return nil end
+    local colors = PaletteFX.effectiveColors(
+      portraitArtPalette(screen.game.data, mon.species)
+        or monPalette(screen, mon))
+    local key = path .. (trueColor and "#true" or ("#" .. paletteKey(colors)))
+    local cached = battleProfileSprites[key]
+    if cached ~= nil then return cached or nil end
+
+    if trueColor then
+      local ok, image = pcall(Assets.image, path)
+      cached = ok and image or false
+      battleProfileSprites[key] = cached
+      return cached or nil
+    end
+    if not (colors and love.image and love.image.newImageData) then
+      battleProfileSprites[key] = false
+      return nil
+    end
+    local ok, data = pcall(Assets.imageData, path)
+    if not ok or not data then
+      battleProfileSprites[key] = false
+      return nil
+    end
+    local width, height = data:getDimensions()
+    local outside, queueX, queueY, head = {}, {}, {}, 1
+    local function pixelIndex(x, y) return y * width + x + 1 end
+    local function matte(x, y)
+      local r, g, b, a = data:getPixel(x, y)
+      return a <= 0 or (r > 0.83 and g > 0.83 and b > 0.83)
+    end
+    local function visit(x, y)
+      if x < 0 or y < 0 or x >= width or y >= height then return end
+      local index = pixelIndex(x, y)
+      if outside[index] or not matte(x, y) then return end
+      outside[index] = true
+      queueX[#queueX + 1], queueY[#queueY + 1] = x, y
+    end
+    for x = 0, width - 1 do visit(x, 0); visit(x, height - 1) end
+    for y = 1, height - 2 do visit(0, y); visit(width - 1, y) end
+    while head <= #queueX do
+      local x, y = queueX[head], queueY[head]
+      head = head + 1
+      visit(x - 1, y); visit(x + 1, y)
+      visit(x, y - 1); visit(x, y + 1)
+    end
+    data:mapPixel(function(x, y, r, g, b, a)
+      if a <= 0 or outside[pixelIndex(x, y)] then return r, g, b, 0 end
+      local color = r > 0.83 and colors[1] or r > 0.5 and colors[2]
+        or r > 0.17 and colors[3] or colors[4]
+      return color[1] / 255, color[2] / 255, color[3] / 255, a
+    end)
+    local made, image = pcall(love.graphics.newImage, data)
+    cached = made and image or false
+    if cached and cached.setFilter then cached:setFilter("nearest", "nearest") end
+    battleProfileSprites[key] = cached
+    return cached or nil
+  end
+
+  local function drawBattleProfile(screen, mon, rect, trueColorRegions,
+      background)
+    local image = battleProfileSprite(screen, mon)
+    if not image then return false end
+    local iw, ih = image:getDimensions()
+    local scale = math.min(1, rect.w / math.max(1, iw),
+      rect.h / math.max(1, ih))
+    local x = math.floor(rect.x + (rect.w - iw * scale) / 2 + 0.5)
+    local y = math.floor(rect.y + (rect.h - ih * scale) / 2 + 0.5)
+    if background then
+      love.graphics.push("all")
+      love.graphics.setColor((background[1] or 0) / 255,
+        (background[2] or 0) / 255, (background[3] or 0) / 255, 1)
+      love.graphics.rectangle("fill", x - 1, y - 1,
+        iw * scale + 2, ih * scale + 2)
+      love.graphics.pop()
+    end
+    love.graphics.push("all")
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(image, x, y, 0, scale, scale)
+    love.graphics.pop()
+    trueColorRegions[#trueColorRegions + 1] = {
+      x = x - 1, y = y - 1, w = iw * scale + 2, h = ih * scale + 2,
+    }
+    return true
+  end
+
 
   local function ensurePartyMon(screen, mon)
     if not mon then return nil end
@@ -608,7 +814,11 @@ return function(mod, genderExports, compatibility)
     if sourceList == targetList then
       if sourceIndex == targetIndex then
         screen.held = nil
-        screen.status = Strings("Put %s back.", monName(screen, mon))
+        if not storage then
+          screen.status = Strings("Put %s back.", monName(screen, mon))
+        else
+          screen.status = nil
+        end
         return true
       end
       if targetMon then
@@ -645,7 +855,11 @@ return function(mod, genderExports, compatibility)
     end
 
     screen.held = nil
-    screen.status = Strings("Moved %s.", monName(screen, mon))
+    if not storage then
+      screen.status = Strings("Moved %s.", monName(screen, mon))
+    else
+      screen.status = nil
+    end
     play(screen, "Swap")
     return true
   end
@@ -671,7 +885,11 @@ return function(mod, genderExports, compatibility)
       if mark.sourceList == list and mark.mon == mon then
         table.remove(screen.multi, i)
         if #screen.multi == 0 then screen.multiSide = nil end
-        screen.status = Strings("%d marked. A mark, B cancel.", #screen.multi)
+        if not storage then
+          screen.status = Strings("%d marked. A mark, B cancel.", #screen.multi)
+        else
+          screen.status = nil
+        end
         return true
       end
     end
@@ -679,7 +897,11 @@ return function(mod, genderExports, compatibility)
     screen.multi[#screen.multi + 1] = { mon = mon, sourceList = list,
       sourceIndex = index, sourceRegion = screen.region,
       sourceBox = screen.game.save.currentBox }
-    screen.status = Strings("%d marked. A mark, B cancel.", #screen.multi)
+    if not storage then
+      screen.status = Strings("%d marked. A mark, B cancel.", #screen.multi)
+    else
+      screen.status = nil
+    end
     play(screen, "Press_AB")
     return true
   end
@@ -715,7 +937,11 @@ return function(mod, genderExports, compatibility)
     clearMulti(screen)
     screen.region = target == screen.game.save.party and "party" or "box"
     setCurrentIndex(screen, plan.at)
-    screen.status = Strings("Moved %d POKéMON.", plan.count)
+    if not storage then
+      screen.status = Strings("Moved %d POKéMON.", plan.count)
+    else
+      screen.status = nil
+    end
     play(screen, "Swap")
     return true
   end
@@ -742,7 +968,11 @@ return function(mod, genderExports, compatibility)
       sourceRegion = screen.region,
       sourceBox = screen.region == "box" and screen.game.save.currentBox or nil,
     }
-    screen.status = Strings("Where should %s go?", monName(screen, mon))
+    if not storage then
+      screen.status = Strings("Where should %s go?", monName(screen, mon))
+    else
+      screen.status = nil
+    end
     play(screen, "Press_AB")
     return true
   end
@@ -821,7 +1051,11 @@ return function(mod, genderExports, compatibility)
         defaultNo = true, noSound = true,
         choice = function(yes)
           if not yes then
-            screen.status = Strings("Release cancelled.")
+            if not storage then
+              screen.status = Strings("Release cancelled.")
+            else
+              screen.status = nil
+            end
             return
           end
           if list[index] ~= mon then return end
@@ -895,11 +1129,19 @@ return function(mod, genderExports, compatibility)
       screen.actions = nil
       if screen.multiMode then
         clearMulti(screen)
-        screen.status = Strings("Multi select cancelled.")
+        if not storage then
+          screen.status = Strings("Multi select cancelled.")
+        else
+          screen.status = nil
+        end
       else
         screen.multiMode, screen.multi = true, {}
         if selected(screen) then toggleMultiMark(screen)
-        else screen.status = Strings("A mark. Empty slot places group.") end
+        elseif not storage then
+          screen.status = Strings("A mark. Empty slot places group.")
+        else
+          screen.status = nil
+        end
       end
       return
     elseif entry.action == "multi_party" then
@@ -987,6 +1229,7 @@ return function(mod, genderExports, compatibility)
   end
 
   function PC:update(_dt)
+    self.modernPCElapsed = (self.modernPCElapsed or 0) + (tonumber(_dt) or 0)
     self.blink = ((self.blink or 0) + 1) % 320
     if storage and storage.update and storage.update(self, _dt) then return end
     local input = self.game.input
@@ -1012,10 +1255,18 @@ return function(mod, genderExports, compatibility)
     elseif input:wasPressed("b") then
       if self.held then
         self.held = nil
-        self.status = Strings("Move cancelled.")
+        if not storage then
+          self.status = Strings("Move cancelled.")
+        else
+          self.status = nil
+        end
       elseif self.multiMode then
         clearMulti(self)
-        self.status = Strings("Multi select cancelled.")
+        if not storage then
+          self.status = Strings("Multi select cancelled.")
+        else
+          self.status = nil
+        end
       else
         if storage then storage.close(self)
         else
@@ -1312,6 +1563,20 @@ return function(mod, genderExports, compatibility)
   -- renderer. Hold those claims until the complete PC and its action popup
   -- have been drawn. HGSS receives a dedicated alpha-bound path because its
   -- native 32px contract is intentionally larger than Gen 1's 16px cells.
+  local function drawCrystalPortrait(mon, x, y, target)
+    local crystal = mod.find and mod.find("crystal_animated_sprites_with_shiny_visuals")
+    local draw = crystal and crystal.exports and crystal.exports.drawPortrait
+    if type(draw) ~= "function" then return false end
+    local size = math.min(56, tonumber(target) or 48)
+    local ok, drew = pcall(draw, mon, x, y, size, size)
+    return ok and drew == true
+  end
+
+  local function drawWildsFollower(screen, mon, x, y, target)
+    if not mon then return false end
+    return drawCrystalPortrait(mon, x, y, target)
+  end
+
   local function drawMonIcon(screen, mon, x, y, animate, scale,
       trueColorRegions, background, clip)
     if not mon then return end
@@ -1506,40 +1771,85 @@ return function(mod, genderExports, compatibility)
 
     local def = screen.game.data.pokemon[mon.species] or {}
     local name = monName(screen, mon)
-    local location = screen.held and Strings("MOVING")
-      or (screen.region == "party" and Strings("PARTY")
-        or Strings("BOX %02d", screen.game.save.currentBox))
     local detailFace = colorFromPalette(monPalette(screen, mon), 4)
-
-    -- Keep the selected Pokémon's text details without a large sprite.
-    local infoY = layout.detail.y + 8
-    drawCentered(name, layout.detail.x + layout.detail.w / 2,
-      infoY, layout.detail.w - 10, WHITE)
-    local levelText = Strings("LV%d", mon.level or 1)
-    local levelWidth = Font.width(levelText)
-    local genderWidth = genderExports and 9 or 0
-    local levelX = math.floor(layout.detail.x +
-      (layout.detail.w - levelWidth - genderWidth) / 2)
-    genderWidth = drawGenderGlyph(mon, levelX, infoY + 11,
-      detailFace, trueColorRegions)
-    drawText(levelText, levelX + genderWidth, infoY + 11,
-      levelWidth, LIGHT)
     local types = def.types or {}
-    local typeText = tostring(types[1] or "---")
-    if types[2] then typeText = typeText .. "/" .. tostring(types[2]) end
-    drawCentered(typeText, layout.detail.x + layout.detail.w / 2,
-      infoY + 23, layout.detail.w - 10, LIGHT)
-    if mon.stats and mon.hp then
-      local hpText = layout.detail.w >= 72
-        and Strings("HP %d/%d", mon.hp, mon.stats.hp)
-        or Strings("HP %d", mon.hp)
-      drawCentered(hpText,
-        layout.detail.x + layout.detail.w / 2, infoY + 35,
-        layout.detail.w - 10, WHITE)
+    local type1 = typeLabel(types[1])
+    local type2 = typeLabel(types[2])
+    local levelText = Strings("LV%d", mon.level or 1)
+    local mark = genderMark(mon)
+    if mark ~= "" then levelText = levelText .. " " .. mark end
+    local infoKey = tostring(mon.species or "") .. ":" .. tostring(name)
+
+    local tint = typeRgb(types[1])
+    local nameInk = storage and { 255, 255, 255 } or WHITE
+    local statInk = storage and tint or LIGHT
+    local function drawInfoLines(x, y, width)
+      drawMarquee(screen, infoKey .. ":name", name, x, y, width, nameInk)
+      if storage then
+        drawMarquee(screen, infoKey .. ":lv", levelText, x, y + 11, width, statInk)
+      else
+        drawText(levelText, x, y + 11, width, LIGHT)
+      end
+      if type1 ~= "" then
+        drawMarquee(screen, infoKey .. ":t1", type1, x, y + 22, width, statInk)
+      end
+      if type2 ~= "" and type2:lower() ~= type1:lower() then
+        drawMarquee(screen, infoKey .. ":t2", type2, x, y + 33, width, statInk)
+      end
     end
-    drawCentered(location, layout.detail.x + layout.detail.w / 2,
-      layout.detail.y + layout.detail.h - 13,
-      layout.detail.w - 10, LIGHT)
+
+    if layout.portrait then
+      local portraitW = math.min(68,
+        math.max(52, math.floor(layout.detail.w * 0.44)))
+      local drewPortrait = drawWildsFollower(screen, mon,
+        layout.detail.x + 5, layout.detail.y + 5,
+        math.min(portraitW - 10, layout.detail.h - 10))
+      if not drewPortrait then
+        drewPortrait = drawBattleProfile(screen, mon, {
+        x = layout.detail.x + 5, y = layout.detail.y + 5,
+        w = portraitW - 10, h = layout.detail.h - 10,
+      }, trueColorRegions, detailFace)
+      end
+      if not drewPortrait then
+        drawMonIcon(screen, mon,
+          layout.detail.x + math.floor((portraitW - 32) / 2),
+          layout.detail.y + math.floor((layout.detail.h - 32) / 2),
+          false, 2, trueColorRegions, detailFace)
+      end
+      drawInfoLines(layout.detail.x + portraitW + 2, layout.detail.y + 9,
+        layout.detail.w - portraitW - 7)
+      return
+    end
+
+    if layout.compact then
+      drawMonIcon(screen, mon, layout.detail.x + 6, layout.detail.y + 6,
+        false, 1, trueColorRegions, detailFace)
+      drawInfoLines(layout.detail.x + 27, layout.detail.y + 4,
+        math.max(24, layout.detail.w - 34))
+      return
+    end
+
+    local portraitH = math.min(56, math.max(40, layout.detail.h - 52))
+    local drewPortrait = drawWildsFollower(screen, mon,
+      layout.detail.x + 5, layout.detail.y + 5,
+      math.min(layout.detail.w - 10, portraitH))
+    if not drewPortrait then
+      drewPortrait = drawBattleProfile(screen, mon, {
+      x = layout.detail.x + 5, y = layout.detail.y + 5,
+      w = layout.detail.w - 10, h = portraitH,
+    }, trueColorRegions, detailFace)
+    end
+    if not drewPortrait then
+      local iconScale = layout.detail.w >= 76 and 2 or 1
+      local iconSize = 16 * iconScale
+      drawMonIcon(screen, mon,
+        layout.detail.x + math.floor((layout.detail.w - iconSize) / 2),
+        layout.detail.y + 8, false, iconScale,
+        trueColorRegions, detailFace)
+      portraitH = 9 + iconSize
+    end
+    drawInfoLines(layout.detail.x + 5, layout.detail.y + 8 + portraitH,
+      layout.detail.w - 10)
   end
 
   local function drawFooter(screen, layout)
@@ -1813,6 +2123,16 @@ return function(mod, genderExports, compatibility)
 
   function PC:modernPCLayoutInfo()
     return layoutFor(self)
+  end
+
+  function PC:modernPCDrawDetails(layout, regions)
+    drawDetails(self, layout, regions or {})
+  end
+
+  function PC:modernPCDrawPortrait(mon, rect, regions)
+    if not mon or not rect then return false end
+    local face = colorFromPalette(monPalette(self, mon), 4)
+    return drawBattleProfile(self, mon, rect, regions or {}, face)
   end
 
   function PC:modernPCDrawScrollBar(panel)

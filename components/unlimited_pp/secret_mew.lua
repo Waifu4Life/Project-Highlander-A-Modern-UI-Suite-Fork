@@ -38,8 +38,12 @@ return function(mod)
   end
 
   local function featureOn()
-    local ok, v = pcall(mod.options.get, mod.options, "gen1_all_pkmn")
-    return ok and v == true
+    local function on(key)
+      local ok, v = pcall(mod.options.get, mod.options, key)
+      return ok and (v == true or v == "on")
+    end
+    if on("gen1_features_migrated") then return on("gen1_mystery") end
+    return on("gen1_mystery") or on("gen1_all_pkmn")
   end
 
   local function questStarted(game)

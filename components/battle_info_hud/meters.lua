@@ -114,5 +114,13 @@ return function()
     M.text(kind == "HP" and "HP" or "XP", x - 15, y + 1, ink or BLACK)
     if markColor ~= false then PaletteFX.markTrueColor(x - 15, y, width + 15, 7) end
   end
+
+  function M.drawReadout(data, battler, kind, x, y, width)
+    local current, maximum, _, capped = M.values(data, battler, kind)
+    local text = M.readout(current, maximum, capped, width)
+    local tx = x + width - 2 - M.width(text)
+    M.text(text, tx + 1, y + 1, BLACK)
+    M.text(text, tx, y, WHITE)
+  end
   return M
 end

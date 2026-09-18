@@ -4,6 +4,7 @@ return function(mod, settings, state, components)
     ListMenu = require("src.ui.ListMenu")
   end
   local OptionsMenu = require("src.ui.OptionsMenu")
+  local Font = require("src.render.Font")
 
   local function labelFor(row, component)
     return settings:detailLabel(component, row)
@@ -87,8 +88,16 @@ return function(mod, settings, state, components)
     }
     local body = {}
     for _, row in ipairs(component.schema or {}) do
+      local hideQol = {
+        gen1_all_pkmn = true, gen2_all_pkmn = true,
+        gen1_features_migrated = true,
+        gen1_exclusive = true, gen1_starters = true, gen1_fossil = true,
+        gen1_fighting = true, gen1_eevee = true, gen1_linkc = true,
+        gen1_mystery = true,
+      }
       if row.key ~= component.enabledOption and row.key ~= "enabled"
           and row.key ~= "theme_by_game"
+          and not (component.key == "qol" and hideQol[row.key])
           and not (row.key == "force_crystal_settings"
             and not (mod.find("crystal_animated_sprites_with_shiny_visuals")
               or (settings.byId and settings.byId["crystal_animated_sprites_with_shiny_visuals"]))) then
@@ -290,6 +299,63 @@ return function(mod, settings, state, components)
         settings:persist(game)
         return true
       end
+
+  local function qolComponent()
+    for _, component in ipairs(components) do
+      if component.id == "unlimited_pp" then return component end
+    end
+  end
+
+  local GEN1_FEATURE_ROWS = {
+    { key = "gen1_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN1 GAMES" },
+    { key = "gen1_starters", label = "OBTAIN ALL THE STARTERS PKMN (IN RED AND BLUE)" },
+    { key = "gen1_fossil", label = "OBTAIN THE OTHER FOSSIL" },
+    { key = "gen1_fighting", label = "OBTAIN THE OTHER FIGHTING PKMN" },
+    { key = "gen1_eevee", label = "OBTAIN MORE EEVEES" },
+    { key = "gen1_linkc", label = "TRADE WITH LINK C." },
+    { key = "gen1_mystery", label = "GET ???" },
+  }
+
+  local function migrateGen1Features(game, qol)
+    if not qol then return end
+    if settings:get(qol, "gen1_features_migrated") == true then return end
+    local master = settings:get(qol, "gen1_all_pkmn") == true
+    for _, row in ipairs(GEN1_FEATURE_ROWS) do
+      settings:set(game, qol, row.key, master)
+    end
+    settings:set(game, qol, "gen1_features_migrated", true)
+    settings:persist(game)
+  end
+
+  local function openFeatureMenu(game, title, rows)
+    local qol = qolComponent()
+    if not qol then return false end
+    migrateGen1Features(game, qol)
+    local pageRows = {}
+    for _, source in ipairs(rows) do
+      local row = source
+      pageRows[#pageRows + 1] = {
+        id = "qol." .. row.key,
+        label = row.label,
+        value = function()
+          return settings:get(qol, row.key) == true and "ON" or "OFF"
+        end,
+        step = function(activeGame)
+          settings:set(activeGame, qol, row.key,
+            settings:get(qol, row.key) ~= true)
+          settings:persist(activeGame)
+          return true
+        end,
+      }
+    end
+    local page = OptionsMenu.new(game)
+    page.rows, page.view = pageRows, pageRows
+    page.index, page.scroll, page.sub = 1, 0, true
+    page.modernUiSuiteComponent = "qol_features"
+    game.stack:push(page)
+    return true
+  end
+
   openHub = function(game)
     local menu
     local function buildItems()
@@ -308,6 +374,16 @@ return function(mod, settings, state, components)
           openOnly = true,
         }
       end
+      items[#items + 1] = {
+        id = "gen1_all_menu", label = "GEN1 GET ALL THE POKEMON",
+        fullLabel = "GEN1 GET ALL THE POKEMON", right = "OPEN",
+        action = "gen1_all",
+      }
+      items[#items + 1] = {
+        id = "gen2_all_menu", label = "GEN2 GET ALL THE POKEMON",
+        fullLabel = "GEN2 GET ALL THE POKEMON", right = "OPEN",
+        action = "gen2_all",
+      }
       items[#items + 1] = { id = "back", label = "BACK", cancel = true }
       return items
     end
@@ -335,6 +411,12 @@ return function(mod, settings, state, components)
           settings:setAll(game, false); settings:persist(game); refresh(item.id)
         elseif item.action == "aspect" then
           stepAspect(game, 1); refresh(item.id)
+        elseif item.action == "gen1_all" then
+          openFeatureMenu(game, "GEN1 GET ALL PKMN", GEN1_FEATURE_ROWS)
+        elseif item.action == "gen2_all" then
+          openFeatureMenu(game, "GEN2 GET ALL PKMN", {
+            { key = "gen2_all_pkmn", label = "GEN2 GET ALL THE POKEMON" },
+          })
         elseif item.component then
           openComponent(game, item.component)
         end
@@ -342,7 +424,38 @@ return function(mod, settings, state, components)
     })
     refresh()
     local baseUpdate = menu.update
+    local function marqueeLabel(full, elapsed, maxW)
+      full = tostring(full or "")
+      if full == "" or Font.width(full) <= maxW then return full end
+      local loop = full .. "   "
+      local loopW = math.max(1, Font.width(loop))
+      local speed, wait = 22, 0.8
+      local t = elapsed % (wait + loopW / speed)
+      local ox = t > wait and (t - wait) * speed or 0
+      local acc, start = 0, 1
+      while start <= #loop do
+        local w = Font.width(loop:sub(start, start))
+        if acc + w > ox then break end
+        acc = acc + w
+        start = start + 1
+      end
+      local out, used, i, n = "", 0, start, #loop
+      while used < maxW do
+        local ch = loop:sub(((i - 1) % n) + 1, ((i - 1) % n) + 1)
+        local w = Font.width(ch)
+        if out ~= "" and used + w > maxW then break end
+        out, used, i = out .. ch, used + w, i + 1
+        if i > start + n then break end
+      end
+      return out
+    end
     menu.update = function(self, dt)
+      self._suiteHubClock = (self._suiteHubClock or 0) + (tonumber(dt) or 0)
+      for _, row in ipairs(self.items or {}) do
+        if row.fullLabel then
+          row.label = marqueeLabel(row.fullLabel, self._suiteHubClock, 92)
+        end
+      end
       local item = self.items and self.items[self.index]
       local input = self.game and self.game.input
       if item and item.action == "aspect" and input

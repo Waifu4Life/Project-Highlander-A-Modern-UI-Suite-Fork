@@ -3,6 +3,7 @@
 -- remains in the generation-2 engine.
 return function(mod)
   local Chrome = require("src.ui.gen2.Chrome")
+  local Assets = require("src.render.Assets")
   local Font = require("src.render.Font")
   local GbcPalette = require("src.render.GbcPalette")
   local HpBar = require("src.battle.gen2.HpBar")
@@ -194,10 +195,11 @@ return function(mod)
     return math.max(0, math.min(1, (mon.hp or 0) / math.max(1, maxHp)))
   end
 
-  local function drawMeter(x, y, width, fraction, kind)
+  local function drawMeter(x, y, width, fraction, kind, height)
     local G = love.graphics
-    setColor({ 0.10, 0.12, 0.16 })
-    G.rectangle("fill", x, y, width, 4)
+    local h = math.max(6, tonumber(height) or 6)
+    setColor({ 0.05, 0.05, 0.07 })
+    G.rectangle("fill", x, y, width, h)
     local color
     if kind == "exp" then
       color = { 0.34, 0.70, 0.94 }
@@ -208,9 +210,67 @@ return function(mod)
     else
       color = { 0.16, 0.72, 0.25 }
     end
-    setColor(color)
-    G.rectangle("fill", x + 1, y + 1,
-      math.floor(math.max(0, width - 2) * fraction), 2)
+    local inner = math.max(1, width - 4)
+    local fill = math.floor(inner * math.max(0, math.min(1, fraction)) + 0.5)
+    if fill > 0 then
+      setColor(color)
+      G.rectangle("fill", x + 2, y + 2, fill, math.max(2, h - 4))
+    end
+  end
+
+  local function compactAmount(value)
+    value = math.max(0, math.floor(tonumber(value) or 0))
+    if value >= 1000000 then
+      return tostring(math.floor(value / 100000) / 10) .. "M"
+    elseif value >= 10000 then
+      return tostring(math.floor(value / 100) / 10) .. "K"
+    end
+    return tostring(value)
+  end
+
+  local function expAmounts(menu, mon)
+    local def = menu.pokemon and mon and menu.pokemon[mon.species]
+    if not def then return 0, 1, false end
+    local level = tonumber(mon.level) or 1
+    local cap = (menu.game and menu.game.data and menu.game.data.constants
+      and menu.game.data.constants.levelCap) or 100
+    if level >= cap then return 0, 1, true end
+    local data = menu.game and menu.game.data or { pokemon = menu.pokemon }
+    local growth = Mon.growthFor(data, def.growthRate)
+    local from = Mon.experienceForLevel(growth, level)
+    local to = Mon.experienceForLevel(growth, level + 1)
+    local cur = tonumber(mon.exp or mon.experience) or 0
+    if to <= from then return 0, 1, false end
+    local span = math.max(1, to - from)
+    local into = math.max(0, cur - from)
+    if into > span then into = span end
+    return into, span, false
+  end
+
+  local function hpOverlay(mon)
+    local mode = option("hp_text", "bar")
+    if mode == "bar" then return nil end
+    local maxHp = mon.maxHp or (mon.stats and mon.stats.hp) or math.max(1, mon.hp or 1)
+    if mode == "percent" then
+      return ("%d%%"):format(math.floor((mon.hp or 0) * 100 / math.max(1, maxHp)))
+    end
+    return ("%d/%d"):format(mon.hp or 0, maxHp)
+  end
+
+  local function expOverlay(menu, mon, maxWidth)
+    local mode = option("exp_text", "percent")
+    if mode == "bar" then return nil end
+    local current, needed, capped = expAmounts(menu, mon)
+    if capped then return "MAX" end
+    -- Numbers follow the same fraction as the blue bar (HpBar.expFraction).
+    local frac = math.max(0, math.min(1, expFraction(menu, mon)))
+    current = math.floor(frac * math.max(1, needed) + 0.5)
+    if mode == "percent" then
+      return ("%d%%"):format(math.floor(frac * 100 + 0.5))
+    end
+    local exact = ("%d/%d"):format(current, needed)
+    if Font.width(exact) <= maxWidth then return exact end
+    return compactAmount(current) .. "/" .. compactAmount(needed)
   end
 
   local function shortType(menu, mon)
@@ -258,36 +318,77 @@ return function(mod)
     end
   end
 
+  local function drawFollowerIcon(self, mon, x, y, selected)
+    local wilds = mod.find and mod.find("overworld_wild_spawns")
+    local resolve = wilds and wilds.exports and wilds.exports.resolveFollowerSprite
+    if type(resolve) ~= "function" then return false end
+    local ok, def = pcall(resolve, {
+      species = mon.species, shiny = mon.shiny == true,
+      form = mon.form, surface = "land", role = "party_menu",
+      game = self.game,
+    })
+    if not ok or type(def) ~= "table" or type(def.image) ~= "string" then
+      return false
+    end
+    local okImage, image = pcall(Assets.image, def.image)
+    if not okImage or not image then return false end
+    local iw, ih = image:getDimensions()
+    local frames = math.max(1, math.floor(tonumber(def.frames) or 1))
+    local frameW = math.min(iw, math.max(1, math.floor(tonumber(def.frameWidth) or iw)))
+    local defaultH = frames > 1 and math.floor(ih / frames) or ih
+    local frameH = math.min(ih, math.max(1, math.floor(tonumber(def.frameHeight) or defaultH)))
+    local frame = 0
+    if selected and frames >= 4
+        and math.floor((self.blink or self.clock or 0) / 10) % 2 == 1 then
+      frame = 3
+    end
+    frame = math.min(frames - 1, frame)
+    local frameY = math.min(math.max(0, ih - frameH), frame * frameH)
+    local quad = love.graphics.newQuad(0, frameY, frameW, frameH, iw, ih)
+    local scale = math.min(1, 16 / frameW, 16 / frameH)
+    local G = love.graphics
+    G.push("all"); G.setShader(); G.setColor(1, 1, 1, 1)
+    G.draw(image, quad, x, y, 0, scale, scale)
+    G.pop()
+    return true
+  end
+
   local function modernPartyPanel(self)
     local G = love.graphics
     local wasBattle = Font.useBattleExtra(true)
     local width = self.modernPartyWideWidth or 160
-    setColor(BACKDROP)
-    G.rectangle("fill", 0, 0, width, 144)
-    setColor({ 0.82, 0.82, 0.90 })
-    for x = -144, width, 16 do
-      G.line(x, 16, x + 128, 128)
-      G.line(x + 128, 16, x, 128)
+    local HEADER_H, FOOTER_H, SCREEN_H = 16, 8, 144
+    local footerY = SCREEN_H - FOOTER_H
+    local columns, rows = 2, 3
+    local contentH = footerY - HEADER_H
+
+    setColor({ 1, 1, 1 })
+    G.rectangle("fill", 0, 0, width, SCREEN_H)
+    setColor({ 0.67, 0.67, 0.67 })
+    for x = -SCREEN_H, width, 16 do
+      G.line(x, 0, x + SCREEN_H, SCREEN_H)
+      G.line(x + SCREEN_H, 0, x, SCREEN_H)
     end
 
     setColor(HEADER)
-    G.rectangle("fill", 0, 0, width, 16)
+    G.rectangle("fill", 0, 0, width, HEADER_H)
     setColor(HEADER_LIGHT)
-    G.rectangle("fill", 0, 14, width, 2)
+    G.rectangle("fill", 0, HEADER_H - 2, width, 2)
     drawInk(("%d/6"):format(#self.party), 4, 4, 32, INK_WHITE)
-    drawInkCentered("POKéMON", math.floor((width - 64) / 2), 3, 64,
-      INK_WHITE)
+    drawInkCentered("POKéMON", math.floor((width - 64) / 2), 3, 64, INK_WHITE)
     local selectedMon = self.party[self.index]
     if selectedMon then
-      drawInkRight(shortType(self, selectedMon), width - 4, 4, 32, INK_WHITE)
+      drawInkRight(shortType(self, selectedMon), width - 4, 4, 40, INK_WHITE)
     end
 
     local slots = option("empty_slots", true) and 6 or math.max(1, #self.party)
     for i = 1, slots do
-      local col, rowIndex = (i - 1) % 2, math.floor((i - 1) / 2)
-      local x1 = math.floor(col * width / 2) + 2
-      local x2 = math.floor((col + 1) * width / 2) - 2
-      local x, y, w, h = x1, 18 + rowIndex * 31, x2 - x1, 29
+      local col, rowIndex = (i - 1) % columns, math.floor((i - 1) / columns)
+      local x = math.floor(col * width / columns)
+      local x2 = math.floor((col + 1) * width / columns)
+      local y = HEADER_H + math.floor(rowIndex * contentH / rows)
+      local y2 = HEADER_H + math.floor((rowIndex + 1) * contentH / rows)
+      local w, h = x2 - x, y2 - y
       local mon = self.party[i]
       local selected = i == self.index
       local held = i == self.switchFrom
@@ -296,84 +397,88 @@ return function(mod)
         local r, g, b = cardColor(self, mon)
         face = { r, g, b }
       else
-        face = { 0.80, 0.82, 0.86 }
+        face = { 0.78, 0.80, 0.84 }
       end
-      setColor({ 0.10, 0.11, 0.15 })
-      chamfer("fill", x + 2, y + 2, w - 1, h - 1, 3)
-      setColor(face, mon and 0.96 or 0.80)
+      setColor({ 0.08, 0.08, 0.10 })
+      chamfer("fill", x + 2, y + 2, w - 2, h - 2, 3)
+      setColor(face)
       chamfer("fill", x, y, w - 2, h - 2, 3)
-      -- A dark outer edge and blue inset remain visible on pale type cards.
-      setColor(selected and { 0.04, 0.08, 0.16 } or (held and HEADER or { 0.26, 0.28, 0.34 }))
+      setColor(selected and { 0.05, 0.07, 0.14 } or { 0.22, 0.24, 0.28 })
       G.setLineWidth(selected and 2 or 1)
       chamfer("line", x + 0.5, y + 0.5, w - 3, h - 3, 3)
       if selected then
-        setColor({ 0.10, 0.32, 0.78 })
-        G.setLineWidth(1)
-        chamfer("line", x + 1.5, y + 1.5, w - 5, h - 5, 2)
         setColor({ 0.04, 0.08, 0.16 })
-        G.rectangle("fill", x + 2, y + 4, 4, h - 10)
+        G.rectangle("fill", x + 2, y + 5, 3, h - 12)
         setColor({ 0.20, 0.55, 1 })
-        G.rectangle("fill", x + 3, y + 5, 2, h - 12)
+        G.rectangle("fill", x + 3, y + 6, 1, h - 14)
       elseif held then
         setColor(HEADER)
         G.rectangle("line", x + 2.5, y + 2.5, w - 7, h - 7)
       end
 
       if mon then
-        local ix, iy = x + 3, y + 6 + self:iconBob(i)
-        if not (mod.suite and mod.suite.drawMenuIcon
-            and mod.suite.drawMenuIcon(self.game, self, mon, ix, iy)) then
-          self:drawIcon(mon, ix, iy)
+        local ix, iy = x + 4, y + 4
+        if not drawFollowerIcon(self, mon, ix, iy, selected) then
+          if not (mod.suite and mod.suite.drawMenuIcon
+              and mod.suite.drawMenuIcon(self.game, self, mon, ix, iy)) then
+            self:drawIcon(mon, ix, iy)
+          end
         end
         local data = PartyMenu.rowFor(mon)
-        drawInk(data.name, x + 21, y + 3, w - 25, INK_BLACK)
+        local ink = selected and INK_BLACK or INK_BLACK
+        drawInk(data.name, x + 22, y + 3, w - 28, ink)
         if self.tmhm then
-          drawInk(self:tmhmAble(mon) or "", x + 21, y + 13, w - 25,
-            INK_BLACK)
+          drawInk(self:tmhmAble(mon) or "", x + 22, y + 13, w - 28, ink)
         else
-          drawInk(data.level or "", x + 21, y + 13, 25, INK_BLACK)
+          local level = "LV" .. tostring(math.max(1, tonumber(mon.level) or 1))
+          drawInk(level, x + 22, y + 13, 48, ink)
           if data.status then
-            drawInkRight(data.status, x + w - 5, y + 13, 28, INK_BLACK)
-          elseif option("hp_text", "bar") == "percent" then
-            drawInkRight(("%d%%"):format(math.floor(hpFraction(mon) * 100)),
-              x + w - 5, y + 13, 30, INK_BLACK)
+            drawInkRight(data.status, x + w - 6, y + 13, 28, ink)
           end
-          drawMeter(x + 21, y + 22, w - 27, hpFraction(mon), "hp")
-        end
-        if option("exp_strip", true) and not mon.isEgg then
-          drawMeter(x + 5, y + h - 4, w - 11, expFraction(self, mon), "exp")
+          local hpY = y + h - 18
+          local expY = y + h - 10
+          local levelX = x + 22
+          local barX = math.max(levelX, x + 3 + Font.width("EXP") + 1)
+          local barW = (x + w - 6) - barX
+          drawInk("HP", x + 3, hpY, math.max(8, barX - x - 4), ink)
+          drawMeter(barX, hpY + 1, barW, hpFraction(mon), "hp")
+          local hpText = hpOverlay(mon)
+          if hpText then
+            drawInkRight(hpText, barX + barW - 2, hpY, barW - 4, INK_WHITE)
+          end
+          if option("exp_strip", true) and not mon.isEgg then
+            drawInk("EXP", x + 3, expY, math.max(8, barX - x - 4), ink)
+            drawMeter(barX, expY + 1, barW, expFraction(self, mon), "exp")
+            local expText = expOverlay(self, mon, barW - 4)
+            if expText then
+              drawInkRight(expText, barX + barW - 2, expY, barW - 4, INK_WHITE)
+            end
+          end
         end
       else
-        drawInkCentered("EMPTY", x + 10, y + 10, w - 22, INK_BLACK)
+        drawInkCentered("EMPTY", x + 8, y + 14, w - 16, INK_BLACK)
       end
     end
 
     setColor(HEADER)
-    G.rectangle("fill", 0, 112, width, 32)
-    setColor(HEADER_LIGHT)
-    G.rectangle("fill", 0, 112, width, 2)
-    local prompt = self.switchFrom and PartyMenu.PROMPTS.moveTo or self.prompt
-    if self:isCancel() then
-      setColor(MODAL_DARK)
-      chamfer("fill", 4, 116, 72, 16, 3)
-      drawInk("CANCEL", 16, 120, 54, INK_WHITE)
-      setColor(INK_WHITE)
-      G.rectangle("fill", 9, 122, 3, 5)
+    G.rectangle("fill", 0, footerY, width, FOOTER_H)
+    local prompt
+    if #self.party == 0 then
+      prompt = PartyMenu.PROMPTS.none or "NO POKéMON"
+    elseif self.switchFrom then
+      prompt = "SEL DROP B CANCEL"
+    elseif self.modernPartyForcedChoice then
+      prompt = "A SEND OUT"
+    elseif self.softboiledFrom or self.tmhm or self.battle then
+      prompt = tostring(self.prompt or "A SELECT    B BACK"):gsub("\n", " ")
+    elseif self.wantsSubmenu and not self.battle and not self.tmhm then
+      prompt = "SEL PICK A OK B BACK"
     else
-      local hint = self.modernPartyForcedChoice and "A SEND OUT"
-        or self.switchFrom and "SEL DROP B CANCEL"
-        or (self.wantsSubmenu and not self.battle and not self.tmhm
-          and not self.softboiledFrom and "SEL PICK A OK B BACK")
-        or "B CANCEL"
-      drawInk(hint, 5, 119, width - 10, INK_LIGHT)
+      prompt = "A SELECT    B BACK"
     end
-    drawInkRight(#self.party == 0 and PartyMenu.PROMPTS.none or prompt,
-      width - 5, 132, width - 10, INK_WHITE)
+    drawInkCentered(prompt, 4, footerY, width - 8, INK_WHITE)
     drawPartySubmenu(self)
     Font.useBattleExtra(wasBattle)
-    -- Native refusals (fainted Pokémon, Eggs, already-out or trapped) and
-    -- item results own input until A/B acknowledges them. Hiding this box
-    -- made the otherwise unchanged picker look frozen until B was pressed.
     local result = self.itemResult
     if result and result.text and not self:itemResultClimbing() then
       setColor(MODAL_DARK)
@@ -657,23 +762,35 @@ return function(mod)
     local layout = summaryLayout(self)
     local x, w = layout.mainX, layout.mainW
     local mon = self.mon or {}
-    local maxHp = mon.maxHp or (mon.stats and mon.stats.hp) or 1
     local row = PartyMenu.rowFor(mon)
     local r, g, b = cardColor(self, mon)
     setColor({ r, g, b })
-    chamfer("fill", x, 18, w, 31, 3)
-    drawInk("LV" .. tostring(mon.level or 1), x + 6, 23, 46, INK_BLACK)
-    drawInkRight(row.status or "OK", x + w - 7, 23, 38, INK_BLACK)
-    drawInk("HP", x + 6, 35, 20, INK_BLACK)
-    drawInkRight(("%d/%d"):format(mon.hp or 0, maxHp), x + w - 6, 34, 70,
-      INK_BLACK)
-    drawMeter(x + 24, 45, w - 31, hpFraction(mon), "hp")
+    chamfer("fill", x, 18, w, 48, 3)
+    local levelX = x + 6
+    local barX = math.max(levelX, x + 4 + Font.width("EXP") + 1)
+    local barW = (x + w - 6) - barX
+    drawInk("LV" .. tostring(mon.level or 1), levelX, 21, 46, INK_BLACK)
+    drawInkRight(row.status or "OK", x + w - 7, 21, 38, INK_BLACK)
+
+    drawInk("HP", x + 4, 34, math.max(8, barX - x - 2), INK_BLACK)
+    drawMeter(barX, 33, barW, hpFraction(mon), "hp", 8)
+    local hpText = hpOverlay(mon) or ("%d/%d"):format(mon.hp or 0,
+      mon.maxHp or (mon.stats and mon.stats.hp) or 1)
+    drawInkRight(hpText, barX + barW - 2, 34, barW - 4, INK_WHITE)
+
+    drawInk("EXP", x + 4, 46, math.max(8, barX - x - 2), INK_BLACK)
+    drawMeter(barX, 45, barW, expFraction(self, mon), "exp", 8)
+    local expText = expOverlay(self, mon, barW - 4) or ""
+    if expText ~= "" then
+      drawInkRight(expText, barX + barW - 2, 46, barW - 4, INK_WHITE)
+    end
+
     for i, entry in ipairs(statRows(mon)) do
-      local y = 51 + (i - 1) * 16
+      local y = 70 + (i - 1) * 12
       setColor(i % 2 == 1 and MODAL_DARK or HEADER)
-      chamfer("fill", x, y, w, 14, 2)
-      drawInk(entry[1], x + 6, y + 3, w - 44, INK_WHITE)
-      drawInkRight(tostring(entry[2]), x + w - 7, y + 3, 34, INK_WHITE)
+      chamfer("fill", x, y, w, 12, 2)
+      drawInk(entry[1], x + 6, y + 2, w - 44, INK_WHITE)
+      drawInkRight(tostring(entry[2]), x + w - 7, y + 2, 34, INK_WHITE)
     end
   end
 
@@ -828,17 +945,17 @@ return function(mod)
     end
     drawModernBackdrop(self)
     local title = self.mon and self.mon.isEgg and "EGG"
-      or self.page == SummaryMenu.GREEN_PAGE and "MOVE"
-      or self.page == SummaryMenu.BLUE_PAGE and "OT" or "STAT"
+      or self.page == SummaryMenu.GREEN_PAGE and "MOVES" or "STATS"
     drawSummaryHeader(self, title)
     drawSummaryProfile(self)
     if self.mon and self.mon.isEgg then
       drawSummaryEgg(self)
     elseif self.page == SummaryMenu.GREEN_PAGE then
       drawSummaryMoves(self)
-    elseif self.page == SummaryMenu.BLUE_PAGE then
-      drawSummaryTrainer(self)
     else
+      if self.page == SummaryMenu.BLUE_PAGE then
+        self.page = self.modernStatsPage or self.page
+      end
       drawSummaryStats(self)
     end
     drawSummaryFooter(self, "L/R PAGE  B BACK")
@@ -1004,6 +1121,29 @@ return function(mod)
     menu.modernPartyGeneration = 2
     menu.classicGen2SummaryPanel = nativePanel
     menu.drawPanel = modernSummaryPanel
+    if menu.page ~= SummaryMenu.GREEN_PAGE
+        and menu.page ~= SummaryMenu.BLUE_PAGE then
+      menu.modernStatsPage = menu.page
+    end
+    local nativeSummaryUpdate = menu.update
+    if type(nativeSummaryUpdate) == "function" then
+      menu.update = function(self, dt)
+        local before = self.page
+        if self.page ~= SummaryMenu.GREEN_PAGE
+            and self.page ~= SummaryMenu.BLUE_PAGE then
+          self.modernStatsPage = self.page
+        end
+        local result = nativeSummaryUpdate(self, dt)
+        if self.page == SummaryMenu.BLUE_PAGE then
+          if before == SummaryMenu.GREEN_PAGE then
+            self.page = self.modernStatsPage or before
+          else
+            self.page = SummaryMenu.GREEN_PAGE
+          end
+        end
+        return result
+      end
+    end
     local nativeUpdateMoveDetail = menu.updateMoveDetail
     if type(nativeUpdateMoveDetail) == "function" then
       menu.classicGen2UpdateMoveDetail = nativeUpdateMoveDetail

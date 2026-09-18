@@ -657,9 +657,18 @@ return function(mod, genderExports, compatibility)
         end
       end
       love.graphics.setColor(1, 1, 1, 1)
-      -- The original status screen mirrors the front sprite. Preserve that
-      -- presentation detail and the live sprite supplied by other mods.
-      love.graphics.draw(image, x + sw, y, 0, -spriteScale, spriteScale)
+      local crystal = mod.find and mod.find("crystal_animated_sprites_with_shiny_visuals")
+      local crystalDraw = crystal and crystal.exports and crystal.exports.drawPortrait
+      local usedCrystal = false
+      if type(crystalDraw) == "function" and mon then
+        local ok, drew = pcall(crystalDraw, mon, x, y, sw, sh)
+        usedCrystal = ok and drew == true
+      end
+      if not usedCrystal then
+        -- The original status screen mirrors the front sprite. Preserve that
+        -- presentation detail and the live sprite supplied by other mods.
+        love.graphics.draw(image, x + sw, y, 0, -spriteScale, spriteScale)
+      end
       if shader then love.graphics.setShader() end
     end
 

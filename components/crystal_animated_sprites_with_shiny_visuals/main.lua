@@ -76,6 +76,16 @@ return function(mod)
     if type(g) == "table" then mod.game = g end
   end)
 
+  pcall(function()
+    local make = mod:load("portrait.lua")
+    if type(make)=="function" then
+      local api = make(mod)
+      if type(api)=="table" and type(api.draw)=="function" then
+        mod.exports.drawPortrait = api.draw
+      end
+    end
+  end)
+
   if mod.log and mod.log.info then
     mod.log:info("crystal sprites 2.0.3 ready (TRW)")
   end

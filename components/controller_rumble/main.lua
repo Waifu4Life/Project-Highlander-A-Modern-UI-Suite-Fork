@@ -44,15 +44,15 @@ return function(mod)
 
   mod.options:define(Settings.schema())
 
-  ShakeSync.install()
-  Extras.install(mod)
-  MenuRumble.install(mod)
-  HpRumble.install(mod)
-  ExtraEvents.install(mod)
+  pcall(ShakeSync.install)
+  pcall(Extras.install, mod)
+  pcall(MenuRumble.install, mod)
+  pcall(HpRumble.install, mod)
+  pcall(ExtraEvents.install, mod)
 
   do
-    local Game = require("src.core.Game")
-    if type(Game) == "table" and type(Game.step) == "function"
+    local okGame, Game = pcall(require, "src.core.Game")
+    if okGame and type(Game) == "table" and type(Game.step) == "function"
         and not Game._suiteRumbleStep then
       Game._suiteRumbleStep = true
       local prev = Game.step
@@ -63,6 +63,14 @@ return function(mod)
       end
     end
   end
+  pcall(function()
+    mod.hooks:wrap("core.update", function(nextFn, game, dt)
+      local result = nextFn(game, dt)
+      pcall(Extras.tick, dt or (1/60))
+      pcall(Rumble.tick)
+      return result
+    end)
+  end)
 
   mod.events:always("mod.options_changed", function(payload)
     Settings.syncFromPayload(payload)

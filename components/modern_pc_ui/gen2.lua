@@ -25,8 +25,13 @@ return function(mod)
     if key == "CAPACITY" then return Boxes.MONS_PER_BOX end
   end })
   local function name(mon)
-    return mon and (mon.isEgg and "EGG"
-      or mon.nickname or mon.name or mon.species) or "EMPTY"
+    if not mon then return "EMPTY" end
+    if mon.isEgg then return "EGG" end
+    local raw = mon.nickname
+    if type(raw) ~= "string" or raw:match("^%s*$") then
+      raw = mon.name or mon.species
+    end
+    return tostring(raw or "POKEMON")
   end
   function storage.size(screen)
     return screen.modernPCDrawWidth or screen.modernPCLastWideWidth or 160,
@@ -93,7 +98,7 @@ return function(mod)
     local fromParty, toParty = source == save.party, target == save.party
     if source == target and from == at then
       screen.held = nil
-      screen.status = Strings("Put %s back.", name(mon))
+      screen.status = nil
       return true
     end
     if source ~= target then
@@ -132,7 +137,7 @@ return function(mod)
     restorePartyMail(save, letters)
     if toParty then screen.partyIndex = at else screen.boxIndex = at end
     screen.held = nil
-    screen.status = Strings("Moved %s.", name(mon))
+    screen.status = nil
     storage.changed(screen)
     storage.play(screen, "Swap")
     return true
@@ -202,12 +207,12 @@ return function(mod)
     local input = screen.game.input
     if input:wasPressed("b") then
       screen.modernPCConfirm = nil
-      screen.status = Strings("Release cancelled.")
+      screen.status = nil
     elseif input:wasPressed("up") or input:wasPressed("down") then
       confirm.choice = confirm.choice == 1 and 2 or 1
     elseif input:wasPressed("a") then
       screen.modernPCConfirm = nil
-      if confirm.choice == 2 then screen.status = Strings("Release cancelled.")
+      if confirm.choice == 2 then screen.status = nil
       else
         local ok, why = releaseAllowed(screen, confirm.list, confirm.index, confirm.mon)
         if not ok then refuse(screen, why)
@@ -341,12 +346,128 @@ return function(mod)
     return COLORS[tostring(def and def.types and def.types[1] or "normal"):lower()]
       or COLORS.normal
   end
+  local function follower(screen, mon, x, y, target)
+    if not mon then return false end
+    local wilds = mod.find and mod.find("overworld_wild_spawns")
+    local resolve = wilds and wilds.exports and wilds.exports.resolveFollowerSprite
+    if type(resolve) ~= "function" then return false end
+    local ok, def = pcall(resolve, {
+      species = mon.species, shiny = mon.shiny == true,
+      form = mon.form, surface = "land", role = "party_menu",
+      game = screen.game,
+    })
+    if not ok or type(def) ~= "table" or type(def.image) ~= "string" then
+      return false
+    end
+    local Assets = require("src.render.Assets")
+    local okImage, image = pcall(Assets.image, def.image)
+    if not okImage or not image then return false end
+    local iw, ih = image:getDimensions()
+    local frames = math.max(1, math.floor(tonumber(def.frames) or 1))
+    local frameW = math.min(iw, math.max(1, math.floor(tonumber(def.frameWidth) or iw)))
+    local defaultH = frames > 1 and math.floor(ih / frames) or ih
+    local frameH = math.min(ih, math.max(1, math.floor(tonumber(def.frameHeight) or defaultH)))
+    local frame = 0
+    if frames >= 4 and math.floor((screen.blink or screen.modernPCElapsed or 0) / 10) % 2 == 1 then
+      frame = 3
+    end
+    frame = math.min(frames - 1, frame)
+    local frameY = math.min(math.max(0, ih - frameH), frame * frameH)
+    local quad = love.graphics.newQuad(0, frameY, frameW, frameH, iw, ih)
+    target = target or 16
+    local scale = math.min(target / frameW, target / frameH)
+    local G = love.graphics
+    G.push("all"); G.setShader(); G.setColor(1, 1, 1, 1)
+    G.draw(image, quad, math.floor(x), math.floor(y), 0, scale, scale)
+    G.pop()
+    return true
+  end
   local function icon(screen, mon, x, y)
+    if follower(screen, mon, x, y, 16) then return end
     local renderer = screen.modernPCIconRenderer
     renderer.clock = screen.blink
     if mod.suite and mod.suite.drawMenuIcon
         and mod.suite.drawMenuIcon(screen.game, renderer, mon, math.floor(x), math.floor(y)) then return end
     renderer:drawIcon(mon, math.floor(x), math.floor(y))
+  end
+  local function typeKey(value)
+    local key = tostring(value or ""):upper()
+    key = key:gsub("_TYPE$", ""):gsub("%s+TYPE$", ""):gsub("TYPE$", "")
+    key = key:gsub("[^A-Z]", "")
+    return key
+  end
+  local function typeLabel(value)
+    local key = typeKey(value)
+    if key == "" then return "" end
+    return key:sub(1, 1) .. key:sub(2):lower()
+  end
+  local function rawText(value, x, y, ink)
+    value = tostring(value or "")
+    if value == "" then return end
+    ink = ink or INK
+    local rgb = { (ink[1] or 0) * 255, (ink[2] or 0) * 255, (ink[3] or 0) * 255 }
+    if ink[1] and ink[1] > 1 then rgb = { ink[1], ink[2], ink[3] } end
+    local palette, glyph, finish = Chrome.paletteGlyphs(
+      { { 255, 255, 255 }, rgb, rgb, rgb }, false, true)
+    if palette then
+      for _, code in ipairs(Font.encode(value)) do
+        glyph(code, math.floor(x), math.floor(y))
+        x = x + Font.advanceOf(code)
+      end
+      finish()
+    else
+      color(ink[1] > 1 and { ink[1] / 255, ink[2] / 255, ink[3] / 255 } or ink)
+      Font.draw(value, math.floor(x), math.floor(y))
+    end
+  end
+  local function clippedText(value, originX, y, left, right, ink)
+    value = tostring(value or "")
+    if value == "" then return end
+    ink = ink or INK
+    local rgb = { (ink[1] or 0) * 255, (ink[2] or 0) * 255, (ink[3] or 0) * 255 }
+    if ink[1] and ink[1] > 1 then rgb = { ink[1], ink[2], ink[3] } end
+    local palette, glyph, finish = Chrome.paletteGlyphs(
+      { { 255, 255, 255 }, rgb, rgb, rgb }, false, true)
+    local x = originX
+    local codes = Font.encode(value)
+    for _, code in ipairs(codes) do
+      local adv = Font.advanceOf(code)
+      if x + adv > left and x < right then
+        if palette then
+          glyph(code, math.floor(x), math.floor(y))
+        end
+      end
+      x = x + adv
+    end
+    if palette and finish then finish()
+    elseif not palette then
+      color(ink[1] > 1 and { ink[1] / 255, ink[2] / 255, ink[3] / 255 } or ink)
+      Font.draw(value, math.floor(originX), math.floor(y))
+    end
+  end
+  local function marquee(screen, key, value, x, y, width, ink)
+    value = tostring(value or "")
+    if value == "" or width < 4 then return end
+    if Font.width(value) <= width then
+      rawText(value, x, y, ink)
+      return
+    end
+    screen.modernPCMarquee = screen.modernPCMarquee or {}
+    local now = screen.modernPCElapsed or 0
+    local st = screen.modernPCMarquee[key]
+    if not st or st.text ~= value then
+      st = { text = value, t0 = now }
+      screen.modernPCMarquee[key] = st
+    end
+    local loop = value .. "   "
+    local loopW = math.max(1, Font.width(loop))
+    local speed, wait = 22, 0.7
+    local elapsed = math.max(0, now - st.t0)
+    local t = elapsed % (wait + loopW / speed)
+    local ox = t > wait and math.floor((t - wait) * speed) or 0
+    local left, right = x, x + width
+    clippedText(loop, x - ox, y, left, right, ink)
+    clippedText(loop, x - ox + loopW, y, left, right, ink)
   end
   local function details(screen, layout)
     local d = layout.detail
@@ -354,19 +475,35 @@ return function(mod)
     card(d.x, d.y, d.w, d.h, INK)
     local mon = screen.held and screen.held.mon or screen:modernPCSelected()
     if not mon then return text("EMPTY SLOT", d.x + 5, d.y + 10, d.w - 10, LIGHT) end
-    local item = mon.item and screen.game.data.items[mon.item]
-    local itemName = (item and item.name) or mon.item or "NO ITEM"
-    local x, y, width = d.x + 4, d.y + 8, d.w - 8
-    text(name(mon), x, y, width, WHITE)
+    local def = screen.game.data.pokemon[mon.species] or {}
+    local types = def.types or {}
+    local type1, type2 = typeLabel(types[1]), typeLabel(types[2])
+    if type2:lower() == type1:lower() then type2 = "" end
+    local tint = COLORS[typeKey(types[1]):lower()] or LIGHT
     local gender = mon.gender == "male" and "M" or mon.gender == "female" and "F" or ""
-    text(mon.isEgg and "EGG" or ("LV%d %s"):format(mon.level or 1, gender),
-      x, y + 12, width, LIGHT)
-    text(mon.isEgg and "" or ("%d/%d"):format(mon.hp or 0, mon.maxHp or 0),
-      x, y + 24, width, WHITE)
-    text(Mail.monHoldsMail(mon) and width < Font.width(itemName) and "MAIL"
-      or itemName, x, y + 36, width, LIGHT)
-    text(screen.held and "MOVING" or screen.region == "party" and "PARTY"
-      or Boxes.name(screen.game.save, screen.game.save.currentBox), x, y + 48, width, WHITE)
+    local level = mon.isEgg and "EGG" or ("LV%d%s"):format(mon.level or 1,
+      gender ~= "" and (" " .. gender) or "")
+    local label = name(mon)
+    local key = tostring(mon.species or "") .. ":" .. label
+    local picH = math.min(56, math.max(36, d.h - 50))
+    local drew = false
+    if type(screen.modernPCDrawPortrait) == "function" then
+      drew = screen:modernPCDrawPortrait(mon, {
+        x = d.x + 4, y = d.y + 4, w = d.w - 8, h = picH,
+      }, {})
+    end
+    if not drew then
+      if not follower(screen, mon, d.x + math.floor((d.w - 32) / 2), d.y + 6, 32) then
+        icon(screen, mon, d.x + math.floor((d.w - 16) / 2), d.y + 8)
+      end
+      picH = 24
+    end
+    local x, width = d.x + 4, d.w - 8
+    local y = d.y + picH + 8
+    marquee(screen, key .. ":name", label, x, y, width, WHITE)
+    rawText(level, x, y + 12, tint)
+    if type1 ~= "" then marquee(screen, key .. ":t1", type1, x, y + 24, width, tint) end
+    if type2 ~= "" then marquee(screen, key .. ":t2", type2, x, y + 36, width, tint) end
   end
   function storage.draw(screen, layout, slotRect)
     local G = love.graphics

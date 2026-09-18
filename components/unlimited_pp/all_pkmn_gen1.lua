@@ -10,6 +10,18 @@ return function(mod)
     if not ok then return false end
     return v == true or v == "on" or v == "ON" or v == "true"
   end
+  local function migrated()
+    local ok, v = pcall(mod.options.get, mod.options, "gen1_features_migrated")
+    return ok and v == true
+  end
+  local function feat(key)
+    local ok, v = pcall(mod.options.get, mod.options, key)
+    if migrated() then
+      return ok and (v == true or v == "on" or v == "ON")
+    end
+    if ok and (v == true or v == "on" or v == "ON") then return true end
+    return optOn()
+  end
   local function flags(game)
     game.save.flags = game.save.flags or {}
     return game.save.flags
@@ -101,16 +113,25 @@ return function(mod)
       inv[id] = nil
     end
   end
+  local function playFanfare(game, id)
+    id = id or "Get_Key_Item"
+    pcall(function()
+      require("src.core.Sound").play(game.data, id)
+    end)
+    pcall(function()
+      local Sound = require("src.core.Sound")
+      if type(Sound.playFanfare) == "function" then
+        Sound.playFanfare(game.data, id)
+      end
+    end)
+  end
   local function say(game, text, done, jingle)
     local ok, TextBox = pcall(require, "src.render.TextBox")
     if not ok then ok, TextBox = pcall(require, "src.ui.TextBox") end
-    local opts = { waitButton = true }
+    if jingle then playFanfare(game, jingle) end
+    local opts = { waitButton = true, sound = jingle }
     if jingle then
-      opts.preSound = function()
-        pcall(function()
-          require("src.core.Sound").play(game.data, jingle)
-        end)
-      end
+      opts.preSound = function() playFanfare(game, jingle) end
     end
     if ok and TextBox and TextBox.new then
       game.stack:push(TextBox.new(game, text, done, opts))
@@ -223,7 +244,7 @@ return function(mod)
         .. " bred at a daycare over there and got a baby " .. baby .. ".\fI want you to have it, it should help you finish your POKéDEX.", function()
           local where = giveMon(game, baby, 5)
           f.SUITE_OAK_BABY = true
-          say(game, where == "fail" and "There's no room for it..." or receivedLine(game, baby, where))
+          say(game, where == "fail" and "There's no room for it..." or receivedLine(game, baby, where), nil, "Get_Key_Item")
         end)
       return true
     end
@@ -252,6 +273,7 @@ return function(mod)
     if not f.SUITE_OAK_OFFERED_BALL or f.SUITE_OAK_TOOK_BALL then return false end
     local where = giveMon(game, left, 5)
     f.SUITE_OAK_TOOK_BALL = true
+    f.SUITE_OAK_TOOK_SPECIES = species
     hideNpc(ow, npc)
     say(game, where == "fail" and "There's no room for it..." or receivedLine(game, left, where), nil, "Get_Key_Item")
     return true
@@ -277,6 +299,9 @@ return function(mod)
       if f.SUITE_DOJO_WON and gift == hit then
         local where = giveMon(game, hit, 30)
         f.SUITE_DOJO_TOOK = true
+        f.SUITE_DOJO_TOOK_SPECIES = hit
+        f.SUITE_DOJO_BALL_X = npc.cellX or npc.x or (npc.def and npc.def.x)
+        f.SUITE_DOJO_BALL_Y = npc.cellY or npc.y or (npc.def and npc.def.y)
         hideNpc(ow, npc)
         say(game, where == "fail" and "There's no room for it..." or receivedLine(game, hit, where), nil, "Get_Key_Item")
         return true
@@ -782,6 +807,80 @@ return function(mod)
     return true
   end
 
+
+  local function eachMapNpc(ow, fn)
+    local seen = {}
+    local function walk(list)
+      if type(list) ~= "table" then return end
+      for _, n in ipairs(list) do
+        if type(n) == "table" and not seen[n] then
+          seen[n] = true
+          fn(n)
+        end
+      end
+    end
+    walk(ow.npcs); walk(ow.entities); walk(ow.objects)
+    local m = ow.map
+    if type(m) == "table" then
+      walk(m.npcs); walk(m.entities); walk(m.objects); walk(m.items)
+    end
+  end
+
+  local function isPokeBallNpc(npc)
+    local s = blob(npc)
+    local spr = tostring(npc.sprite or (npc.def and npc.def.sprite) or ""):upper()
+    return spr:find("BALL", 1, true)
+      or s:find("SPRITE_POKE_BALL", 1, true)
+      or s:find("HITMONLEE", 1, true)
+      or s:find("HITMONCHAN", 1, true)
+  end
+
+  local function onDojoMap(ow)
+    local mid = mapId(ow)
+    if mid:find("DOJO") or mid:find("FIGHT") or mid:find("KARATE") then
+      return true
+    end
+    local yes = false
+    eachMapNpc(ow, function(npc)
+      local s = blob(npc)
+      if s:find("KARATE") or s:find("KOICHI") or s:find("HITMON") then
+        yes = true
+      end
+    end)
+    return yes
+  end
+
+  local function sameCell(npc, x, y)
+    if x == nil or y == nil then return false end
+    local nx = npc.cellX or npc.x or (npc.def and npc.def.x)
+    local ny = npc.cellY or npc.y or (npc.def and npc.def.y)
+    return nx == x and ny == y
+  end
+
+  local function sweepHiddenBalls(game, ow)
+    if not (game and ow and isGen1(game)) then return end
+    local f = flags(game)
+    local mid = mapId(ow)
+    local taken = game.save.itemsTaken or {}
+    eachMapNpc(ow, function(npc)
+      if not npc or npc.hidden then return end
+      local s = blob(npc)
+      local gone = npc.id and taken[npc.id]
+      if mid:find("OAK") and f.SUITE_OAK_TOOK_BALL then
+        local want = tostring(f.SUITE_OAK_TOOK_SPECIES or leftoverSpecies(game.save) or "")
+        if want ~= "" and s:find(want, 1, true) then gone = true end
+        if s:find("CHARMANDER") or s:find("SQUIRTLE") or s:find("BULBASAUR") then
+          if s:find("BALL") or s:find("POKE") then gone = true end
+        end
+      end
+      if f.SUITE_DOJO_TOOK and onDojoMap(ow) then
+        if isPokeBallNpc(npc) then gone = true end
+        if sameCell(npc, f.SUITE_DOJO_BALL_X, f.SUITE_DOJO_BALL_Y) then gone = true end
+      end
+      if gone then hideNpc(ow, npc) end
+    end)
+  end
+
   pcall(function()
     local OverworldState = require("src.world.OverworldController")
     if type(OverworldState) ~= "table" or type(OverworldState.talkTo) ~= "function" then return end
@@ -795,14 +894,14 @@ return function(mod)
     end
     function OverworldState:talkTo(npc)
       local game = gameOf(self)
-      if not (optOn() and game and isGen1(game)) then return orig(self, npc) end
-      if handleOak(game, npc) then faceUs(self, npc) return end
-      if handleBall(game, self, npc) then faceUs(self, npc) return end
-      if handleDojo(game, self, npc) then faceUs(self, npc) return end
-      if handleMiguel(game, self, npc) then faceUs(self, npc) return end
-      if handleFuji(game, self, npc) then faceUs(self, npc) return end
-      if handleDontae(game, self, npc) then faceUs(self, npc) return end
-      if handleLinkC(game, self, npc) then faceUs(self, npc) return end
+      if not (game and isGen1(game)) then return orig(self, npc) end
+      if feat("gen1_starters") and handleOak(game, npc) then faceUs(self, npc) return end
+      if feat("gen1_starters") and handleBall(game, self, npc) then faceUs(self, npc) return end
+      if feat("gen1_fighting") and handleDojo(game, self, npc) then faceUs(self, npc) return end
+      if feat("gen1_fossil") and handleMiguel(game, self, npc) then faceUs(self, npc) return end
+      if feat("gen1_eevee") and handleFuji(game, self, npc) then faceUs(self, npc) return end
+      if feat("gen1_exclusive") and handleDontae(game, self, npc) then faceUs(self, npc) return end
+      if feat("gen1_linkc") and handleLinkC(game, self, npc) then faceUs(self, npc) return end
       return orig(self, npc)
     end
   end)
@@ -810,6 +909,14 @@ return function(mod)
   pcall(function()
     mod.hooks:wrap("core.update", function(nextFn, game, dt)
       local result = nextFn(game, dt)
+      if game and game.overworld then
+        local mid = mapId(game.overworld)
+        local f = flags(game)
+        if mid ~= game._suiteBallSweepMap or f.SUITE_DOJO_TOOK or f.SUITE_OAK_TOOK_BALL then
+          game._suiteBallSweepMap = mid
+          sweepHiddenBalls(game, game.overworld)
+        end
+      end
       local battle = game and game._suiteDojoBattle
       if battle and game.stack and game.stack.top and game.stack:top() ~= battle then
         local won = battle.result == "win" or battle.won == true or battle.outcome == "win"
@@ -835,14 +942,15 @@ return function(mod)
         local ok, Game = pcall(require, "src.core.Game")
         game = ok and Game or nil
       end
-      if optOn() and game and isGen1(game) and npc then
+      if game and isGen1(game) and npc then
         local t = tostring(textConst or ""):upper()
         if t:find("BOOK") or t:find("NOTES") or t:find("JOURNAL") or t:find("CLIPBOARD")
             or t:find("PAPER") or t:find("SIGN") or t:find("POSTER") or t:find("MAGAZINE") then
           return origShow(self, textConst, npc, unfreeze)
         end
-        if handleOak(game, npc) or handleBall(game, self, npc)
-            or handleDojo(game, self, npc) or handleMiguel(game, self, npc) then
+        if (feat("gen1_starters") and (handleOak(game, npc) or handleBall(game, self, npc)))
+            or (feat("gen1_fighting") and handleDojo(game, self, npc))
+            or (feat("gen1_fossil") and handleMiguel(game, self, npc)) then
           faceUs(self, npc)
           if unfreeze then unfreeze() end
           return
@@ -910,7 +1018,26 @@ return function(mod)
       mod.content.map_scripts:register(mapId, {
         priority = 70,
         onEnter = function(game, ow)
-          if optOn() then spawnFujiBalls(game, ow) end
+          if feat("gen1_eevee") then spawnFujiBalls(game, ow) end
+        end,
+      })
+    end
+
+    local labs = { "OAKS_LAB", "OAKS_LAB_2", "PROF_OAKS_LAB", "PALLET_OAKS_LAB" }
+    local dojos = { "FIGHTING_DOJO", "FIGHTINGDOJO", "SAFFRON_DOJO", "DOJO" }
+    for _, id in ipairs(labs) do
+      mod.content.map_scripts:register(id, {
+        priority = 70,
+        onEnter = function(game, ow)
+          sweepHiddenBalls(game, ow)
+        end,
+      })
+    end
+    for _, id in ipairs(dojos) do
+      mod.content.map_scripts:register(id, {
+        priority = 70,
+        onEnter = function(game, ow)
+          sweepHiddenBalls(game, ow)
         end,
       })
     end
@@ -945,7 +1072,7 @@ return function(mod)
       mod.content.map_scripts:register(mapId, {
         priority = 71,
         onEnter = function(game, ow)
-          if optOn() then spawnDontae(game, ow) end
+          if feat("gen1_exclusive") then spawnDontae(game, ow) end
         end,
       })
     end
@@ -1065,7 +1192,7 @@ return function(mod)
       end
     end
     local function inject(game)
-      if game._suiteWildInjected or not optOn() or not isGen1(game) then return end
+      if game._suiteWildInjected or not feat("gen1_exclusive") or not isGen1(game) then return end
       game._suiteWildInjected = true
       local kind = isYellow(game) and "yellow" or tostring(game.version or game.id or ""):lower():find("blue") and "blue" or "red"
       walkAppend(game.data and game.data.encounters, kind, 0)

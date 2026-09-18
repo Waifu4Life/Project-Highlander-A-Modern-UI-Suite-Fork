@@ -50,6 +50,23 @@ return function(mod)
   }
   mod.options:define(optionSchema)
 
+  pcall(function()
+    for id, item in mod.content.items:each() do
+      local machine = item and item.machine
+      local desc = item and item.description
+      if type(machine) == "table" and (type(desc) ~= "string" or desc == "" or desc == "?") then
+        local moveName = machine.move
+        pcall(function()
+          local move = mod.content.moves:get(machine.move)
+          if move and move.name then moveName = move.name end
+        end)
+        mod.content.items:patch(id, {
+          description = ("Teaches %s to a compatible POKeMON."):format(tostring(moveName or "a move")),
+        })
+      end
+    end
+  end)
+
   local usefulBag = mod.find("useful_bag")
   local kantoReforged = mod.find("Kanto-Reforged")
 
@@ -233,8 +250,14 @@ return function(mod)
   end)
 
   local GameVersion = require("src.core.GameVersion")
+  local function installInventoryLimits()
+    local makeInventory = loadFactory("inventory.lua")
+    if not makeInventory then return end
+    pcall(makeInventory, mod, { new = function() end }, {})
+  end
   if type(GameVersion.generation) == "function"
       and GameVersion.generation() == 2 then
+    installInventoryLimits()
     return assert(loadFactory("gen2.lua"))(mod, {
       pockets = pockets,
       categoryLess = categoryLess,

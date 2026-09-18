@@ -566,8 +566,16 @@ return function(mod)
       pcall(function()
         require("src.core.Sound").play(game.data, "Enter_PC")
       end)
-      local ok = pcall(Screens.push, game, "BoxMenu")
-      if ok then return end
+      local ids = { "BoxMenu" }
+      local okV, GameVersion = pcall(require, "src.core.GameVersion")
+      if okV and type(GameVersion.generation) == "function"
+          and GameVersion.generation() == 2 then
+        ids = { "Gen2BoxMenu", "Gen2PcMenu" }
+      end
+      for _, id in ipairs(ids) do
+        local ok = pcall(Screens.push, game, id)
+        if ok then return end
+      end
     end
     if game and game.stack and TextBox and TextBox.new then
       game.stack:push(TextBox.new(game, Strings("PC is not\navailable now.")))

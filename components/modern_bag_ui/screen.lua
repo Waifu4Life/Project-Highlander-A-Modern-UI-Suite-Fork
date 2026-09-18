@@ -232,7 +232,18 @@ return function(mod, compatibility)
 
   local function moneyText(menu)
     local save = menu and menu.game and menu.game.save
-    return ("¥%d"):format((save and tonumber(save.money)) or 0)
+    local n = 0
+    if type(save) == "table" then
+      n = tonumber(save.money)
+      if not n and type(save.player) == "table" then
+        n = tonumber(save.player.money)
+      end
+      if not n and type(save.money) == "table" then
+        n = tonumber(save.money.amount or save.money.value or save.money[1])
+      end
+    end
+    n = math.floor(tonumber(n) or 0)
+    return ("¥%d"):format(n)
   end
 
   local function drawTextRight(text, right, y, maxWidth, shade)
@@ -895,6 +906,30 @@ return function(mod, compatibility)
     end
   end
 
+  local function playPocketSfx(menu)
+    local data = menu.game and menu.game.data
+    if not data then return end
+    local ok, Sound = pcall(require, "src.core.Sound")
+    if not ok or type(Sound.play) ~= "function" then return end
+    data.audio = data.audio or {}
+    data.audio.sfx = data.audio.sfx or {}
+    local function try(id)
+      local src
+      local played = pcall(function() src = Sound.play(data, id) end)
+      return played and src ~= nil
+    end
+    if try("Sfx_SwitchPockets") or try("SwitchPockets") then return end
+    -- Gen1 ROMs do not carry Sfx_SwitchPockets. Register Crystal's pocket
+    -- click (noise_note 4,12,1,66) as a file so both bag skins match Gen2.
+    local wav = (mod.path or ".") .. "/assets/switch_pockets.wav"
+    data.audio.sfx.Sfx_SwitchPockets = { file = wav }
+    if try("Sfx_SwitchPockets") then return end
+    pcall(function()
+      local src = love.audio.newSource(wav, "static")
+      if src then src:setVolume(0.7); src:play() end
+    end)
+  end
+
   local function switchPocket(menu, delta)
     if menu.modernBagExternalController then
       local api = menu.gen1ModernUi
@@ -909,6 +944,7 @@ return function(mod, compatibility)
         syncExternalPocketIndex(menu)
         clampList(menu)
         menu.modernBagInventorySignature = inventorySignature(menu)
+        playPocketSfx(menu)
       end
       return
     end
@@ -924,6 +960,7 @@ return function(mod, compatibility)
     menu.index = saved and saved.index or 1
     menu.scroll = saved and saved.scroll or 0
     rebuildPocket(menu, saved and saved.id)
+    playPocketSfx(menu)
   end
 
   local function finishSwap(menu, targetId)
@@ -1041,7 +1078,7 @@ return function(mod, compatibility)
     -- Menu's rows are bottom-anchored, so the slightly taller box leaves a
     -- dedicated heading band without introducing a second menu controller.
     local sortMenu = Menu.new(menu.game, rows, {
-      tx = 2, ty = 1, tw = 16, th = 16, rowStep = 1.5,
+      tx = 2, ty = 3, tw = 16, th = 9, rowStep = 1.5,
       startCloses = true,
     })
     sortMenu.modernBagSortMenu = true
@@ -1188,8 +1225,12 @@ return function(mod, compatibility)
     if config and type(config.capacity) == "function" then
       capacity = tostring(config.capacity(menu) or "")
     else
-      capacity = ("%d/%d"):format(Bag.slots(menu.game.save),
-        Bag.capacity(menu.game.data))
+      local slots, cap = 0, 0
+      pcall(function()
+        slots = Bag.slots(menu.game.save)
+        cap = Bag.capacity(menu.game.data)
+      end)
+      capacity = ("%d/%d"):format(slots or 0, cap or 0)
     end
     local capacityW = math.min(math.floor(layout.width * 0.36),
       math.max(24, Font.width(capacity) + 2))
@@ -1349,10 +1390,21 @@ return function(mod, compatibility)
   local function itemDescription(menu, id)
     if not id then return Strings("Return to the previous screen.") end
     local def = menu.game.data.items[id] or {}
-    if type(def.description) == "string" and def.description ~= "" then
+    if type(def.description) == "string" and def.description ~= ""
+        and def.description ~= "?" then
       return Strings(def.description)
     end
     if DESCRIPTIONS[id] then return Strings(DESCRIPTIONS[id]) end
+    local teaches = def.teaches or (def.machine and (def.machine.move or def.machine))
+    if teaches then
+      local move = menu.game.data.moves and menu.game.data.moves[teaches]
+      if move and type(move.description) == "string" and move.description ~= ""
+          and move.description ~= "?" then
+        return Strings(move.description)
+      end
+      local moveName = (move and move.name) or teaches
+      return Strings("Teaches %s to a compatible POKéMON.", moveName)
+    end
     if def.machine then
       local move = menu.game.data.moves and menu.game.data.moves[def.machine.move]
       local moveName = move and move.name or def.machine.move
@@ -1556,10 +1608,10 @@ return function(mod, compatibility)
     local message
     if swapId(menu) then
       message = Strings("CHOOSE A NEW POSITION")
-    elseif layout.wide then
+    elseif layout.wide and layout.width >= 240 then
       message = Strings("L/R POCKET  START SORT  A SELECT  B BACK")
     else
-      message = Strings("START SORT  B BACK")
+      message = Strings("L/R POCKET  START SORT")
     end
     message = fitText(message, layout.width - 8)
     drawText(message, (layout.width - Font.width(message)) / 2,
@@ -1603,8 +1655,12 @@ return function(mod, compatibility)
     if config and type(config.capacity) == "function" then
       capacity = tostring(config.capacity(menu) or "")
     else
-      capacity = ("%d/%d"):format(Bag.slots(menu.game.save),
-        Bag.capacity(menu.game.data))
+      local slots, cap = 0, 0
+      pcall(function()
+        slots = Bag.slots(menu.game.save)
+        cap = Bag.capacity(menu.game.data)
+      end)
+      capacity = ("%d/%d"):format(slots or 0, cap or 0)
     end
     local capacityW = math.min(math.floor(layout.width * 0.36),
       math.max(24, Font.width(capacity) + 2))
@@ -1920,12 +1976,19 @@ return function(mod, compatibility)
 
   local function sgbPalettes(menu, game)
     local data = game and game.data
-    if not data then return nil end
+    local function fallbackRamp()
+      return { {255,255,255},{170,170,170},{85,85,85},{0,0,0} }
+    end
+    if not data then
+      local layout = layoutFor(menu)
+      return {{ colors = fallbackRamp(), x = 0, y = 0,
+        w = layout.width, h = layout.canvasHeight or layout.height }}
+    end
     local layout = layoutFor(menu)
     if layout.skin == "classic_pocket" then
       local base = PaletteFX.pal(data, "MEWMON")
         or PaletteFX.pal(data, "BLUEMON")
-      if not base then return nil end
+      if not base then base = fallbackRamp() end
       local blue = PaletteFX.pal(data, "BLUEMON") or base
       local green = PaletteFX.pal(data, "GREENMON") or base
       local red = PaletteFX.pal(data, "REDMON") or base
@@ -1951,7 +2014,7 @@ return function(mod, compatibility)
           w = layout.detailW, h = layout.detailH,
         }
       end
-      if #menu.items > 0 then
+      if menu.items and #menu.items > 0 then
         zones[#zones + 1] = {
           colors = red,
           x = layout.listX + 6,
@@ -1968,7 +2031,7 @@ return function(mod, compatibility)
       or PaletteFX.pal(data, "MEWMON")
     local accent = PaletteFX.pal(data, pocket.palette) or base
     local mode = config and PaletteFX.pal(data, config.modePalette) or nil
-    if not base then return nil end
+    if not base then base = fallbackRamp() end
     local zones = {
       { colors = base, x = 0, y = 0,
         w = layout.width, h = layout.canvasHeight or layout.height },
@@ -2020,30 +2083,6 @@ return function(mod, compatibility)
     -- ListMenu closes an empty list on A as a legacy convenience. Pocket
     -- tabs remain open instead, so the player can continue browsing them.
     if #menu.items == 0 and input:wasPressed("a") then return end
-    if menu._suiteAssignShortcut and input:wasPressed("a") then
-      local slot = menu._suiteAssignShortcut
-      local item = menu.items and menu.items[menu.index]
-      local id = item and (item.value or item.id or item.itemId or item.key)
-      if id then
-        menu.game.save = menu.game.save or {}
-        menu.game.save.options = menu.game.save.options or {}
-        menu.game.save.options.suiteItemShortcuts =
-          menu.game.save.options.suiteItemShortcuts or {}
-        menu.game.save.options.suiteItemShortcuts[slot] = id
-        menu.game.save.flags = menu.game.save.flags or {}
-        menu.game.save.flags["SUITE_SHORTCUT_" .. tostring(slot)] = id
-        if menu.game.writeOptions then menu.game:writeOptions() end
-        pcall(function()
-          require("src.ui.TextBox")
-          local TextBox = require("src.ui.TextBox")
-          menu.game.stack:push(TextBox.new(menu.game, {
-            "Assigned shortcut " .. tostring(slot) .. "."
-          }))
-        end)
-      end
-      menu._suiteAssignShortcut = nil
-      return
-    end
     return menu.modernBagBaseUpdate(menu, dt)
   end
 

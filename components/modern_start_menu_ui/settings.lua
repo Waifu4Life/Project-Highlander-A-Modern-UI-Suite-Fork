@@ -50,7 +50,15 @@ return function(mod, presentation, config)
   end
 
   local function compactLabel(label)
-    local text = presentation.normalizeText(label or "MENU")
+    local raw = tostring(label or "MENU")
+    -- Gen 2 stores Pokégear as <PO><KE>GEAR. The mini alphabet turns those
+    -- tags into question marks; keep Gen 1 labels on the old path.
+    local upper = raw:upper()
+    if raw:find("<PO>", 1, true) or raw:find("<KE>", 1, true)
+        or upper:find("GEAR", 1, true) then
+      return "Pokégear"
+    end
+    local text = presentation.normalizeText(raw)
     text = text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
     if #text > 12 then text = text:sub(1, 11) .. "." end
     return text ~= "" and text or "MENU"

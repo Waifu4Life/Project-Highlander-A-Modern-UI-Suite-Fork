@@ -7,6 +7,26 @@ return function(mod, shared)
   local Chrome = require("src.ui.gen2.Chrome")
   local Font = require("src.render.Font")
   local PackMenu = require("src.ui.gen2.PackMenu")
+  pcall(function()
+    local Bag = require("src.inventory.Bag")
+    Bag.capacity = function() return 255 end
+    local orig = Bag.add
+    Bag.add = function(save, id, qty, data)
+      if orig(save, id, qty, data) then return true end
+      if type(save) ~= "table" or type(id) ~= "string" then return false end
+      local inv = save.inventory
+      if type(inv) ~= "table" then return false end
+      if Bag.isBadge and Bag.isBadge(id) then return false end
+      local total = (inv[id] or 0) + (qty or 1)
+      if total < 1 or total > 999 then return false end
+      if not inv[id] then
+        pcall(function() table.insert(Bag.order(save), id) end)
+      end
+      inv[id] = total
+      return true
+    end
+  end)
+
   local ItemPcMenu = require("src.ui.gen2.ItemPcMenu")
 
   local INK_BLACK = { 0, 0, 0 }
@@ -114,7 +134,14 @@ return function(mod, shared)
 
   local function moneyText(menu)
     local save = menu and (menu.save or (menu.game and menu.game.save))
-    return ("¥%d"):format((save and tonumber(save.money)) or 0)
+    local n = 0
+    if type(save) == "table" then
+      n = tonumber(save.money)
+      if not n and type(save.player) == "table" then
+        n = tonumber(save.player.money)
+      end
+    end
+    return ("¥%d"):format(math.floor(tonumber(n) or 0))
   end
 
   local function chamfer(mode, x, y, w, h, cut)
@@ -472,6 +499,16 @@ return function(mod, shared)
       menu.rows = rows
     end
 
+    do
+      local kept={}
+      for _,row in ipairs(menu.rows or {}) do
+        local id=row and row.id
+        if id and id~='CANCEL' and not row.cancel then
+          kept[#kept+1]=row
+        end
+      end
+      menu.rows=kept
+    end
     restoreRow(menu, wantedId, fallbackIndex, fallbackScroll)
     local row = menu.rows and menu.rows[menu.index]
     local physical = (row and row.modernBagSourcePocket) or view.source
@@ -711,7 +748,7 @@ return function(mod, shared)
     end
 
     local cash = moneyText(self)
-    local cashW = math.min(64, math.max(32, Font.width(cash) + 8))
+    local cashW = Font.width(cash) + 8
     setColor(BLUE_DARK)
     love.graphics.rectangle("fill", 0, 0, cashW, 16)
     drawInk(cash, 4, 4, cashW - 8, INK_WHITE)
@@ -787,6 +824,14 @@ return function(mod, shared)
       and type(baseRebuild) == "function"
 
     if menu.modernBagControllerReady then
+      local baseTotal = menu.total
+      local baseIsCancel = menu.isCancel
+      menu.total = function(self)
+        return #(self.rows or {})
+      end
+      menu.isCancel = function(self)
+        return false
+      end
       menu.rebuild = function(self)
         if parityEnabled(self, game) then
           return rebuildModernRows(self, baseRebuild)
@@ -909,7 +954,14 @@ return function(mod, shared)
             and (input:wasPressed("a") or input:wasPressed("select")) then
           prepareSelectedPocket(self)
         end
-        return baseUpdate(self, dt)
+        local result = baseUpdate(self, dt)
+        local n = #(self.rows or {})
+        if n < 1 then
+          self.index = 1
+        elseif (self.index or 1) > n then
+          self.index = n
+        end
+        return result
       end
 
       -- Rebuild once through the virtual view after all method wrappers are in
@@ -932,8 +984,6 @@ return function(mod, shared)
         love.graphics.translate(panelX, 0)
         love.graphics.push("all")
         if love.graphics.setScissor then
-          -- Keep stock content inside its cartridge-sized panel. In
-          -- particular, the native one-line description is unbounded.
           setLogicalScissor(0, 0, 160, 144)
         end
         local ok, result = pcall(nativePanel, self)

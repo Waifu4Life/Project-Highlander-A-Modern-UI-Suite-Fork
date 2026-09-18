@@ -4,6 +4,45 @@
 return function(mod)
   local Chrome = require("src.ui.gen2.Chrome")
   local Font = require("src.render.Font")
+  if not mod._suiteExpGainHook then
+    mod._suiteExpGainHook = true
+    pcall(function()
+      mod.events:on("battle.exp_gained", function(ev)
+        if type(ev) ~= "table" or not ev.mon then return end
+        local add = tonumber(ev.gained or ev.amount or ev.exp) or 0
+        if add <= 0 then return end
+        ev.mon._suiteHudExpAdd = (tonumber(ev.mon._suiteHudExpAdd) or 0) + add
+      end)
+    end)
+    pcall(function()
+      mod.events:on("sound.played", function(payload)
+        local name = payload and (payload.name or payload.id or payload.sound or payload)
+        name = tostring(name or ""):upper()
+        if name:find("EXP", 1, true) or name:find("EXPERIENCE", 1, true) then
+          mod._suiteXpFillSound = true
+        end
+      end)
+    end)
+    pcall(function()
+      local Sound = require("src.core.Sound")
+      if type(Sound) == "table" and type(Sound.play) == "function"
+          and not Sound._suiteXpWatch then
+        Sound._suiteXpWatch = true
+        local play = Sound.play
+        function Sound.play(name, ...)
+          local s = tostring(name or ""):upper()
+          if s:find("EXP", 1, true) or s:find("EXPERIENCE", 1, true) then
+            mod._suiteXpFillSound = true
+          end
+          return play(name, ...)
+        end
+      end
+    end)
+  end
+  local okMon, Mon = pcall(require, "src.battle.gen2.Mon")
+  local okHp, HpBar = pcall(require, "src.battle.gen2.HpBar")
+  if not okMon then Mon = nil end
+  if not okHp then HpBar = nil end
 
   -- Keep native message pages/reveal/input; only make its existing wrapping
   -- split overlong words on real glyph boundaries. The scoped Chrome override
@@ -248,8 +287,25 @@ return function(mod)
     return false
   end
 
+  local function ogBattleLayout(screen)
+    local opts = screen and screen.game and screen.game.save
+      and screen.game.save.options
+    -- OPTION -> BATTLE LAYOUT -> OG is the 160x144 cartridge frame.
+    -- Only WIDE should use this compositor.
+    if not opts then return true end
+    if opts.battleLayout == "wide" then return false end
+    return true
+  end
+
   local function drawWideBattle(screen, winW, winH)
     screen.modernBattleYieldedTo3D = nil
+    if ogBattleLayout(screen)
+        and type(screen.classicGen2BattleWidescreen) == "function" then
+      screen.modernBattleWideWidth = nil
+      screen.modernBattleWide = false
+      screen.modernBattleSceneOffset = 0
+      return screen.classicGen2BattleWidescreen(screen, winW, winH)
+    end
     -- The instance wrapper survives a live component toggle. Honour OFF on
     -- every draw, including the command menu and any later native battle.
     if mod.options:get("enabled") == false then
@@ -352,6 +408,53 @@ return function(mod)
           or not screen:hudCleared("enemy")) then
       printInk("<LV>" .. tostring(enemy.level or 1), 10 + enemyOffset, 1)
     end
+    -- Recolor the native caught marker (black top -> red) on wild fights.
+    pcall(function()
+      if not enemy or not screen.showEnemyHud then return end
+      local kind = screen.kind or (screen.battle and screen.battle.kind)
+      if kind and kind ~= "wild" then return end
+      local save = screen.game and screen.game.save
+      local owned = save and save.pokedex and save.pokedex.owned
+      local species = enemy.species or (enemy.mon and enemy.mon.species)
+      if not (owned and species and owned[species] == true) then return end
+      local G = love.graphics
+      local bx = 8 + sceneOffset
+      local by = 8
+      G.push("all")
+      G.setShader()
+      local function dot(px, py, r, g, b)
+        G.setColor(r, g, b, 1)
+        G.rectangle("fill", bx + px, by + py, 1, 1)
+      end
+      -- 7x7 ball: red top, white bottom, dark equator, white button.
+      local RED, WHT, INK = {0.91,0.25,0.25}, {1,1,1}, {0.08,0.08,0.10}
+      local map = {
+        "  ###  ",
+        " #RRR# ",
+        "#RRBRR#",
+        "#KKKKK#",
+        "#WWBWW#",
+        " #WWW# ",
+        "  ###  ",
+      }
+      for y=1,#map do
+        local row=map[y]
+        for x=1,#row do
+          local c=row:sub(x,x)
+          if c=="#" then dot(x-1,y-1,INK[1],INK[2],INK[3])
+          elseif c=="R" then dot(x-1,y-1,RED[1],RED[2],RED[3])
+          elseif c=="W" then dot(x-1,y-1,WHT[1],WHT[2],WHT[3])
+          elseif c=="B" then dot(x-1,y-1,WHT[1],WHT[2],WHT[3])
+          elseif c=="K" then dot(x-1,y-1,INK[1],INK[2],INK[3])
+          end
+        end
+      end
+      pcall(function()
+        local PaletteFX=require("src.render.PaletteFX")
+        if PaletteFX.markTrueColor then PaletteFX.markTrueColor(bx,by,7,7) end
+      end)
+      G.pop()
+    end)
     if playerStatus and screen.showPlayerHud
         and (type(screen.hudCleared) ~= "function"
           or not screen:hudCleared("player")) then
@@ -360,11 +463,245 @@ return function(mod)
         10 + playerOffset, 8)
     end
 
-    -- Gold/Silver/Crystal already draw the native EXP track.  Do not add a
-    -- second label beside it: on the centred Gen 2 field there is no spare
-    -- tile cell that is valid for every nickname, HUD state and aspect ratio.
-    -- Keeping the native track unlabelled also matches the cartridge battle
-    -- HUD and prevents the text from drifting over the player sprite.
+    local Meters
+    pcall(function()
+      Meters = mod:load("meters.lua")()
+    end)
+    local dx = sceneOffset
+    local function asBattler(mon, shown)
+      if not mon then return nil end
+      return { mon = mon, shownHP = shown or mon.hp }
+    end
+    local data = screen.game and screen.game.data
+      or (screen.battle and screen.battle.data)
+
+    local function coverBar(x, y, width, height, ratio, color, readout)
+      local G = love.graphics
+      G.setColor(0, 0, 0, 1)
+      G.rectangle("fill", x, y, width, height)
+      local inner = math.max(0, width - 2)
+      local fill = math.floor(inner * math.max(0, math.min(1, ratio)) + 0.5)
+      if ratio > 0 then fill = math.max(1, fill) end
+      if fill > 0 then
+        G.setColor(color)
+        G.rectangle("fill", x + 1, y + 1, fill, height - 2)
+      end
+      if readout and Meters then
+        local tw = Meters.width(readout)
+        local tx = x + width - 2 - tw
+        Meters.text(readout, tx + 1, y + math.max(1, math.floor((height - 5) / 2) + 1), {0,0,0,1})
+        Meters.text(readout, tx, y + math.max(0, math.floor((height - 5) / 2)), {1,1,1,1})
+      end
+    end
+
+    local function hpRatio(mon, shown)
+      local maxHp = (mon.stats and mon.stats.hp) or mon.maxHp or 1
+      return math.max(0, math.min(1, (shown or mon.hp or 0) / math.max(1, maxHp)))
+    end
+
+    local function hpColor(ratio)
+      if ratio <= 0.20 then return {0.97, 0.10, 0.10, 1} end
+      if ratio <= 0.50 then return {0.97, 0.65, 0.05, 1} end
+      return {0.10, 0.78, 0.18, 1}
+    end
+
+    if Meters and data then
+      local function enemyHpOn()
+        local ok, value = pcall(mod.options.get, mod.options, "enemy_hp_counter")
+        return ok and value == true
+      end
+      -- Ish 0.1.32: screen:hudHp(mon, side) is the animated bar value.
+      local function hudHp(mon, side)
+        if type(screen.hudHp) == "function" and mon then
+          local ok, value = pcall(screen.hudHp, screen, mon, side)
+          if ok and value ~= nil then return tonumber(value) or 0 end
+        end
+        if side == "enemy" and screen.shownEnemyHP ~= nil then
+          return tonumber(screen.shownEnemyHP) or 0
+        end
+        if side == "player" and (screen.shownHP or screen.shownPlayerHP) ~= nil then
+          return tonumber(screen.shownHP or screen.shownPlayerHP) or 0
+        end
+        return mon and (tonumber(mon.hp) or 0) or 0
+      end
+
+      -- LOCKED: enemy HP overlay. Do not edit unless the user asks.
+      if enemy and screen.showEnemyHud then
+        local maxHp = (enemy.stats and enemy.stats.hp) or enemy.maxHp or 1
+        local shown = hudHp(enemy, "enemy")
+        local text = enemyHpOn() and Meters.readout(shown, maxHp, false, 56) or nil
+        coverBar(16 + dx, 16, 64, 8, shown / math.max(1, maxHp),
+          hpColor(shown / math.max(1, maxHp)), text)
+      end
+      if player and screen.showPlayerHud then
+        local maxHp = (player.stats and player.stats.hp) or player.maxHp or 1
+        local shown = hudHp(player, "player")
+        coverBar(80 + dx, 72, 64, 8, shown / math.max(1, maxHp),
+          hpColor(shown / math.max(1, maxHp)),
+          Meters.readout(shown, maxHp, false, 56))
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("fill", 80 + dx, 80, 64, 8)
+
+        -- Same source + math as the locked party EXP overlay.
+        local source = player.origin or player.mon or player.source or player
+        local party = screen.game and screen.game.save and screen.game.save.party
+        if type(party) == "table" then
+          for _, mon in ipairs(party) do
+            if mon == player or mon == source then source = mon; break end
+          end
+        end
+        local lv = math.max(1, tonumber(source.level or player.level) or 1)
+        local function intoOf(mon)
+          if not mon then return 0, 1 end
+          if Mon and HpBar and type(Mon.growthFor) == "function"
+              and type(HpBar.expFraction) == "function" then
+            local def = data.pokemon and data.pokemon[mon.species or player.species]
+            if def then
+              local growth = Mon.growthFor(data, def.growthRate)
+              local from = Mon.experienceForLevel(growth, lv)
+              local to = Mon.experienceForLevel(growth, lv + 1)
+              local span = math.max(1, (to or 0) - (from or 0))
+              local frac = tonumber(HpBar.expFraction(mon, growth, Mon.experienceForLevel)) or 0
+              frac = math.max(0, math.min(1, frac))
+              return math.floor(frac * span + 0.5), span
+            end
+          end
+          return math.max(0, tonumber(mon.exp or mon.experience) or 0), 1
+        end
+        local intoLive, span = intoOf(source)
+        local intoBattler = intoOf(player)
+        if intoBattler > intoLive then intoLive = intoBattler end
+        local add = tonumber(source._suiteHudExpAdd) or 0
+        if source ~= player then
+          add = math.max(add, tonumber(player._suiteHudExpAdd) or 0)
+        end
+        local bag = {}
+        if type(screen.message) == "string" then bag[#bag + 1] = screen.message end
+        if screen.typer and type(screen.typer.text) == "string" then
+          bag[#bag + 1] = screen.typer.text
+        end
+        if type(screen.messageLines) == "function" then
+          local ok, lines = pcall(screen.messageLines, screen)
+          if ok and type(lines) == "table" then
+            for _, line in ipairs(lines) do
+              if type(line) == "string" then bag[#bag + 1] = line end
+            end
+          end
+        end
+        local awardVisible = false
+        for _, line in ipairs(bag) do
+          local u = line:upper()
+          if u:find("EXP", 1, true) and (
+              u:find("GOT", 1, true) or u:find("GAIN", 1, true)
+              or u:find("POINT", 1, true) or u:find("BOOST", 1, true)
+              or u:find("EXPERIENCE", 1, true)) then
+            awardVisible = true
+            break
+          end
+        end
+        local arrow = false
+        if type(screen.messageArrowVisible) == "function" then
+          local ok, shown = pcall(screen.messageArrowVisible, screen)
+          arrow = ok and shown == true
+        end
+        local pair = tostring(source) .. ":" .. tostring(enemy and (enemy.species or enemy) or "none")
+        if screen._suiteXpPair ~= pair then
+          screen._suiteXpPair = pair
+          screen._suiteXpHold = intoLive
+          screen._suiteXpDisp = intoLive
+          screen._suiteXpLv = lv
+          screen._suiteXpArmed = false
+          screen._suiteXpACount = 0
+          source._suiteHudExpAdd = 0
+          if player ~= source then player._suiteHudExpAdd = 0 end
+          add = 0
+        end
+        local hold = screen._suiteXpHold
+        if hold == nil then
+          hold = intoLive
+          screen._suiteXpHold = hold
+        end
+        local input = screen.input or (screen.game and screen.game.input)
+        local aDown = false
+        if type(input) == "table" then
+          if type(input.isDown) == "function" then
+            aDown = input:isDown("a") or input:isDown("confirm") or input:isDown("select")
+          elseif type(input.down) == "function" then
+            aDown = input:down("a") or input:down("confirm")
+          end
+        end
+        local pressed = aDown and not screen._suiteXpADown
+        screen._suiteXpADown = aDown
+        if not awardVisible then
+          screen._suiteXpACount = 0
+        elseif pressed then
+          screen._suiteXpACount = (screen._suiteXpACount or 0) + 1
+          if screen._suiteXpACount >= 2 then
+            screen._suiteXpArmed = true
+          end
+        end
+        if mod._suiteXpFillSound then mod._suiteXpFillSound = false end
+        local armed = screen._suiteXpArmed == true
+        local target = hold
+        if armed then
+          target = math.max(intoLive, math.min(span, hold + add))
+        end
+        local disp = screen._suiteXpDisp
+        if screen._suiteXpLv ~= lv then
+          screen._suiteXpLv = lv
+          screen._suiteXpHold = armed and 0 or intoLive
+          hold = screen._suiteXpHold
+          disp = hold
+          if armed then
+            target = math.max(intoLive, math.min(span, add))
+          else
+            target = hold
+          end
+        end
+        if disp == nil then disp = target end
+        if armed and target > disp then
+          disp = math.min(target, disp + math.max(1, math.ceil((target - disp) / 6)))
+        elseif not armed then
+          disp = hold
+        elseif target < disp then
+          disp = target
+        end
+        if not awardVisible and not armed then
+          disp = hold
+        end
+        screen._suiteXpDisp = disp
+        local into = disp
+        local xr = into / math.max(1, span)
+        local G = love.graphics
+        local bx, by, bw, bh = 80 + dx, 87, 64, 7
+        G.setColor(0, 0, 0, 1)
+        G.rectangle("fill", bx, by, bw, bh)
+        local fill = math.floor((bw - 2) * math.max(0, math.min(1, xr)) + 0.5)
+        if xr >= 1 then fill = bw - 2 end
+        if xr > 0 and xr < 1 then fill = math.max(1, fill) end
+        if fill > 0 then
+          G.setColor(0.16, 0.42, 0.82, 1)
+          G.rectangle("fill", bx + bw - 1 - fill, by + 1, fill, bh - 2)
+        end
+        local text = Meters.readout(into, span, lv >= 100, 56)
+        local tw = Meters.width(text)
+        Meters.text(text, 80 + dx + 64 - 2 - tw + 1, 88, {0,0,0,1})
+        Meters.text(text, 80 + dx + 64 - 2 - tw, 87, {1,1,1,1})
+      end
+    end
+
+    -- Attack rumble from HP deltas (Gen 2 battle FX hooks are not the Gen 1 ones).
+    local function pulseHit()
+      if not (love and love.joystick and love.joystick.getJoysticks) then return end
+      for _, pad in ipairs(love.joystick.getJoysticks()) do
+        if pad.setVibration then pcall(pad.setVibration, pad, 0.35, 0.5, 0.12) end
+      end
+    end
+    local pHP = player and (screen.shownHP or screen.shownPlayerHP or player.hp)
+    local eHP = enemy and (screen.shownEnemyHP or enemy.hp)
+    if screen._suitePrevPHP and pHP and pHP < screen._suitePrevPHP then pulseHit() end
+    if screen._suitePrevEHP and eHP and eHP < screen._suitePrevEHP then pulseHit() end
+    screen._suitePrevPHP, screen._suitePrevEHP = pHP, eHP
     Font.useBattleExtra(wasBattle)
     love.graphics.setColor(1, 1, 1, 1)
     screen.battleInfoHudGen2 = true
@@ -380,6 +717,26 @@ return function(mod)
       return drawChoices(self, self.modernBattleWideWidth or self.modernBattleLastWideWidth or 160, palette)
     end
     screen.modernBattleWideInstalled = true
+    if type(screen.update) == "function" and not screen._suiteRumbleHp then
+      screen._suiteRumbleHp = true
+      local prev = screen.update
+      function screen:update(...)
+        local beforeP = self.shownHP or (self.player and self.player.hp)
+        local beforeE = self.shownEnemyHP or (self.enemy and self.enemy.hp)
+        local r = prev(self, ...)
+        local afterP = self.shownHP or (self.player and self.player.hp)
+        local afterE = self.shownEnemyHP or (self.enemy and self.enemy.hp)
+        if (beforeP and afterP and afterP < beforeP)
+            or (beforeE and afterE and afterE < beforeE) then
+          if love and love.joystick and love.joystick.getJoysticks then
+            for _, pad in ipairs(love.joystick.getJoysticks()) do
+              if pad.setVibration then pcall(pad.setVibration, pad, 0.4, 0.55, 0.12) end
+            end
+          end
+        end
+        return r
+      end
+    end
     screen.classicGen2BattleWidescreen = screen.drawWidescreen
     screen.drawWidescreen = drawWideBattle
   end, 1000)

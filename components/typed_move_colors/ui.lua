@@ -314,9 +314,9 @@ return function(mod)
     if not componentEnabled() or textOnlyMode()
         or not setting("battle_colors", true) then return false end
     local phase = battle and battle.phase
+    -- Command + "What will X do?" stay on the cartridge Fight/PKMN/ITEM/RUN
+    -- box. Only the move list uses Typed Move Colors cards.
     local owned = phase == "moveSelect" or phase == "mimicSelect"
-      or (phase == "menu" and not battle.safari and not battle.demo)
-      or phase == "messages"
     return owned and detachedGrid(battle)
   end
 

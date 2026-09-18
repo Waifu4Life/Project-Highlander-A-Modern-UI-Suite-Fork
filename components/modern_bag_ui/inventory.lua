@@ -45,36 +45,122 @@ return function(mod, bagScreen, compatibility)
   if activeSlots ~= currentSlots then
     mod.content.constants:patch("bagSize", activeSlots)
   end
+  for _, key in ipairs({
+    "packSize", "pocketSize", "packPocketSize", "tmPocketSize",
+    "itemPocketSize", "ballPocketSize", "keyPocketSize",
+  }) do
+    pcall(function()
+      local cur = tonumber(mod.content.constants:get(key))
+      if not cur or cur < SLOT_MAX then
+        mod.content.constants:patch(key, SLOT_MAX)
+      end
+    end)
+  end
+  pcall(function()
+    local Pack = require("src.inventory.gen2.Pack")
+    if type(Pack) ~= "table" then return end
+    Pack.POCKET_SIZE = math.max(tonumber(Pack.POCKET_SIZE) or 0, SLOT_MAX)
+    Pack.CAPACITY = math.max(tonumber(Pack.CAPACITY) or 0, SLOT_MAX)
+    if type(Pack.capacity) == "function" and not Pack.__highlanderCap then
+      Pack.__highlanderCap = true
+      local orig = Pack.capacity
+      Pack.capacity = function(...)
+        return math.max(tonumber(orig(...)) or 0, SLOT_MAX)
+      end
+    end
+  end)
+  pcall(function()
+    local PackMenu = require("src.ui.gen2.PackMenu")
+    PackMenu.MAX = SLOT_MAX
+    PackMenu.CAPACITY = SLOT_MAX
+    PackMenu.POCKET_SIZE = SLOT_MAX
+    for _, pocket in ipairs((PackMenu and PackMenu.POCKETS) or {}) do
+      if type(pocket) == "table" then
+        for k,v in pairs(pocket) do
+          if v == 20 then pocket[k] = SLOT_MAX end
+        end
+        pocket.capacity = SLOT_MAX
+        pocket.max = SLOT_MAX
+        pocket.size = SLOT_MAX
+      end
+    end
+    if type(PackMenu.canAdd) == "function" and not PackMenu.__highlanderCanAdd then
+      PackMenu.__highlanderCanAdd = true
+      local orig = PackMenu.canAdd
+      PackMenu.canAdd = function(...)
+        local ok = orig(...)
+        if ok then return ok end
+        return true
+      end
+    end
+  end)
+  pcall(function()
+    local Pack = require("src.inventory.gen2.Pack")
+    if type(Pack) ~= "table" then
+      Pack = require("src.core.gen2.Pack")
+    end
+    if type(Pack) ~= "table" then return end
+    for k,v in pairs(Pack) do
+      if v == 20 then Pack[k] = SLOT_MAX end
+    end
+    if type(Pack.add) == "function" and not Pack.__highlanderAdd then
+      Pack.__highlanderAdd = true
+      local orig = Pack.add
+      Pack.add = function(save, a, b, c, d)
+        -- Try native first; if it fails on a full-20 pocket, raise the
+        -- pocket table limit and retry once.
+        if orig(save, a, b, c, d) then return true end
+        local function bump(list)
+          if type(list) == "table" and list.max == 20 then list.max = SLOT_MAX end
+          if type(list) == "table" and list.capacity == 20 then list.capacity = SLOT_MAX end
+        end
+        if type(save) == "table" then
+          bump(save.pack)
+          for _, key in ipairs({"items","balls","keyItems","key","tmhm","tms","pack"}) do
+            bump(save[key])
+            if save.pack then bump(save.pack[key]) end
+            if save.inventory then bump(save.inventory[key]) end
+          end
+        end
+        return orig(save, a, b, c, d)
+      end
+    end
+  end)
 
-  -- Bag.add is the engine's single acquisition/withdrawal guard.  Keep its
-  -- original behavior through 99, then extend the same slot/order rules up
-  -- to the configured stack maximum.  Module tags make dev hot reload safe.
+  -- Bag.add is the engine's single acquisition/withdrawal guard.
+  -- Gen 2 ITEM pocket is a hard 20 via Bag.capacity(data, "ITEM") -- bagSize
+  -- only lifts that pocket if we also wrap capacity() itself.
   Bag.__modernBagStackMax = math.max(
     tonumber(Bag.__modernBagStackMax) or 99, STACK_MAX)
-  if not Bag.__modernBagStackLimitPatched then
-    Bag.__modernBagStackLimitPatched = true
-    Bag.__modernBagOriginalAdd = Bag.add
-    Bag.add = function(save, id, qty, data)
-      -- If a previously loaded inventory mod already accepts this addition,
-      -- retain its behavior (including any limit higher than ours).
-      if Bag.__modernBagOriginalAdd(save, id, qty, data) then return true end
-
-      local amount = qty or 1
-      local inv = save.inventory
-      local total = (inv[id] or 0) + amount
-
-      if Bag.isBadge(id) or total <= 99 then return false end
-      if total > Bag.__modernBagStackMax then return false end
-      if not inv[id] and Bag.slots(save) >= Bag.capacity(data) then
-        return false
-      end
-
-      local isNew = not inv[id]
-      local order = isNew and Bag.order(save) or nil
-      inv[id] = total
-      if isNew then table.insert(order, id) end
-      return true
+  if not Bag.__highlanderCapacity255 then
+    Bag.__highlanderCapacity255 = true
+    local origCap = Bag.capacity
+    Bag.capacity = function(data, pocket)
+      return SLOT_MAX
     end
+  end
+  Bag.__modernBagOriginalAdd = Bag.__modernBagOriginalAdd or Bag.add
+  Bag.add = function(save, id, qty, data)
+    if Bag.__modernBagOriginalAdd(save, id, qty, data) then return true end
+    if type(id) ~= "string" or type(save) ~= "table" then return false end
+    local inv = save.inventory
+    if type(inv) ~= "table" then return false end
+    if Bag.isBadge and Bag.isBadge(id) then return false end
+    local amount = qty or 1
+    local total = (inv[id] or 0) + amount
+    if total < 1 or total > Bag.__modernBagStackMax then return false end
+    local pocket = "ITEM"
+    pcall(function()
+      if Bag.pocketOf then pocket = Bag.pocketOf(id, data) or "ITEM" end
+    end)
+    if not inv[id] then
+      local used = 0
+      pcall(function() used = Bag.slots(save, data, pocket) end)
+      if used >= SLOT_MAX then return false end
+      pcall(function() table.insert(Bag.order(save), id) end)
+    end
+    inv[id] = total
+    return true
   end
 
   -- A three-digit quantity needs one extra tile.  This also covers PC

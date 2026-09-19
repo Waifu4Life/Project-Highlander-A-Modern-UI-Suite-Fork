@@ -1246,14 +1246,59 @@ return function(mod, compatibility)
       local crystal = mod.find and mod.find("crystal_animated_sprites_with_shiny_visuals")
       local draw = crystal and crystal.exports and crystal.exports.drawPortrait
       if type(draw) == "function" then
+        -- 1.3.0 card face first: type-coloured paper + accent. The later
+        -- true-colour mark used to cover the whole well and froze the
+        -- unpaletted gray from panel() as the portrait backdrop.
+        local composite = protection or {
+          x = math.floor(rect.x), y = math.floor(rect.y),
+          w = math.max(1, math.floor(rect.w)),
+          h = math.max(1, math.floor(rect.h)),
+        }
+        local shade = composite.faceShade or faceShade or LIGHT
+        if not composite.faceShade and darkTheme() then
+          if shade == LIGHT then shade = DARK
+          elseif shade == WHITE then shade = BLACK end
+        end
+        local faceColors = PaletteFX.effectiveColors(colors)
+          or PaletteFX.GRAYS
+        local function finalColor(value, fallback)
+          local index = value > (WHITE + LIGHT) / 2 and 1
+            or value > (LIGHT + DARK) / 2 and 2
+            or value > (DARK + BLACK) / 2 and 3 or 4
+          return faceColors[index] or fallback
+        end
+        love.graphics.push("all")
+        if composite.edgeShade then
+          local edge = finalColor(composite.edgeShade, { 0, 0, 0 })
+          love.graphics.setColor(edge[1] / 255, edge[2] / 255,
+            edge[3] / 255, 1)
+          love.graphics.rectangle("fill", composite.x, composite.y,
+            composite.w, composite.h)
+        end
+        local face = finalColor(shade, { 170, 170, 170 })
+        love.graphics.setColor(face[1] / 255, face[2] / 255,
+          face[3] / 255, 1)
+        if composite.cut then
+          chamfer("fill", composite.x, composite.y,
+            composite.w, composite.h, composite.cut)
+        else
+          love.graphics.rectangle("fill", composite.x, composite.y,
+            composite.w, composite.h)
+        end
+        if composite.accent then
+          local accent = finalColor(composite.accent.shade, { 85, 85, 85 })
+          love.graphics.setColor(accent[1] / 255, accent[2] / 255,
+            accent[3] / 255, 1)
+          love.graphics.rectangle("fill", composite.accent.x,
+            composite.accent.y, composite.accent.w, composite.accent.h)
+        end
+        love.graphics.pop()
+        if type(regions) == "table" then
+          regions[#regions + 1] = composite
+        end
         local ok, drew = pcall(draw, { species = def.id or def.species },
           rect.x, rect.y, rect.w, rect.h)
         if ok and drew then
-          if type(regions) == "table" then
-            regions[#regions + 1] = {
-              x = rect.x, y = rect.y, w = rect.w, h = rect.h,
-            }
-          end
           return
         end
       end

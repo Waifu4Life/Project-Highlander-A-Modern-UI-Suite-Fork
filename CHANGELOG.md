@@ -1,4 +1,4 @@
-## [1.59.0] — milestone
+## [1.60.0]\n- Gen1 Pokédex main preview: restore 1.3.0 type-coloured card face behind Crystal portraits (no new hues).\n\n## [1.59.0] — milestone
 - GitHub-ready release (manifest github + semver 1.59.0).
 - Includes Gen2 Modern EXP Sharing, OG battle letterbox, Start Menu icon sheet, Gen2 move-name scroll, EXP text fixes.
 

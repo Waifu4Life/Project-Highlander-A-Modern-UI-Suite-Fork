@@ -1,3 +1,9 @@
+# Project Highlander 1.60.0
+
+Fixed a small bug for the background color of the main PokéDex screen. The colors were are screwed-up in the right pane were we see the picture of the Pokémon.
+
+---------------------------------------------
+
 # Project Highlander 1.59.0
 
 Milestone · 15 September 2026 → now

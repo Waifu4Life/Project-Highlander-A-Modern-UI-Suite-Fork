@@ -97,10 +97,10 @@ return function(mod)
       }
     end
     return {
-      option = girl and "leaf_flip.png" or "red.png",
-      front = girl and "assets/trainers/player/leaf_flip.png"
+      option = girl and "green_flip.png" or "red.png",
+      front = girl and "assets/trainers/player/green_flip.png"
         or "assets/trainers/player/red.png",
-      walk = girl and "assets/overworld/player/leaf.png"
+      walk = girl and "assets/overworld/player/green.png"
         or "assets/overworld/player/red.png",
     }
   end
@@ -487,7 +487,10 @@ return function(mod)
     if not ok or type(Card) ~= "table" then return end
     if Card._suitePicShift then return end
     Card._suitePicShift = true
-    local SHIFT = 16
+    -- Stock card draws the pic at (120, 8). We previously pulled it 16px
+    -- left so the new Green/Red art sat inside the frame. Current ask:
+    -- 10px right and 2px up from that placed spot.
+    local SHIFT_X, SHIFT_Y = 6, 4
     if type(Card.new) == "function" then
       local origNew = Card.new
       function Card.new(game, opts)
@@ -499,7 +502,8 @@ return function(mod)
             self.picQuad = love.graphics.newQuad(
               ox, 0, self.picW or 40, self.picH or 56, pw, ph)
           end
-          self._suitePicX = 120 - SHIFT
+          self._suitePicX = 120 - SHIFT_X
+          self._suitePicY = 8 - SHIFT_Y
         end
         return self
       end
@@ -510,7 +514,8 @@ return function(mod)
         local lg = love.graphics.draw
         love.graphics.draw = function(img, quad, x, y, ...)
           if self and img == self.pic and x == 120 and y == 8 then
-            x = self._suitePicX or (120 - SHIFT)
+            x = self._suitePicX or (120 - SHIFT_X)
+            y = self._suitePicY or (8 - SHIFT_Y)
           end
           return lg(img, quad, x, y, ...)
         end
@@ -518,7 +523,10 @@ return function(mod)
         local mark = okMark and PaletteFX and PaletteFX.markTrueColor
         if mark then
           PaletteFX.markTrueColor = function(x, y, w, h)
-            if x == 120 and y == 8 then x = self._suitePicX or (120 - SHIFT) end
+            if x == 120 and y == 8 then
+              x = self._suitePicX or (120 - SHIFT_X)
+              y = self._suitePicY or (8 - SHIFT_Y)
+            end
             return mark(x, y, w, h)
           end
         end

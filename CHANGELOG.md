@@ -1,3 +1,31 @@
+## [1.67.0]
+- Removed battle catch-rate overlay and the QoL toggle. Dex CatchRate line stays.
+- Restored Info-tab Notes / height position under the original black rule.
+
+## [1.66.0]
+- Dex Info: CatchRate on its own line under the category; type chip sits on the panel edge.
+- Battle CR only with the enemy HUD (no send-out flash). Gen 1 drawn with the HP bar. Gen 2 lowered under the bar.
+
+## [1.65.0]
+- Dex Info tab: CatchRate:N on the same row as the species category (Gen 1 and Gen 2).
+- QoL "Show Catch Rate in Battle" (off by default): CR:N under the Gen 1 enemy HP bar, on the Gen 2 enemy HP bar.
+
+## [1.64.0]
+- QoL "Gen3 Catch Rate" (off by default): Gen 3 catch formula in Gen 1 and Gen 2.
+- Removes Gen 1 "You missed the POKéMON!" (failed throws still shake).
+- Ultra Ball is always better than Great Ball. Apricorn balls use HGSS modifiers. Friend Ball unchanged.
+
+## [1.63.0]
+- ID card Red/Green pic another 2px higher.
+
+## [1.62.0]
+- ID card Red/Green pic: +10px right, +2px up from 1.61 placement.
+
+## [1.61.0]
+- Crystal Player Sprite: drop Jessie, James, Silver, Blue.
+- Leaf player art remapped to Green (overworld, back, front, Force Crystal, Town Map).
+- Replace Crystal overworld/ and trainers/ asset trees with uploaded packs.
+
 ## [1.60.0]\n- Gen1 Pokédex main preview: restore 1.3.0 type-coloured card face behind Crystal portraits (no new hues).\n\n## [1.59.0] — milestone
 - GitHub-ready release (manifest github + semver 1.59.0).
 - Includes Gen2 Modern EXP Sharing, OG battle letterbox, Start Menu icon sheet, Gen2 move-name scroll, EXP text fixes.

@@ -1289,9 +1289,8 @@ end
 local PLAYER_SPRITE_DEFAULT = "default"
 local PLAYER_SPRITES = {
   "default",
-  "blue_flip.png", "gold_flip.png", "james.png",
-  "jessie.png", "kris_flip.png", "leaf.png",
-  "red.png", "silver_flip.png",
+  "gold_flip.png", "green_flip.png",
+  "kris_flip.png", "red.png",
 }
 local function listPlayerSprites()
   return PLAYER_SPRITES
@@ -4509,10 +4508,25 @@ return function()
     end
   end
 
+  local function normalizePlayerSprite(v)
+    if type(v) ~= "string" or v == "" then
+      return DEFAULT_PLAYER_SPRITE
+    end
+    if v == "leaf.png" or v == "leaf_flip.png" then
+      return "green_flip.png"
+    end
+    if v == "jessie.png" or v == "james.png"
+        or v == "blue_flip.png" or v == "blue.png"
+        or v == "silver_flip.png" or v == "silver.png" then
+      return DEFAULT_PLAYER_SPRITE
+    end
+    return v
+  end
+
   local function readPlayerSpritePref(save)
     local v = save and save.options and save.options.crystalPlayerSprite
     if type(v) == "string" and v ~= "" then
-      playerSprite = v
+      playerSprite = normalizePlayerSprite(v)
     else
       playerSprite = DEFAULT_PLAYER_SPRITE
     end
@@ -4548,7 +4562,7 @@ return function()
       owSkin.player()
       owSkin.overworld()
     elseif key == "crystalPlayerSprite" then
-      playerSprite = val
+      playerSprite = normalizePlayerSprite(val)
       owSkin.player()
     elseif key == "crystalBattlePic" then
       battlePicPref = (val == "back") and "back" or "front"

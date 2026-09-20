@@ -85,7 +85,8 @@ return {
     installOrder = 8,
     defaultEnabled = true,
     bulkUI = false,
-    files = { "main.lua", "secret_mew.lua", "all_pkmn_gen1.lua", "force_crystal.lua" },
+    files = { "main.lua", "secret_mew.lua", "all_pkmn_gen1.lua", "force_crystal.lua",
+      "catch_rate.lua" },
     assets = { "assets/sparkle.png" },
   },
   {

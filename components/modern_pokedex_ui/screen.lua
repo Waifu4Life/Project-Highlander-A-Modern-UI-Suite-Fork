@@ -2241,12 +2241,19 @@ return function(mod, compatibility)
       drawText(state.def.name or "?", layout.info.x + 6,
         layout.info.y + 17, layout.info.w - 12, BLACK)
     end
+    local kindY = layout.info.y + (layout.wide and 16 or 27)
+    local rateY = kindY + 10
     if e.kind then
-      drawText(e.kind, layout.info.x + 6,
-        layout.info.y + (layout.wide and 16 or 27),
+      drawText(e.kind, layout.info.x + 6, kindY,
         layout.info.w - 12, layout.wide and BLACK or DARK)
     end
-    local chipY = layout.info.y + layout.info.h - 16
+    local rate = tonumber(state.def.catchRate)
+    if rate then
+      drawText("CatchRate:" .. tostring(math.floor(rate)),
+        layout.info.x + 6, rateY,
+        layout.info.w - 12, layout.wide and BLACK or DARK)
+    end
+    local chipY = layout.info.y + layout.info.h - 13
     local available = layout.info.w - 12
     local two = types[2] and types[2] ~= types[1]
     local chipW = two and math.floor((available - 3) / 2) or available
@@ -3498,7 +3505,7 @@ return function(mod, compatibility)
       local available = layout.info.w - 12
       local two = types[2] and types[2] ~= types[1]
       local chipW = two and math.floor((available - 3) / 2) or available
-      local chipY = layout.info.y + layout.info.h - 16
+      local chipY = layout.info.y + layout.info.h - 13
       if types[1] then
         zones[#zones + 1] = { colors = paletteFor({ types = { types[1] } }),
           x = layout.info.x + 6, y = chipY, w = chipW, h = 11 }

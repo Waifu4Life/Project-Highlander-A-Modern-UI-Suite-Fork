@@ -17,7 +17,7 @@ return function(mod)
 
   local cache = {}
   local function marker(game)
-    local key = (gen2() and "kris" or "leaf")
+    local key = (gen2() and "kris" or "green")
     if not girl(game) then
       key = gen2() and "gold" or "red"
     end

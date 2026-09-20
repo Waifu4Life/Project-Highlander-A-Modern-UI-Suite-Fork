@@ -31,6 +31,8 @@ return function(mod)
       default = false },
     { key = "rematch_anyone", label = "REMATCH ANYONE", type = "toggle",
       default = false },
+    { key = "gen3_catch_rate", label = "GEN3 CATCH RATE", type = "toggle",
+      default = false },
     { key = "coins_2x", label = "2X COINS FOR MONEY",
       type = "toggle", default = false },
     { key = "pikachu_sound", label = "PIKACHU SOUND", type = "choice",
@@ -1299,6 +1301,7 @@ return function(mod)
   loadSibling("sneakers.lua")
   loadSibling("game_corner.lua")
   loadSibling("gen2_qol.lua")
+  loadSibling("catch_rate.lua")
 
   do
     local src = assert(mod:read("force_crystal.lua"), "force_crystal.lua missing")

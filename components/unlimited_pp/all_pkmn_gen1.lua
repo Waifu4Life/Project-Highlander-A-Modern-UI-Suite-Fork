@@ -239,7 +239,7 @@ return function(mod)
     local baby = rivalStarter(game.save)
     if beatenChampion(game.save) and slot1Species(game.save) == "MEWTWO"
         and f.SUITE_OAK_TOOK_BALL and not f.SUITE_OAK_BABY and baby then
-      say(game, "Incredible, that's the legendary POKéMON MEWTWO!\fThank you so much for showing it to me, this will help my research beyond what you can imagine.\f"
+      say(game, "Incredible, that's the legendary POKéMON MEWTWO!\fThank you so much for showing it to me, this will help my research beyond what you can imagine.\fHere, it's not much, but "
         .. rival .. " went to JOHTO to see their POKéMON ecosystem and brought me back a little something.\fHe had his " .. (FINAL[baby] or baby)
         .. " bred at a daycare over there and got a baby " .. baby .. ".\fI want you to have it, it should help you finish your POKéDEX.", function()
           local where = giveMon(game, baby, 5)
@@ -254,7 +254,7 @@ return function(mod)
       return true
     end
     if f.SUITE_OAK_OFFERED_BALL and not f.SUITE_OAK_TOOK_BALL then
-      say(game, "Go on, don't be shy.\fTake it, I won't tell\n" .. rival .. ".")
+      say(game, "Go on, don't be shy, take it.\fI won't tell " .. rival .. ".")
       return true
     end
     return false
@@ -376,7 +376,7 @@ return function(mod)
     if not fossil then return false end
     local ticket = hasItem(game.save, "SS_TICKET") or hasItem(game.save, "S_S_TICKET") or hasItem(game.save, "SSTICKET")
     if not ticket then
-      say(game, "Oh, it's you again, go away.\fI'm not giving you my fossil, OK? We had a deal!")
+      say(game, "Oh, it's you again, go away.\fI'm not giving you my fossil OK, we had a deal!")
       return true
     end
     local prompt = f.SUITE_FOSSIL_ASKED and "Have you reconsidered?"
@@ -386,7 +386,7 @@ return function(mod)
     if not ok then ok, TextBox = pcall(require, "src.ui.TextBox") end
     game.stack:push(TextBox.new(game, prompt, nil, {
       choice = function(yes)
-        if not yes then say(game, "Oh come on, please reconsider.") return end
+        if not yes then say(game, "Oh com'on, please reconsider.") return end
         takeItem(game.save, "SS_TICKET"); takeItem(game.save, "S_S_TICKET"); takeItem(game.save, "SSTICKET")
         game.save.inventory = game.save.inventory or {}
         game.save.inventory[fossil] = (game.save.inventory[fossil] or 0) + 1
@@ -512,12 +512,12 @@ return function(mod)
     local bird = slot1Species(game.save)
     if BIRDS[bird] and not f["SUITE_FUJI_" .. bird] then
       f["SUITE_FUJI_" .. bird] = true
-      say(game, "Oh my, that's " .. bird .. ",\nthe " .. BIRDS[bird] .. " legendary bird.\fThank you so much for showing it to me.\fPlease, take one of the POKé BALLs containing EEVEE on the table.")
+      say(game, "Oh my that's " .. bird .. ", the " .. BIRDS[bird] .. " legendary bird.\fThank you so much for showing it to me.\fPlease, take one of the POKé BALLs containing an EEVEE on the table.")
       return true
     end
     if not f.SUITE_FUJI_INTRO then
       f.SUITE_FUJI_INTRO = true
-      say(game, "Oh, it's you again, good to see you.\fOh, I see you've been busy acquiring badges. By any chance, are you also trying to find every POKéMON species?\fThere exist 3 legendary bird POKéMON in KANTO. If you capture them, could you show them to me? It's been one of my life's dreams to see them.\fI won't make you do this for free. Those POKé BALLs on the table each contain an EEVEE rescued from TEAM ROCKET.\fFor each legendary bird you show me, you may have one.")
+      say(game, "Oh, it's you again, good to see you.\fOh, I see you've been busy acquiring badges. By any chance, are you also trying to find every POKéMON species?\fOh you are, well then, could you do me a favor?\fThere are 3 legendary bird POKéMON in KANTO. If you capture them, could you show them to me? It's been one of my life's dreams to see them.\fI won't make you do this for free of course. You see those POKé BALLs on the table, each one contains an EEVEE that was rescued from TEAM ROCKET.\fFor each legendary bird you show me, you may have one. Pretty great deal, don't you think?")
       spawnFujiBalls(game, ow)
       return true
     end
@@ -792,7 +792,7 @@ return function(mod)
       say(game, "Thank you friend.")
       return true
     end
-    local prompt = "My name is Link C. and I have these POKéMON that I really love, but they can only evolve via trading.\fNow I don't want to give them after they evolved, I want them back, hence why I'll only trade for the same kind of POKéMON, that way, I know I'll get them back.\fWhat do you say, want to trade?"
+    local prompt = "My name is Link C. and I have these POKéMON that I really love, but they can only evolve via trading.\fNow I don't want to give them after they evolve, I want them back, hence why I'll only trade for the same kind of POKéMON, that way, I know I'll get them back.\fWhat do you say, want to trade?"
     local ok, TextBox = pcall(require, "src.render.TextBox")
     if not ok then ok, TextBox = pcall(require, "src.ui.TextBox") end
     game.stack:push(TextBox.new(game, prompt, nil, {

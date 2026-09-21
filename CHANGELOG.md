@@ -1,3 +1,6 @@
+## [1.68.0]
+- Gen1 All the Pokémon: NPC lines updated to the revised ODT (Oak, Miguel, Fuji, Link C.).
+
 ## [1.67.0]
 - Removed battle catch-rate overlay and the QoL toggle. Dex CatchRate line stays.
 - Restored Info-tab Notes / height position under the original black rule.

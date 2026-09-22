@@ -1,3 +1,20 @@
+## [1.73.0]
+- Gen1 exclusives: load-time content.encounters:patch of 10-slot mixed tables (151 API) plus encounter.roll 50% counterpart swap.
+
+## [1.72.0]
+- Gen1 exclusives: patch mod.content.encounters 10-slot grass tables (counterpart replaces last pair slot). Appended 11th slots never rolled.
+
+## [1.71.0]
+- Steel/Fairy: OTHER GEN1 MOVE CHANGES (Gust Flying, Karate Chop Fighting, Sand-Attack Ground, Struggle typeless).
+
+## [1.70.0]
+- Gen1 exclusives now patch encounter grass/water .slots and encounter.roll (Route 4 Ekans on Blue).
+
+## [1.69.0]
+- Gen2 dex: menu SFX on scroll/select; Info type chips use type colors.
+- Bag OPEN ON always picks the chosen tab (no last-tab memory).
+- Gen1 exclusives: Blue Route 4 (and related routes) explicitly add Ekans.
+
 ## [1.68.0]
 - Gen1 All the Pokémon: NPC lines updated to the revised ODT (Oak, Miguel, Fuji, Link C.).
 

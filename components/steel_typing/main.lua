@@ -31,6 +31,7 @@ local KEY_DARK_STEEL = "dark_vs_steel"
 local KEY_GHOST_PSYCHIC = "ghost_vs_psychic"
 local KEY_BUG_POISON = "bug_vs_poison"
 local KEY_ICE_FIRE = "ice_vs_fire"
+local KEY_GEN1_MOVES = "other_gen1_moves"
 
 local COMPONENT_KEYS = {
   KEY_STEEL,
@@ -41,6 +42,7 @@ local COMPONENT_KEYS = {
   KEY_GHOST_PSYCHIC,
   KEY_BUG_POISON,
   KEY_ICE_FIRE,
+  KEY_GEN1_MOVES,
 }
 
 local COMPONENT_KEY_SET = {}
@@ -56,6 +58,7 @@ local PRESETS = {
     [KEY_GHOST_PSYCHIC] = FIX_VANILLA,
     [KEY_BUG_POISON] = FIX_VANILLA,
     [KEY_ICE_FIRE] = FIX_VANILLA,
+    [KEY_GEN1_MOVES] = false,
   },
   [PRESET_GEN2] = {
     [KEY_STEEL] = true,
@@ -66,6 +69,7 @@ local PRESETS = {
     [KEY_GHOST_PSYCHIC] = FIX_GEN2,
     [KEY_BUG_POISON] = FIX_GEN2,
     [KEY_ICE_FIRE] = FIX_GEN2,
+    [KEY_GEN1_MOVES] = true,
   },
   [PRESET_GEN6] = {
     [KEY_STEEL] = true,
@@ -76,6 +80,7 @@ local PRESETS = {
     [KEY_GHOST_PSYCHIC] = FIX_GEN2,
     [KEY_BUG_POISON] = FIX_GEN2,
     [KEY_ICE_FIRE] = FIX_GEN2,
+    [KEY_GEN1_MOVES] = true,
   },
 }
 
@@ -634,6 +639,12 @@ return function(mod)
         { "GEN II", FIX_GEN2 },
       },
     },
+    {
+      key = KEY_GEN1_MOVES,
+      label = "OTHER GEN1 MOVE CHANGES",
+      type = "toggle",
+      default = defaults[KEY_GEN1_MOVES],
+    },
   })
 
   installPresetOptionSync(mod)
@@ -648,6 +659,14 @@ return function(mod)
     ghostPsychic = tostring(mod.options:get(KEY_GHOST_PSYCHIC) or FIX_VANILLA),
     bugPoison = tostring(mod.options:get(KEY_BUG_POISON) or FIX_VANILLA),
     iceFire = tostring(mod.options:get(KEY_ICE_FIRE) or FIX_VANILLA),
+    gen1Moves = (function()
+      local saved = mod.options:get(KEY_GEN1_MOVES)
+      if saved == nil then
+        local preset = tostring(mod.options:get(KEY_PRESET) or defaultPreset)
+        return preset == PRESET_GEN2 or preset == PRESET_GEN6
+      end
+      return saved and true or false
+    end)(),
   }
 
   local generation = detectGeneration(mod)
@@ -785,6 +804,62 @@ return function(mod)
       countMove(patchFairyMove(mod, moveId))
       if crystalRelevant then
         forceCrystalMoveMirror(crystal251, moveId, FAIRY)
+      end
+    end
+  end
+
+  -- Gust / Karate Chop / Sand-Attack / Struggle: Gen I left these Normal.
+  -- Later games retconned the first three; Struggle became typeless so it
+  -- can damage Ghosts. Toggle is independent of Steel/Fairy species.
+  local GEN1_RETRO_MOVES = {
+    GUST = "FLYING",
+    KARATE_CHOP = "FIGHTING",
+    SAND_ATTACK = "GROUND",
+    SANDATTACK = "GROUND",
+  }
+  local function typelessId()
+    local chart = mod.content.type_chart
+    if chart:get("TYPELESS") ~= nil then return "TYPELESS" end
+    if chart:get("CURSE_TYPE") ~= nil then return "CURSE_TYPE" end
+    if chart:get("???") ~= nil then return "???" end
+    ensureType(mod, "TYPELESS", { name = "TYPELESS", category = "special" })
+    local defenses = {
+      "NORMAL", "FIGHTING", "FLYING", "POISON", "GROUND", "ROCK", "BUG",
+      "GHOST", "STEEL", "FIRE", "WATER", "GRASS", "ELECTRIC", "PSYCHIC",
+      "ICE", "DRAGON", "DARK", "FAIRY", "BIRD", "CURSE_TYPE",
+    }
+    for _, t in ipairs(defenses) do
+      if chart:get(t) ~= nil or t == "GHOST" then
+        setMatchup(mod, "TYPELESS>" .. t, 10)
+        setMatchup(mod, t .. ">TYPELESS", 10)
+      end
+    end
+    return "TYPELESS"
+  end
+  if config.gen1Moves then
+    for moveId, target in pairs(GEN1_RETRO_MOVES) do
+      countMove(patchMoveType(mod, moveId, "NORMAL", target))
+      if crystalRelevant then
+        patchCrystalMoveMirror(mod, crystal251, moveId, "NORMAL", target)
+      end
+    end
+    local typeless = typelessId()
+    countMove(forceMoveType(mod, "STRUGGLE", typeless))
+    if crystalRelevant then
+      forceCrystalMoveMirror(crystal251, "STRUGGLE", typeless)
+    end
+  else
+    for moveId, target in pairs(GEN1_RETRO_MOVES) do
+      local move = mod.content.moves and mod.content.moves:get(moveId)
+      if move and move.type == target then
+        countMove(forceMoveType(mod, moveId, "NORMAL"))
+      end
+    end
+    local struggle = mod.content.moves and mod.content.moves:get("STRUGGLE")
+    if struggle and struggle.type ~= "NORMAL" then
+      local t = tostring(struggle.type)
+      if t == "TYPELESS" or t == "CURSE_TYPE" or t == "???" then
+        countMove(forceMoveType(mod, "STRUGGLE", "NORMAL"))
       end
     end
   end

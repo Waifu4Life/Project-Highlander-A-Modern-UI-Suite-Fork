@@ -50,6 +50,7 @@ return function(parent, components)
       ghost_vs_psychic = "GHOST/PSY",
       bug_vs_poison = "BUG/POISON",
       ice_vs_fire = "ICE/FIRE",
+      other_gen1_moves = "OTHER GEN1 MOVES",
     },
     rumble = {
       enabled = "RUMBLE", intensity = "INTENSITY",

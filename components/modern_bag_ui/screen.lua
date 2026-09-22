@@ -2396,11 +2396,9 @@ return function(mod, compatibility)
       menu.modernBagOpenSort = openSortMenu
       local initial = compatibility.pockets and compatibility.pockets.opening(menu.modernBagPockets) or 1
       local saved = menu.modernBagRememberSelection and selections[game.save]
-      if saved and saved.openOn == menu.modernBagOpeningPreference then
+      -- OPEN ON always wins. Memory only restores the cursor inside that tab.
+      if saved and type(saved.states) == "table" then
         menu.modernBagPocketState = saved.states
-        for index, pocket in ipairs(menu.modernBagPockets) do
-          if pocket.key == saved.pocket then initial = index break end
-        end
       end
       if externalController then switchPocket(menu, initial - menu.modernBagPocket)
       else menu.modernBagPocket = initial end

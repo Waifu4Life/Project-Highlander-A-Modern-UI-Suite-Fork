@@ -221,7 +221,18 @@ return function(mod, source)
     end
     menu.modernDexShinyOnly=true;menu.index=1;menu.scroll=0
   end
+  local function beep(menu)
+    pcall(function()
+      require("src.core.Sound").play(menu.game.data, "Press_AB")
+    end)
+  end
   local function update(menu, input)
+    if input and (input:wasPressed("up") or input:wasPressed("down")
+        or input:wasPressed("left") or input:wasPressed("right")
+        or input:wasPressed("a") or input:wasPressed("b")
+        or input:wasPressed("select") or input:wasPressed("start")) then
+      beep(menu)
+    end
     if menu.modernGen2Actions then
       local action = menu.modernGen2Actions
       if input:wasPressed("b") then menu.modernGen2Actions=nil

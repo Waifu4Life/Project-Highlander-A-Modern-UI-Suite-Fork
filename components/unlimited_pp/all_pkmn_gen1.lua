@@ -1078,136 +1078,169 @@ return function(mod)
     end
   end)
 
+  local function exclusiveOn()
+    if feat("gen1_exclusive") then return true end
+    return optOn()
+  end
+
   pcall(function()
+    -- Same API as All_Pokemon_Catchable_151: patch content.encounters at
+    -- load with exactly 10 grass slots. Appended 11th rows never roll.
+    local function slot(level, species)
+      return { level = level, species = species }
+    end
+    local GRASS = {
+      ROUTE_4 = {
+        slot(8,"RATTATA"), slot(8,"SPEAROW"), slot(10,"RATTATA"),
+        slot(9,"SPEAROW"), slot(10,"EKANS"), slot(10,"SANDSHREW"),
+        slot(10,"SPEAROW"), slot(8,"EKANS"), slot(8,"SANDSHREW"),
+        slot(12,"SPEAROW"),
+      },
+      ROUTE_5 = {
+        slot(13,"PIDGEY"), slot(13,"BELLSPROUT"), slot(13,"ODDISH"),
+        slot(15,"PIDGEY"), slot(10,"MANKEY"), slot(10,"MEOWTH"),
+        slot(16,"BELLSPROUT"), slot(16,"ODDISH"), slot(15,"ABRA"),
+        slot(17,"PIDGEY"),
+      },
+      ROUTE_6 = {
+        slot(13,"PIDGEY"), slot(13,"BELLSPROUT"), slot(13,"ODDISH"),
+        slot(15,"PIDGEY"), slot(10,"MANKEY"), slot(10,"MEOWTH"),
+        slot(16,"BELLSPROUT"), slot(16,"ODDISH"), slot(15,"ABRA"),
+        slot(17,"PIDGEY"),
+      },
+      ROUTE_7 = {
+        slot(19,"PIDGEY"), slot(19,"ODDISH"), slot(19,"BELLSPROUT"),
+        slot(20,"MANKEY"), slot(20,"MEOWTH"), slot(19,"GROWLITHE"),
+        slot(19,"VULPIX"), slot(22,"PIDGEY"), slot(18,"ABRA"),
+        slot(20,"ABRA"),
+      },
+      ROUTE_8 = {
+        slot(18,"PIDGEY"), slot(18,"EKANS"), slot(18,"SANDSHREW"),
+        slot(20,"MANKEY"), slot(20,"MEOWTH"), slot(19,"GROWLITHE"),
+        slot(19,"VULPIX"), slot(18,"ABRA"), slot(20,"GROWLITHE"),
+        slot(20,"VULPIX"),
+      },
+      ROUTE_9 = {
+        slot(16,"RATTATA"), slot(16,"SPEAROW"), slot(14,"EKANS"),
+        slot(14,"SANDSHREW"), slot(16,"EKANS"), slot(16,"SANDSHREW"),
+        slot(17,"SPEAROW"), slot(18,"FEAROW"), slot(15,"EKANS"),
+        slot(15,"SANDSHREW"),
+      },
+      ROUTE_11 = {
+        slot(14,"SPEAROW"), slot(15,"DROWZEE"), slot(12,"EKANS"),
+        slot(12,"SANDSHREW"), slot(13,"EKANS"), slot(13,"SANDSHREW"),
+        slot(15,"SPEAROW"), slot(15,"DROWZEE"), slot(17,"DROWZEE"),
+        slot(15,"SANDSHREW"),
+      },
+      ROUTE_12 = {
+        slot(24,"ODDISH"), slot(24,"BELLSPROUT"), slot(23,"VENONAT"),
+        slot(25,"PIDGEY"), slot(23,"GLOOM"), slot(23,"WEEPINBELL"),
+        slot(26,"VENONAT"), slot(26,"PIDGEY"), slot(25,"GLOOM"),
+        slot(25,"WEEPINBELL"),
+      },
+      ROUTE_13 = {
+        slot(24,"ODDISH"), slot(24,"BELLSPROUT"), slot(25,"PIDGEY"),
+        slot(25,"VENONAT"), slot(24,"GLOOM"), slot(24,"WEEPINBELL"),
+        slot(26,"DITTO"), slot(27,"PIDGEY"), slot(26,"GLOOM"),
+        slot(26,"WEEPINBELL"),
+      },
+      ROUTE_14 = {
+        slot(24,"ODDISH"), slot(24,"BELLSPROUT"), slot(26,"VENONAT"),
+        slot(26,"PIDGEY"), slot(24,"GLOOM"), slot(24,"WEEPINBELL"),
+        slot(23,"DITTO"), slot(27,"VENONAT"), slot(26,"GLOOM"),
+        slot(26,"WEEPINBELL"),
+      },
+      ROUTE_15 = {
+        slot(24,"ODDISH"), slot(24,"BELLSPROUT"), slot(26,"VENONAT"),
+        slot(26,"PIDGEY"), slot(24,"GLOOM"), slot(24,"WEEPINBELL"),
+        slot(25,"DITTO"), slot(27,"VENONAT"), slot(26,"GLOOM"),
+        slot(26,"WEEPINBELL"),
+      },
+      ROUTE_23 = {
+        slot(26,"SPEAROW"), slot(33,"FEAROW"), slot(26,"EKANS"),
+        slot(26,"SANDSHREW"), slot(32,"ARBOK"), slot(32,"SANDSLASH"),
+        slot(38,"DITTO"), slot(40,"FEAROW"), slot(41,"ARBOK"),
+        slot(41,"SANDSLASH"),
+      },
+      ROUTE_24 = {
+        slot(7,"WEEDLE"), slot(7,"CATERPIE"), slot(12,"PIDGEY"),
+        slot(12,"ODDISH"), slot(12,"BELLSPROUT"), slot(10,"ABRA"),
+        slot(13,"ODDISH"), slot(13,"BELLSPROUT"), slot(8,"ABRA"),
+        slot(14,"ODDISH"),
+      },
+      ROUTE_25 = {
+        slot(8,"WEEDLE"), slot(8,"CATERPIE"), slot(13,"PIDGEY"),
+        slot(12,"ODDISH"), slot(12,"BELLSPROUT"), slot(10,"ABRA"),
+        slot(14,"ODDISH"), slot(14,"BELLSPROUT"), slot(9,"METAPOD"),
+        slot(9,"KAKUNA"),
+      },
+      POWER_PLANT = {
+        slot(21,"VOLTORB"), slot(21,"MAGNEMITE"), slot(21,"PIKACHU"),
+        slot(23,"ELECTABUZZ"), slot(23,"MAGMAR"), slot(24,"MAGNETON"),
+        slot(32,"ELECTABUZZ"), slot(32,"MAGMAR"), slot(35,"MAGNETON"),
+        slot(36,"ELECTABUZZ"),
+      },
+      SAFARI_ZONE_EAST = {
+        slot(24,"NIDORAN_M"), slot(24,"NIDORAN_F"), slot(25,"PARAS"),
+        slot(25,"EXEGGCUTE"), slot(23,"SCYTHER"), slot(23,"PINSIR"),
+        slot(28,"NIDORINO"), slot(28,"NIDORINA"), slot(25,"SCYTHER"),
+        slot(25,"PINSIR"),
+      },
+      SAFARI_ZONE_NORTH = {
+        slot(26,"EXEGGCUTE"), slot(26,"RHYHORN"), slot(25,"PARAS"),
+        slot(31,"VENONAT"), slot(26,"SCYTHER"), slot(26,"PINSIR"),
+        slot(28,"EXEGGCUTE"), slot(28,"KANGASKHAN"), slot(30,"SCYTHER"),
+        slot(30,"PINSIR"),
+      },
+    }
     local PAIR = {
-      EKANS="SANDSHREW", ARBOK="SANDSLASH",
-      SANDSHREW="EKANS", SANDSLASH="ARBOK",
-      ODDISH="BELLSPROUT", GLOOM="WEEPINBELL", VILEPLUME="VICTREEBEL",
-      BELLSPROUT="ODDISH", WEEPINBELL="GLOOM", VICTREEBEL="VILEPLUME",
-      MANKEY="MEOWTH", PRIMEAPE="PERSIAN",
-      MEOWTH="MANKEY", PERSIAN="PRIMEAPE",
-      GROWLITHE="VULPIX", ARCANINE="NINETALES",
-      VULPIX="GROWLITHE", NINETALES="ARCANINE",
+      EKANS="SANDSHREW", SANDSHREW="EKANS",
+      ARBOK="SANDSLASH", SANDSLASH="ARBOK",
+      ODDISH="BELLSPROUT", BELLSPROUT="ODDISH",
+      GLOOM="WEEPINBELL", WEEPINBELL="GLOOM",
+      VILEPLUME="VICTREEBEL", VICTREEBEL="VILEPLUME",
+      MANKEY="MEOWTH", MEOWTH="MANKEY",
+      PRIMEAPE="PERSIAN", PERSIAN="PRIMEAPE",
+      GROWLITHE="VULPIX", VULPIX="GROWLITHE",
+      ARCANINE="NINETALES", NINETALES="ARCANINE",
       SCYTHER="PINSIR", PINSIR="SCYTHER",
       ELECTABUZZ="MAGMAR", MAGMAR="ELECTABUZZ",
     }
-    local RED_ONLY = {
-      EKANS=true, ARBOK=true, ODDISH=true, GLOOM=true, VILEPLUME=true,
-      MANKEY=true, PRIMEAPE=true, GROWLITHE=true, ARCANINE=true,
-      SCYTHER=true, ELECTABUZZ=true,
-    }
-    local BLUE_ONLY = {
-      SANDSHREW=true, SANDSLASH=true, VULPIX=true, NINETALES=true,
-      MEOWTH=true, PERSIAN=true, BELLSPROUT=true, WEEPINBELL=true,
-      VICTREEBEL=true, MAGMAR=true, PINSIR=true,
-    }
-    local YELLOW_ADD = {
-      VIRIDIAN_FOREST = { "WEEDLE", "KAKUNA" },
-      ROUTE_2 = { "WEEDLE", "KAKUNA" },
-      ROUTE_24 = { "WEEDLE" }, ROUTE_25 = { "WEEDLE" },
-      ROUTE_4 = { "EKANS" }, ROUTE_11 = { "EKANS" },
-      ROUTE_23 = { "EKANS", "ARBOK" },
-      CERULEAN_CAVE_1F = { "ARBOK" }, CERULEAN_CAVE_2F = { "ARBOK" },
-      CERULEAN_CAVE_B1F = { "ARBOK" },
-      ROUTE_5 = { "MEOWTH" }, ROUTE_6 = { "MEOWTH" },
-      ROUTE_7 = { "MEOWTH" }, ROUTE_8 = { "MEOWTH" },
-      POKEMON_MANSION_1F = { "KOFFING", "WEEZING", "MAGMAR" },
-      POKEMON_MANSION_2F = { "KOFFING", "WEEZING", "MAGMAR" },
-      POKEMON_MANSION_3F = { "KOFFING", "WEEZING", "MAGMAR" },
-      POKEMON_MANSION_B1F = { "KOFFING", "WEEZING", "MAGMAR" },
-      POWER_PLANT = { "ELECTABUZZ" },
-    }
-    local function copyEntry(e, species)
-      if type(e) ~= "table" then return species end
-      local c = {}
-      for k, v in pairs(e) do c[k] = v end
-      c.species = species
-      c.id = species
-      if c[1] then c[1] = species end
-      return c
-    end
-    local function speciesOf(e)
-      if type(e) == "table" then
-        return tostring(e.species or e.id or e[1] or ""):upper()
+    local function applyTables()
+      if not exclusiveOn() then return false end
+      local enc = mod.content and mod.content.encounters
+      if not enc or type(enc.patch) ~= "function" then return false end
+      for mapId, slots in pairs(GRASS) do
+        pcall(enc.patch, enc, mapId, { grass = { slots = slots } })
       end
-      return tostring(e or ""):upper()
+      return true
     end
-    local function hasSpecies(list, sp)
-      for _, e in ipairs(list) do
-        if speciesOf(e) == sp then return true end
-      end
-    end
-    local function appendToList(list, kind)
-      if type(list) ~= "table" or #list == 0 then return end
-      local extra = {}
-      if kind == "yellow" then return extra end
-      local allow = kind == "blue" and RED_ONLY or BLUE_ONLY
-      for _, e in ipairs(list) do
-        local sp = speciesOf(e)
-        local alt = PAIR[sp]
-        if alt and allow[alt] and not hasSpecies(list, alt) then
-          extra[#extra + 1] = copyEntry(e, alt)
-        end
-      end
-      for _, e in ipairs(extra) do list[#list + 1] = e end
-    end
-    local function looksLikeEncounters(t)
-      if type(t) ~= "table" or #t == 0 then return false end
-      local e = t[1]
-      if type(e) == "string" then return true end
-      if type(e) == "table" and (e.species or e.id or e.level or e.min) then return true end
-      return false
-    end
-    local function walkAppend(node, kind, depth)
-      if type(node) ~= "table" or depth > 7 then return end
-      if looksLikeEncounters(node) then
-        appendToList(node, kind)
-        return
-      end
-      for _, v in pairs(node) do
-        walkAppend(v, kind, depth + 1)
-      end
-    end
-    local function addNamed(game, mapId, species)
-      local roots = { game.data.encounters, game.data.wild, game.data.maps }
-      for _, root in ipairs(roots) do
-        if type(root) == "table" then
-          local node = root[mapId] or root[mapId:lower()] or root[mapId:upper()]
-          if type(node) == "table" then
-            local function dump(n, d)
-              if type(n) ~= "table" or d > 5 then return end
-              if looksLikeEncounters(n) then
-                for _, sp in ipairs(species) do
-                  if not hasSpecies(n, sp) then
-                    n[#n + 1] = copyEntry(n[1], sp)
-                  end
-                end
-                return
-              end
-              for _, v in pairs(n) do dump(v, d + 1) end
-            end
-            dump(node, 0)
-          end
-        end
-      end
-    end
-    local function inject(game)
-      if game._suiteWildInjected or not feat("gen1_exclusive") or not isGen1(game) then return end
-      game._suiteWildInjected = true
-      local kind = isYellow(game) and "yellow" or tostring(game.version or game.id or ""):lower():find("blue") and "blue" or "red"
-      walkAppend(game.data and game.data.encounters, kind, 0)
-      walkAppend(game.data and game.data.wild, kind, 0)
-      walkAppend(game.data and game.data.maps, kind, 0)
-      if kind == "yellow" then
-        for mapId, species in pairs(YELLOW_ADD) do
-          addNamed(game, mapId, species)
-        end
-      end
-    end
+    applyTables()
     mod.hooks:wrap("core.update", function(nextFn, game, dt)
-      if game then pcall(inject, game) end
+      if game then pcall(applyTables) end
       return nextFn(game, dt)
     end)
+    pcall(function()
+      mod.hooks:wrap("encounter.roll", function(next, encDef, ctx)
+        local result = next(encDef, ctx)
+        if not exclusiveOn() or type(result) ~= "table" then return result end
+        local sp = tostring(result.species or result.id or ""):upper()
+        local alt = PAIR[sp]
+        if not alt then return result end
+        local roll
+        if love and love.math and love.math.random then
+          roll = love.math.random()
+        else
+          roll = math.random()
+        end
+        if roll < 0.5 then
+          result.species = alt
+          result.id = alt
+        end
+        return result
+      end)
+    end)
   end)
+
 
 end

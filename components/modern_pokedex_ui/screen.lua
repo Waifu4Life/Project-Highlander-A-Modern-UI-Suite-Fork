@@ -2127,10 +2127,15 @@ return function(mod, compatibility)
     return body .. (terminated and "" or ".") .. trailing
   end
 
-  local function drawTypeChip(label, x, y, width)
-    gray(DARK)
+  local function drawTypeChip(label, x, y, width, typeId)
+    local prev = GEN2_RAMP
+    GEN2_RAMP = nil
+    local key = tostring(typeId or ""):upper()
+    local rgb = TYPE_BASE[key] or TYPE_BASE.NORMAL
+    love.graphics.setColor(rgb[1] / 255, rgb[2] / 255, rgb[3] / 255, 1)
     chamfer("fill", x, y, width, 11, 2)
     drawRawCentered(label, x + 2, y + 2, width - 4, WHITE)
+    GEN2_RAMP = prev
   end
 
   local function drawEntryHeader(state, layout)
@@ -2260,13 +2265,13 @@ return function(mod, compatibility)
     if types[1] then
       local label = layout.wide and translatedTypeName(types[1])
         or shortTypeName(types[1])
-      drawTypeChip(label, layout.info.x + 6, chipY, chipW)
+      drawTypeChip(label, layout.info.x + 6, chipY, chipW, types[1])
     end
     if types[1] and two then
       local label = layout.wide and translatedTypeName(types[2])
         or shortTypeName(types[2])
       drawTypeChip(label, layout.info.x + 9 + chipW,
-        chipY, chipW)
+        chipY, chipW, types[2])
     end
 
     local notes = dexText(state, owned)
@@ -3044,7 +3049,7 @@ return function(mod, compatibility)
     if move.type then
       drawTypeChip(translatedTypeName(move.type),
         x + w - (layout.wide and 70 or 48),
-        y + 8, layout.wide and 64 or 42)
+        y + 8, layout.wide and 64 or 42, move.type)
     end
 
     local facts = {}

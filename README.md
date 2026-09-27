@@ -177,7 +177,7 @@ Turning a row **Off** does not take away anything already unlocked.
 | Other fighting PKMN | Dojo leftover after the Karate Master rematch (Lv 70, best natural moves). |
 | More Eevees | Mr. Fuji after each bird; greed line if you grab extra balls. |
 | Trade with Link C. | Celadon Department 3F Game Boy Kid. Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
-| Get ??? | Mew after a full 150 caught, no Mew already in the Dex, Champion beaten. Mom hint → bedroom → garden west of Oak’s. Lv 50, stays until caught. |
+| Get ??? | Get the final Pokémon |
 
 ## Gen2 Get All the Pokémon
 

@@ -23,6 +23,17 @@ derived from user-supplied references to the Pokémon games; no ROM assets are
 included beyond data extracted at runtime by Gen1Recomp's normal workflow.
 
 
+## YoDrehDenSwagAuf — poke_followers GSC icons
+
+16×96 follower icon sheets under `assets/poke_followers/` come from
+wilds-of-kanto-v2.1.9 (`assets/enhanced_overworld/poke_followers/`).
+That pack is MIT-licensed:
+
+Copyright (c) 2026 YoDrehDenSwagAuf
+
+The license text is shipped next to the PNGs at
+`assets/poke_followers/LICENSE`.
+
 ## zyrancz — STEEL/FAIRY AND TYPING CHARTS
 
 Typing-chart and Steel/Dark/Fairy mechanics from

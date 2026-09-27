@@ -18,10 +18,11 @@ return function(mod)
     screenTouches = {},
     bootErrors = {},
     battlePortrait = loadLocal("core/battle_portraits.lua")(mod),
-    drawMenuIcon = loadLocal("core/menu_icons.lua")(mod),
     uiSurfaces = loadLocal("core/ui_surfaces.lua")(mod, settings),
     shinyDex = loadLocal("core/shiny_dex.lua")(mod),
+    pokeIcons = loadLocal("core/poke_icons.lua")(mod, settings),
   }
+  state.drawMenuIcon = loadLocal("core/menu_icons.lua")(mod, state.pokeIcons)
 
   -- Validate the complete archive before any component gets a chance to
   -- register. This keeps a damaged all-in-one install atomic.

@@ -38,6 +38,7 @@ return function(parent, settings, state, component)
   api.suite = {
     battlePortrait = state.battlePortrait,
     shinyDex = state.shinyDex,
+    pokeIcons = state.pokeIcons,
     drawMenuIcon = state.drawMenuIcon,
     fixedUISize = function() return state.uiSurfaces.fixedSize(component) end,
     isNativeEvolution = state.uiSurfaces.isNativeEvolution,

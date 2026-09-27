@@ -1584,8 +1584,20 @@ return function(mod, genderExports, compatibility)
     x, y = math.floor(x), math.floor(y)
     -- AUTO retains the installed icon renderer. Explicit small-icon choices
     -- reuse the Party presenter; portrait selection never reaches this path.
-    local source = mod.suite and mod.suite.option("modern_party_ui", "sprite_source")
-    local party = source and source ~= "auto" and mod.find("modern_party_ui")
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    local pokePc = pokeIcons and pokeIcons.source("pc")
+    if pokePc == "followers" and pokeIcons.draw(screen.game, mon, x, y, {
+        animate = animate, counter = animationCounter(screen),
+        size = 16 * scale,
+        markTrueColor = false,
+      }) then
+      addTrueColorRegion(trueColorRegions, x, y, 16 * scale, 16 * scale, clip)
+      return
+    end
+    local source = pokePc == "original" and "original"
+      or (mod.suite and mod.suite.option("modern_party_ui", "sprite_source"))
+    local party = source and source ~= "auto" and source ~= "original"
+      and mod.find("modern_party_ui")
     local draw = party and party.exports and party.exports.drawPartyToolIcon
     if draw then
       local mark = PaletteFX.markTrueColor

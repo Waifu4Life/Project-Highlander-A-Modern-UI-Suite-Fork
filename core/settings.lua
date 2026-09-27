@@ -10,6 +10,14 @@ return function(parent, components)
   for _, component in ipairs(components) do
     Settings.byId[component.id] = component
   end
+  Settings.byId.poke_icons = {
+    id = "poke_icons",
+    key = "poke_icons",
+    name = "Poke Icons",
+    short = "POKE ICONS",
+    defaultEnabled = true,
+    bulkUI = false,
+  }
 
   -- The manager renders schemas through the same 160x144 four-row option
   -- boxes as the in-game menu.  Prefixing every imported label verbatim made
@@ -445,6 +453,18 @@ return function(parent, components)
     end
     return schema
   end
+
+  Settings:registerSchema(Settings.byId.poke_icons, {
+    { key = "pokedex", label = "ICONS FOR POKEDEX", type = "choice",
+      default = "original",
+      choices = { { "ORIGINAL", "original" }, { "WILD FOLLOWERS", "followers" } } },
+    { key = "party", label = "ICONS FOR PARTY", type = "choice",
+      default = "original",
+      choices = { { "ORIGINAL", "original" }, { "WILD FOLLOWERS", "followers" } } },
+    { key = "pc", label = "ICONS FOR PC", type = "choice",
+      default = "original",
+      choices = { { "ORIGINAL", "original" }, { "WILD FOLLOWERS", "followers" } } },
+  })
 
   return Settings
 end

@@ -291,9 +291,15 @@ return function(mod)
     local G = love.graphics
     local items = menu.items or {}
     local count = #items
-    local rowStep = count > 0 and math.max(11,
-      math.min(16, math.floor(92 / count))) or 16
-    local h = count * rowStep + 22
+    local visible = math.min(8, math.max(1, count))
+    local rowStep = 12
+    local idx = tonumber(menu.index) or 1
+    local scroll = tonumber(menu.suiteScroll) or 0
+    if idx - 1 < scroll then scroll = idx - 1 end
+    if idx > scroll + visible then scroll = idx - visible end
+    scroll = math.max(0, math.min(scroll, math.max(0, count - visible)))
+    menu.suiteScroll = scroll
+    local h = visible * rowStep + 22
     local width = self.modernPartyWideWidth or 160
     local x, y, w = width - 86, math.max(18, 132 - h), 84
     setColor(MODAL)
@@ -302,23 +308,50 @@ return function(mod)
     love.graphics.setLineWidth(2)
     chamfer("line", x + 1, y + 1, w - 2, h - 2, 4)
     drawInk("ACTIONS", x + 8, y + 5, w - 16, INK_WHITE)
-    for i, item in ipairs(items) do
-      local rowY = y + 18 + (i - 1) * rowStep
-      local selected = i == menu.index
-      if selected then
-        setColor(MODAL_DARK)
-        G.rectangle("fill", x + 5, rowY, w - 10, rowStep - 2)
-        setColor(INK_WHITE)
-        G.rectangle("fill", x + 8, rowY + math.max(2,
-          math.floor((rowStep - 5) / 2)), 3, 5)
+    local function tri(up, cx, cy)
+      setColor(INK_WHITE)
+      if up then
+        love.graphics.polygon("fill", cx, cy, cx - 4, cy + 5, cx + 4, cy + 5)
+      else
+        love.graphics.polygon("fill", cx, cy + 5, cx - 4, cy, cx + 4, cy)
       end
-      drawInk(item.label or item.id or "ACTION", x + 14,
-        rowY + math.max(1, math.floor((rowStep - 8) / 2)),
-        w - 22, selected and INK_WHITE or INK_BLACK)
+    end
+    if scroll > 0 then
+      tri(true, x + w - 10, y + 6)
+    end
+    if scroll + visible < count then
+      tri(false, x + w - 10, y + h - 12)
+    end
+    for drawI = 1, visible do
+      local i = scroll + drawI
+      local item = items[i]
+      if item then
+        local rowY = y + 18 + (drawI - 1) * rowStep
+        local selected = i == menu.index
+        if selected then
+          setColor(MODAL_DARK)
+          G.rectangle("fill", x + 5, rowY, w - 10, rowStep - 2)
+          setColor(INK_WHITE)
+          G.rectangle("fill", x + 8, rowY + math.max(2,
+            math.floor((rowStep - 5) / 2)), 3, 5)
+        end
+        drawInk(item.label or item.id or "ACTION", x + 14,
+          rowY + math.max(1, math.floor((rowStep - 8) / 2)),
+          w - 22, selected and INK_WHITE or INK_BLACK)
+      end
     end
   end
 
   local function drawFollowerIcon(self, mon, x, y, selected)
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    if pokeIcons and pokeIcons.wants("party", "followers") then
+      return pokeIcons.draw(self.game, mon, x, y, {
+        animate = selected, counter = self.blink or self.clock or 0, size = 16,
+      })
+    end
+    if pokeIcons and pokeIcons.wants("party", "original") then
+      return false
+    end
     local wilds = mod.find and mod.find("overworld_wild_spawns")
     local resolve = wilds and wilds.exports and wilds.exports.resolveFollowerSprite
     if type(resolve) ~= "function" then return false end

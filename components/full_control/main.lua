@@ -270,6 +270,22 @@ return function(mod)
       input.pressQueue[#input.pressQueue + 1] = btn
     end
 
+    -- Mirrors fireButton exactly. Presses above are handled entirely by our
+    -- own gamepadpressed override (the native handler only runs during a
+    -- rebind capture), so releases must go through the same code path too --
+    -- otherwise a button can be marked "held" by us on press but never get
+    -- cleared, since the untouched native gamepadreleased has no record of
+    -- a press it never saw. This was the cause of movement occasionally
+    -- sticking in a direction until spinning the D-pad happened to clear it.
+    local function releaseButton(input, btn)
+      if not (input and btn) then return end
+      if type(input.release) == "function" then
+        pcall(input.release, input, btn)
+        return
+      end
+      if input.state then input.state[btn] = false end
+    end
+
     local origKey = Input.keypressed
     if type(origKey) == "function" then
       function Input:keypressed(key, ...)
@@ -314,6 +330,25 @@ return function(mod)
       local mapped = (self.padBindings or {})[button]
       if mapped then
         fireButton(self, mapped)
+      end
+    end
+
+    local origPadUp = Input.gamepadreleased
+    function Input:gamepadreleased(joystick, button)
+      if self.captureArmed and type(origPadUp) == "function" then
+        pcall(origPadUp, self, joystick, button)
+      end
+      local extra = extras.pad[button]
+      if extra and extra:sub(1, 4) == "item" then
+        return
+      end
+      if extra then
+        releaseButton(self, extra)
+        return
+      end
+      local mapped = (self.padBindings or {})[button]
+      if mapped then
+        releaseButton(self, mapped)
       end
     end
 

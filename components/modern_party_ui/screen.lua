@@ -1331,6 +1331,10 @@ return function(mod, genderExports, compatibility)
     local selected = opts.selected ~= false
     local counter = tonumber(opts.counter) or 0
     local source = setting("sprite_source", "auto")
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    local pokeParty = pokeIcons and pokeIcons.source("party")
+    if pokeParty == "original" then source = "original" end
+    if pokeParty == "followers" then source = "followers" end
     local animate = setting("animate_icons", true) and selected
     local def = definition(menu, mon)
     local icons = game.data.icons or {}
@@ -1365,7 +1369,11 @@ return function(mod, genderExports, compatibility)
 
     local regions = {}
     local drawn = false
-    if source == "original" then
+    if source == "followers" and pokeIcons then
+      drawn = pokeIcons.draw(game, mon, x, y, {
+        animate = animate, counter = counter, size = size,
+      }) == true
+    elseif source == "original" then
       drawn = drawOriginalIcon(menu, mon, x, y, animate, counter) == true
       protected = false
       stableRect = nil
@@ -1438,6 +1446,10 @@ return function(mod, genderExports, compatibility)
     local liveEntry = (icons.bySpecies and icons.bySpecies[mon.species])
       or (def and def.icon)
     local source = setting("sprite_source", "auto")
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    local pokeParty = pokeIcons and pokeIcons.source("party")
+    if pokeParty == "original" then source = "original" end
+    if pokeParty == "followers" then source = "followers" end
     local menuEntry = source == "menu_pack"
       and explicitMenuPackEntry(menu, mon) or nil
     local entry = menuEntry or liveEntry
@@ -1494,7 +1506,18 @@ return function(mod, genderExports, compatibility)
     end
 
     local drawn = false
-    if source == "original" then
+    if source == "followers" and pokeIcons then
+      prepareStableWell()
+      drawn = pokeIcons.draw(menu.game, mon, iconX, iconY, {
+        animate = animate, counter = menu.blink or 0, size = iconSize,
+        markTrueColor = false,
+      }) == true
+      if drawn and stableRect then
+        trueColorIcons[#trueColorIcons + 1] = stableRect
+      elseif not drawn then
+        discardStableWell()
+      end
+    elseif source == "original" then
       drawn = drawOriginalIcon(menu, mon, iconX, iconY,
         animate, menu.blink or 0) == true
     end

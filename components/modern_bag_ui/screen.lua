@@ -124,6 +124,11 @@ return function(mod, compatibility)
     S_S_TICKET = true, SS_TICKET = true, GOLD_TEETH = true,
     SECRET_KEY = true, COIN_CASE = true, OAKS_PARCEL = true,
     BIKE_VOUCHER = true, OLD_ROD = true, GOOD_ROD = true, SUPER_ROD = true,
+    GS_BALL = true, GSBALL = true, ["GS BALL"] = true,
+    BASEMENT_KEY = true, CARD_KEY = true, SQUIRTBOTTLE = true,
+    SQUIRT_BOTTLE = true, BLUE_CARD = true, CLEAR_BELL = true,
+    SILVER_WING = true, RAINBOW_WING = true, MYSTERY_EGG = true,
+    GS_BALL = true,
   }
 
   local BERRIES = {
@@ -167,6 +172,7 @@ return function(mod, compatibility)
     NUGGET = Strings.source("A solid gold nugget that sells for a high price."),
     POKE_DOLL = Strings.source("A doll that can help you escape a wild battle."),
     BICYCLE = Strings.source("A folding bicycle that is faster than walking."),
+    GS_BALL = Strings.source("A mysterious ball. Kurt in Azalea might know more."),
     TOWN_MAP = Strings.source("A convenient map of the Kanto region."),
     ITEMFINDER = Strings.source("Checks the area for hidden items."),
     POKE_FLUTE = Strings.source("A flute with a melody that wakes sleepers."),

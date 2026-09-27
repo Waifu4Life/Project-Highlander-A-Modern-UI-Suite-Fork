@@ -1,7 +1,7 @@
 -- Small menu icons are independent of battle/summary portraits. Gen 1 uses
 -- the existing Party presenter; Gen 2 selects icon definitions for a private
 -- renderer view, preserving its native frames and held-item/mail markers.
-return function(mod)
+return function(mod, pokeIcons)
   local Version = require("src.core.GameVersion")
   if type(Version.generation) ~= "function" or Version.generation() ~= 2 then
     return function() return false end
@@ -36,8 +36,17 @@ return function(mod)
     end
   end
   return function(game, renderer, mon, x, y)
+    if not mon or mon.isEgg then return false end
+    if pokeIcons and pokeIcons.wants("party", "followers") then
+      return pokeIcons.draw(game, mon, x, y, {
+        animate = true, counter = renderer and renderer.clock or 0, size = 16,
+      }) == true
+    end
+    if pokeIcons and pokeIcons.wants("party", "original") then
+      return false
+    end
     local source = mod.options:get("party.sprite_source") or "auto"
-    if source == "auto" or not mon or mon.isEgg then return false end
+    if source == "auto" then return false end
     local entry
     if source == "original" then
       local id = original and original.species and original.species[mon.species]

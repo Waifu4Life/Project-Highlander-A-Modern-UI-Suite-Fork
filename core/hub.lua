@@ -94,6 +94,10 @@ return function(mod, settings, state, components)
         gen1_exclusive = true, gen1_starters = true, gen1_fossil = true,
         gen1_fighting = true, gen1_eevee = true, gen1_linkc = true,
         gen1_mystery = true,
+        gen2_features_migrated = true,
+        gen2_exclusive = true, gen2_starters = true, gen2_fossil = true,
+        gen2_celebi = true, gen2_linkc = true, gen2_kanto_starters = true,
+        gen2_birds = true, gen2_mew = true, gen2_roaming_hunter = true,
       }
       if row.key ~= component.enabledOption and row.key ~= "enabled"
           and row.key ~= "theme_by_game"
@@ -316,6 +320,18 @@ return function(mod, settings, state, components)
     { key = "gen1_mystery", label = "GET ???" },
   }
 
+  local GEN2_FEATURE_ROWS = {
+    { key = "gen2_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN2 GAMES" },
+    { key = "gen2_starters", label = "OBTAIN THE OTHER JOHTO STARTERS" },
+    { key = "gen2_fossil", label = "KIM FOSSIL TRADES" },
+    { key = "gen2_celebi", label = "GS BALL / CELEBI" },
+    { key = "gen2_linkc", label = "TRADE WITH LINK C." },
+    { key = "gen2_kanto_starters", label = "OAK KANTO STARTERS" },
+    { key = "gen2_birds", label = "KANTO LEGENDARY BIRDS" },
+    { key = "gen2_mew", label = "MEW AND MEWTWO" },
+    { key = "gen2_roaming_hunter", label = "ROAMING HUNTER" },
+  }
+
   local function migrateGen1Features(game, qol)
     if not qol then return end
     if settings:get(qol, "gen1_features_migrated") == true then return end
@@ -327,10 +343,22 @@ return function(mod, settings, state, components)
     settings:persist(game)
   end
 
+  local function migrateGen2Features(game, qol)
+    if not qol then return end
+    if settings:get(qol, "gen2_features_migrated") == true then return end
+    local master = settings:get(qol, "gen2_all_pkmn") == true
+    for _, row in ipairs(GEN2_FEATURE_ROWS) do
+      settings:set(game, qol, row.key, master)
+    end
+    settings:set(game, qol, "gen2_features_migrated", true)
+    settings:persist(game)
+  end
+
   local function openFeatureMenu(game, title, rows)
     local qol = qolComponent()
     if not qol then return false end
     migrateGen1Features(game, qol)
+    migrateGen2Features(game, qol)
     local pageRows = {}
     for _, source in ipairs(rows) do
       local row = source
@@ -356,6 +384,44 @@ return function(mod, settings, state, components)
     return true
   end
 
+  local function openPokeIconsMenu(game)
+    local rows = {
+      { key = "pokedex", label = "ICONS FOR POKEDEX" },
+      { key = "party", label = "ICONS FOR PARTY" },
+      { key = "pc", label = "ICONS FOR PC" },
+    }
+    local pageRows = {}
+    for _, source in ipairs(rows) do
+      local row = source
+      pageRows[#pageRows + 1] = {
+        id = "poke_icons." .. row.key,
+        label = row.label,
+        value = function()
+          return settings:get("poke_icons", row.key) == "followers"
+            and "WILD FOLLOWERS" or "ORIGINAL"
+        end,
+        step = function(activeGame)
+          local nextv = settings:get("poke_icons", row.key) == "followers"
+            and "original" or "followers"
+          settings:set(activeGame, "poke_icons", row.key, nextv)
+          settings:persist(activeGame)
+          return true
+        end,
+      }
+    end
+    pageRows[#pageRows + 1] = {
+      id = "poke_icons.copyright",
+      label = "Copyright (c) YoDrehDenSwagAuf",
+      value = function() return "" end,
+    }
+    local page = OptionsMenu.new(game)
+    page.rows, page.view = pageRows, pageRows
+    page.index, page.scroll, page.sub = 1, 0, true
+    page.modernUiSuiteComponent = "poke_icons"
+    game.stack:push(page)
+    return true
+  end
+
   openHub = function(game)
     local menu
     local function buildItems()
@@ -374,6 +440,10 @@ return function(mod, settings, state, components)
           openOnly = true,
         }
       end
+      items[#items + 1] = {
+        id = "poke_icons_menu", label = "POKE ICONS",
+        right = "OPEN", action = "poke_icons",
+      }
       items[#items + 1] = {
         id = "gen1_all_menu", label = "GEN1 GET ALL THE POKEMON",
         fullLabel = "GEN1 GET ALL THE POKEMON", right = "OPEN",
@@ -411,12 +481,12 @@ return function(mod, settings, state, components)
           settings:setAll(game, false); settings:persist(game); refresh(item.id)
         elseif item.action == "aspect" then
           stepAspect(game, 1); refresh(item.id)
+        elseif item.action == "poke_icons" then
+          openPokeIconsMenu(game)
         elseif item.action == "gen1_all" then
           openFeatureMenu(game, "GEN1 GET ALL PKMN", GEN1_FEATURE_ROWS)
         elseif item.action == "gen2_all" then
-          openFeatureMenu(game, "GEN2 GET ALL PKMN", {
-            { key = "gen2_all_pkmn", label = "GEN2 GET ALL THE POKEMON" },
-          })
+          openFeatureMenu(game, "GEN2 GET ALL PKMN", GEN2_FEATURE_ROWS)
         elseif item.component then
           openComponent(game, item.component)
         end

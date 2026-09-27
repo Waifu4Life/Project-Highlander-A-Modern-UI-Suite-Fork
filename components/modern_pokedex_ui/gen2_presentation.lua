@@ -146,6 +146,14 @@ return function(mod, source)
     local mon = {species=art.def.id, hp=1, stats={hp=1}}
     local x = art.x + math.floor((art.target-16)/2)
     local y = art.y + math.floor((art.target-16)/2)
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    if pokeIcons and pokeIcons.wants("pokedex", "followers") then
+      return pokeIcons.draw(menu.game, mon, x, y, {
+        animate = true, counter = math.floor((art.clock or 0) / 3), size = 16,
+      })
+    end
+    -- PartyMenu's native bounce is faster than the follower walk (/16).
+    icons.clock = math.floor((art.clock or 0) / 3)
     G.push("all"); G.setShader(); G.setColor(1,1,1,1)
     icons:drawIcon(mon, x, y)
     G.pop()

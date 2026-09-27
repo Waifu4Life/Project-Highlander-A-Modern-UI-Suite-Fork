@@ -1,3 +1,360 @@
+## [2.88.0]
+- Dropped unused unlimited_pp ID draft PNGs. Kept sparkle.png and kanto_leaders_gen1.png.
+
+## [2.87.0]
+- Enemy status prints left of native Lv; Lv and gender stay put.
+
+## [2.86.0]
+- Enemy status + Lv are one left-aligned line (native tag is covered first).
+
+## [2.85.0]
+- Gen2 Kanto ID: Misty hair orange, Janine violet, Blue brown.
+- Enemy status no longer shoves Lv into the sprite.
+- Battle bag honors OPEN ON (battle was treated as a special pack).
+
+## [2.84.0]
+- Gen1 rematch flatten/PP refill is flagged from talkTo only. Gold no longer hits that path.
+
+## [2.83.0]
+- Gen1 rematch uses the existing isGen1Game check (game.version). Flatten still skipped on Gold/Silver/Crystal.
+
+## [2.82.0]
+- Gen2 rematch restored to 2.80 behavior. Move-ID flatten is Gen1-only (red/blue/yellow/green).
+
+## [2.81.0]
+- Gen1 rematch teams pass move IDs (not objects) so PP is valid and Struggle is not the only option. Gen2 rematch unchanged.
+
+## [2.80.0]
+- Gym rematch "No" no longer re-asks or starts the fight (interactBody was falling into startTrainerScript).
+
+## [2.79.0]
+- Rematch no longer adds a ghost first send-out (party tables are not replaced after Battle.new).
+
+## [2.78.0]
+- Rematch HP is forced to max after the team is rebuilt.
+- Gym rematches look up the class by name, then startBattle with Trainers.party (lookup needs the numeric class index).
+
+## [2.77.0]
+- Gen2 rematch starts battles again via startTrainerScript + loadtemptrainer (2.76 startScriptedBattle was a no-op).
+- Gym leaders look up their real trainer record before that script runs.
+
+## [2.76.0]
+- Gen2 rematch: start gym fights via startScriptedBattle (music no longer plays with no battle).
+- Rematch teams rebuild HP/stats and level-up moves; evos honor Gen2 methods.
+
+## [2.75.0]
+- Fixed Gen2 rematch load crash (`...` inside a nested callback).
+
+## [2.74.0]
+- Gen2 Rematch Anyone now covers Johto and Kanto Gym Leaders (badge-owned), not only field trainers.
+
+## [2.73.0]
+- PC action popup no longer shows gray follower-icon wells through the menu.
+- Rematch Anyone works in Gen2 (World:startTrainerScript). Parties still scale to the weakest party level and evolve.
+
+## [2.72.0]
+- Kanto badge spin set to frames/10 (Johto stays frames/8).
+- Lt. Surge face recropped so Erika's hair no longer sits under him.
+
+## [2.71.0]
+- Recropped Gen1 ID faces from kanto_leaders_Gen1.png (correct 16px rows).
+- Party action popup no longer shows gray follower-icon wells through the menu.
+
+## [2.70.0]
+- Kanto badge spin slowed (frames/20).
+- Gen1 ID uses kanto_leaders_gen1.png (Misty and the Gen1 roster, pre-colored).
+- Instant TMs and HMs: fixed Gen1 flavor match (CUT/SURF text) and skipped the Surf/Strength white flash.
+- Gen2 Pokédex follower icons slowed further (clock/3).
+
+## [2.69.0]
+- Gen1 Trainer ID uses the colored Kanto leader + spinning badge grid from Gen2 page 3.
+- Instant TMs and HMs now also skips the Gen1 "used Cut/Surf/Strength" lines.
+- Gen2 Pokédex icons use the same follower walk timing as Party/PC.
+
+## [2.68.0]
+- Follower icon walk uses sheet frames 1 and 4 (not 1 and 2).
+
+## [2.67.0]
+- Pokémon Icons menu renamed to POKE ICONS.
+- Bundled follower icons keep their authored colours on Gen 1 (true-color mark).
+- Icon animation uses only the front/down walk pair instead of rotating through every facing.
+- Kanto ID faces moved down 2px; numbers and badges unchanged.
+
+## [2.66.0]
+- New PROJECT HIGHLANDER → POKEMON ICONS menu: Pokédex, Party and PC each pick ORIGINAL or WILD FOLLOWERS. Bundled 16×96 GSC follower sheets (assets/poke_followers) are used directly; Wilds of Kanto is no longer required for those icons.
+- Removed ICON SOURCE from the Party submenu. Battle HUD SPRITE is unchanged.
+- Copyright (c) YoDrehDenSwagAuf on the Pokémon Icons page (MIT poke_followers art).
+
+## [2.65.0]
+- Running Shoes: removed a duplicate B-toggle handler inside the Player:update override that read Game.input (the required module) instead of the live game.input the input.step hook already uses correctly. Running the same "B just pressed" check twice per frame could toggle running on and back off within the same tick, feeding a bad state into the run-speed animClock/progress math and causing the rarer, running-only movement lock still seen after 2.64.0's D-pad fix.
+
+## [2.64.0]
+- Full Control: fixed movement occasionally sticking in a direction on gamepad. Its gamepadpressed override handled every D-pad/button press itself (native handler only ran during rebind capture), but gamepadreleased was never overridden, so a button's "held" state could be set on press and never cleared on release. Added a matching gamepadreleased override so press and release always go through the same code path.
+
+## [2.63.0]
+- Kanto faces and badges +1px Y; numbers unchanged.
+
+## [2.62.0]
+- Kanto ID badge block shifted down 1px to match Johto.
+
+## [2.61.0]\n- ID page 3 uses 22x16 Kanto faces. Johto badges on page 2 are colored.\n\n## [2.60.0]\n- ID page 3: human skin tones, transparent badges, badges left of faces.\n\n## [2.59.0]\n- ID page 3 embeds color Kanto faces/badges so the panel cannot load empty.\n\n## [2.58.0]
+- ID page 3: colored Kanto leaders + spinning badges in the Johto badge-page slots.
+
+## [2.57.0]
+- ID page 3: palette fill + embedded Kanto face/badge sheet so the panel cannot come up empty.
+
+## [2.56.0]
+- Pokegear Map: Select swaps Johto/Kanto like Fly Map. Post-2.53 map snaps removed.
+- ID page 3 loads Gen1 badges.png via mod:read and marks true-color.
+
+## [2.55.0]\n- Pokegear map cursor is clamped to the region you are standing in.\n- ID page 3 uses Johto badge chrome plus the Kanto face/badge sheet.\n\n## [2.54.0]
+- Pokegear map cursor snaps to the region you are in.
+- ID page 3 uses the Gen1 numbered Kanto badge grid.
+- Party A-menu up/down arrows are triangles.
+
+## [2.53.0]
+- Roaming Hunter seeds empty `roamers = {}` saves (Init was skipped).
+- Pokegear map region follows the map you flew to.
+- ID card page 3 maps Kanto badges onto the badge slots.
+- Gen2 battle HUD: custom player HP/EXP overlay removed; enemy HP kept.
+- Gen2 party A-menu shows 8 rows and scrolls with ^ / v.
+
+## [2.52.0]
+- Ilex GS Ball prompt only on the shrine tile (8,22), not on nearby Cut trees.
+
+## [2.51.0]
+- Syntax fix: Ilex TextBox hook is inside the module.
+
+## [2.50.0]
+- Ilex shrine plaque is intercepted; GS Ball prompt replaces the lore text.
+
+## [2.49.0]
+- Kurt grantGsBallItem is defined before use (crash fix).
+
+## [2.48.0]
+- Repel Again asks once.
+- Kurt returns GS Ball after a day and sends you to the Ilex shrine (8,22); Celebi Lv30.
+- Roaming Hunter seeds even if Dex owned is set (empty roamers on this save).
+
+## [2.47.0]
+- QoL: Use Repel Again? prompts to reuse the same Repel/Super/Max when it wears off.
+
+## [2.46.0]
+- Roaming Hunter: 100% on the beast's current route, no flee, no Roar. Seeds roam slots if missing.
+- Dex locations: Gen2 version exclusives now pull the counterpart game's routes (Vulpix on Gold, etc.).
+
+## [2.45.0]
+- Oak beast gift: any A-press in Oaks Lab with a beast in slot 1.
+
+## [2.44.0]
+- Oak beast gift runs when you talk to him (interact hook). Dex numbers 243-245 count as the beasts.
+
+## [2.43.0]
+- Register GS BALL as a real KEY_ITEM so Gold/Silver bag and Kurt can see it.
+
+## [2.42.0]
+- GS Ball despawns on pickup. Kurt no longer crashes (dayNumber order).
+
+## [2.41.0]
+- GS Ball on the floor in front of the Goldenrod counter (4,3).
+
+## [2.40.0]
+- GS Ball at 4,2. Enter plays the line only. Talk to the ball to pick it up into Key Items. Gold/silver palette.
+
+## [2.39.0]
+- GS Ball two tiles left (5,2). Message on Center enter, then the ball is removed.
+
+## [2.38.0]
+- GS Ball is a Poké Ball on the Goldenrod Center counter. Talk to pick it up. No more message on load.
+
+## [2.37.0]
+- From 2.31.0. GS Ball is given in the Goldenrod Center in Gold/Silver/Crystal (talk or walk in). Kurt wait uses the in-game clock.
+- Roaming Hunter from 2.32–2.36 is not in this build.
+
+## [2.31.0]
+- Mewtwo in Ruins of Alph Ho-Oh puzzle chamber (HOOH id). Tile 3,4 on the puzzle. Needs Mew in slot 1. Reunion line after catch.
+
+## [2.30.0]
+- Mew uses SPRITE_MONSTER. Hidden after catch like the birds. Telepathy line after capture pointing to Ruins of Alph.
+
+## [2.29.0]
+- Mew on any Victory Road 3F-like map; no Kanto gate; still shows if catch flag was stuck. Tile 13,8.
+
+## [2.28.0]
+- Mew is on Victory Road 3F (13,8 first guess at the marked platform). Cerulean remnant door removed.
+
+## [2.27.0]
+- GSC Cerulean remnant cave door on the west rock ledge (3,5). Warp into Diglett/Rock Tunnel stand-in with Mew inside. Tune tile like Moltres if needed.
+
+## [2.26.0]
+- Bird is a solid runtime map object again (cannot walk through). Stripped from the map only after a real catch. Stuck battle lock clears if no fight starts.
+
+## [2.25.0]
+- No-save reload: re-apply palettes and rebuild SpriteRenderer so the bird is visible. Retry spawn after sprites load.
+
+## [2.24.0]
+- Do not overwrite Npc.sprite with a string (Npc.lua:877 crash). Only spawn when a real spriteDef exists.
+
+## [2.23.0]
+- Bird is a real Gen2 Npc with px/py so World draw cannot crash on nil compare. Generic bird sprite kept.
+
+## [2.22.0]
+- Bird OW sprite is generic bird (Fearow/Spearow/Pidgey), never player. Repaint on map load so reload is visible.
+
+## [2.21.0]
+- Birds no longer baked into the map. Colored spriteDef + palette. Hide-by-tile like the Dojo ball. Catch flag from Battle.endBattle + pokemon.caught/given.
+
+## [2.20.0]
+- Catch writes save.player.suiteBirds + flags. World.startBattle onDone wrapped. Pending-bird catch event. Colored sprites kept.
+
+## [2.19.0]
+- Bird gone-after-catch uses save.flags only (like Mew). No-save continue restores the bird. Colored addRuntimeObject sprites restored.
+
+## [2.18.0]
+- Birds spawn like Gen1 Mew (ow.npcs only, no addRuntimeObject). Dex 144-146 map to names. Sweep hide each frame if owned.
+
+## [2.17.0]
+- Birds do not respawn if you already own that species. Catch also detected by party/box count going up.
+
+## [2.16.0]
+- Fix syntax error in placeStatics birdTaken calls.
+
+## [2.15.0]
+- Caught-bird memory lives on the session (module + game object) so a Pokemon Center warp cannot respawn them.
+
+## [2.14.0]
+- Caught bird flag persisted on save.flags, save.events, and save.suiteBirds so leaving a map cannot respawn it.
+
+## [2.13.0]
+- Caught Kanto birds disappear from the overworld (flag + hide NPC).
+
+## [2.12.0]
+- Bird cry + Gen1-style cry text box play before the battle transition.
+
+## [2.11.0]
+- Birds never flee (wrap tryEnemyFlee). Cry plays when the fight starts.
+
+## [2.10.0]
+- Kanto birds use BATTLETYPE_TRAP so they never flee and cannot be run/Roared from.
+
+## [2.9.0]
+- Birds no longer auto-battle on approach. Face the sprite and press A.
+- Short cooldown after a fight so defeat/run does not immediately retrigger.
+
+## [2.8.0]
+- Birds use World:startBattle({ wild = Mon.new(...) }). Gen1 newWild cannot open a Gen2 fight.
+- Wrap World.interact so A on the tile starts the battle.
+
+## [2.7.0]
+- Kanto birds use Gen1 Mew battle path (BattleState.newWild + pushBattle).
+- Moltres tile moved to Cinnabar 9,1 (one up, one right).
+
+## [2.6.0]
+- Kanto birds: startScriptedBattle(nil, wild, done) — previous call treated the bird as a trainer and drew NO BATTLE.
+
+## [2.5.0]
+- Fix Npc:draw crash: do not inject undrawable bird NPCs. Tile interact unchanged.
+
+## [2.4.0]
+- Kanto birds: Mew-style onInteract + facing-tile battle. Moltres on Cinnabar grass 8,2. No Tentacruel fallback sprite.
+
+## [2.3.0]
+- Kanto birds use bird sprites, Gen2 startBattle, Moltres on Cinnabar grass (9,2).
+
+## [2.2.0]
+- Fly map: Select swaps Johto/Kanto after Kanto unlocks. Unvisited towns stay locked.
+
+## [2.1.0]
+- Kanto birds on marked tiles: Moltres Cinnabar 11,2; Zapdos Route 10 North 2,11; Articuno Ice Path B3F 9,5. Approach starts battle.
+
+## [2.0.0]
+- Link C. refuses item-evo species unless that mon is holding the required item.
+
+## [1.99.0]
+- Link C. item trades require the hold item in the bag or on the mon.
+
+## [1.98.0]
+- Link C. turns to face the player when spoken to.
+
+## [1.97.0]
+- Link C. evolves the selected party slot only; trade-back is Alakazam/Alakazam copies. Does not overwrite slot 1.
+
+## [1.96.0]
+- Link C. trade evo uses Gen2 EvolutionAnim (not Gen1 Stats.calc).
+
+## [1.95.0]
+- Link C. no longer writes a string onto objDef.palette (Palettes.lua crash).
+
+## [1.94.0]
+- Link C. GameBoy Kid on enter with PAL_OW_RED; official Gen2TradeAnim + music.
+
+## [1.93.0]
+- Link C. in Ecruteak Center uses SPRITE_GAMEBOY_KID on the bench NPC.
+
+## [1.92.0]
+- Kim extras: wrap Chansey trade lines to 18 columns.
+
+## [1.91.0]
+- Kim extras: TradeMenu pages are line tables (fixes ipairs crash).
+
+## [1.90.0]
+- Kim extras: custom Chansey lines; pop TradeMenu on close so the blank box cannot freeze.
+
+## [1.89.0]
+- Kim extras open Gen2TradeMenu after patching NpcTrade row.get (Omanyte/Kabuto).
+
+## [1.88.0]
+- Kim extras: patch her NPC trade + clear tradeFlags, then let vanilla script run.
+
+## [1.87.0]
+- Kim extra fossils use engine NPC trade / party picker (Aerodactyl flow).
+
+## [1.86.0]
+- Kim Route 14 extra Chansey trades fire from Gen2 World.interactBody.
+
+## [1.85.0]
+- Elm 3rd starter: Lugia + Ho-Oh anywhere in the party; looser champion detect.
+
+## [1.84.0]
+- Stop writing string keys into Gold event flags every frame (that was washing out Party GBC palettes).
+
+## [1.83.0]
+- Elm ball: Get_Item1 fanfare only; hide via object eventFlag so it stays gone.
+
+## [1.82.0]
+- Elm leftover ball: Caught_Mon fanfare, nickname prompt, hide ball for good after pickup.
+
+## [1.81.0]
+- Fix crash: isElmLab was used before its local definition.
+
+## [1.80.0]
+- Elm leftover: hook Gen2 World.interactBody / World.showText (script VM path), not the Gen1 facade.
+- Fanfare tries World:playSfxNamed Get Item as well as Sound.play.
+
+## [1.79.0]
+- Elm leftover: swallow Gen2 script VM 'I'll call you' line; play Get_Item fanfare on the table ball.
+
+## [1.78.0]
+- Elm leftover starter matches Gen1 Oak: speech only, then take the table Pokeball.
+- Restored the original 'on my table over there / happy to be with you' line.
+
+## [1.77.0]
+- Gen2 gifts use src.battle.gen2.Mon.new (fixes Stats.lua nil base crash when Elm gives a starter).
+- Elm stock lab line is swallowed; leftover starter is handed once, sent to the PC if the party is full.
+
+## [1.76.0]
+- Gen2 All PKMN: Oak no longer steals the Pokedex speech (only fires with a beast in slot 1).
+- Elm gifts the leftover Johto starter in his own dialogue after 8 badges (no PROF. OAK collision).
+- Kim fossil trades identify the Route 14 teacher after the vanilla Aerodactyl trade.
+- Link C. replaces the Ecruteak Center bench Pokefan at 7,6.
+- Articuno spawns on Ice Path B3F between the two ladders (9,7) after Kanto is open.
+
+## [1.75.0]
+- Gen2 All PKMN reads player.badges / hallOfFame.count / kantoBadges.
+
+## [1.74.0]
+- Gen2 Get All PKMN submenu (exclusives, Elm starters, Kim fossils, Celebi GS Ball, Link C., Oak beasts, birds, Mew/Mewtwo). First pass.
+
 ## [1.73.0]
 - Gen1 exclusives: load-time content.encounters:patch of 10-slot mixed tables (151 API) plus encounter.roll 50% counterpart swap.
 

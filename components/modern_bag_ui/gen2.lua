@@ -805,7 +805,7 @@ return function(mod, shared)
     local initialId = nativePocket and nativePocket.id or "ITEM"
     if initialId == "ITEM" then initialId = "ITEMS" end
     local specialPack = type(opts) == "table"
-      and (opts.pocket or opts.give or opts.battle or opts.tutorial)
+      and (opts.pocket or opts.give or opts.tutorial)
     if not specialPack and persistent and persistent.pocket
         and pocketIndex[persistent.pocket] then
       initialId = persistent.pocket

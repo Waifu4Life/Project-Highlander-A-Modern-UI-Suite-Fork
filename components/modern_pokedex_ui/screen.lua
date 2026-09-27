@@ -61,8 +61,14 @@ return function(mod, compatibility)
       end
       return v == true or v == "on" or v == "ON"
     end
-    if on("gen1_features_migrated") then return on("gen1_exclusive") end
-    return on("gen1_exclusive") or on("gen1_all_pkmn")
+    local key = gameVersionKey(game)
+    local gen1 = key == "red" or key == "blue" or key == "yellow"
+    if gen1 then
+      if on("gen1_features_migrated") then return on("gen1_exclusive") end
+      return on("gen1_exclusive") or on("gen1_all_pkmn")
+    end
+    if on("gen2_features_migrated") then return on("gen2_exclusive") end
+    return on("gen2_exclusive") or on("gen2_all_pkmn")
   end
 
   local function speciesSeen(game, id)
@@ -224,6 +230,11 @@ return function(mod, compatibility)
     local gen1 = key == "red" or key == "blue" or key == "yellow"
     if gen1 and exclusiveOn(game) then
       take(rec["x" .. key])
+    end
+    if (not gen1) and exclusiveOn(game) then
+      if key == "gold" then take(rec.silver) end
+      if key == "silver" then take(rec.gold) end
+      if key == "crystal" then take(rec.gold) take(rec.silver) end
     end
     local keep = {}
     for _, row in ipairs(lines) do
@@ -996,7 +1007,12 @@ return function(mod, compatibility)
       regions)
     if not def then return end
     local mon = syntheticMon(def)
-    if compatibility.wildsOfKanto and drawWildsIcon(game, mon, x, y,
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    local pokeDex = pokeIcons and pokeIcons.source("pokedex")
+    if pokeDex == "followers" and pokeIcons.draw(game, mon, x, y, {
+        animate = selected, counter = counter, size = target or 16,
+      }) then return end
+    if pokeDex ~= "original" and compatibility.wildsOfKanto and drawWildsIcon(game, mon, x, y,
         target, selected, counter, regions) then return end
     if compatibility.drawIcon then
       return compatibility.drawIcon(game, def, x, y, target, selected,

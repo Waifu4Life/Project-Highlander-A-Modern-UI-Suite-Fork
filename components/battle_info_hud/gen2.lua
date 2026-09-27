@@ -381,6 +381,20 @@ return function(mod)
   end
 
   mod.hooks:wrap("battle.overlay", function(next, screen)
+    if enabled() and type(screen) == "table"
+        and type(screen.statusTag) == "function"
+        and not screen._suiteKeepEnemyLv then
+      screen._suiteKeepEnemyLv = true
+      local origTag = screen.statusTag
+      function screen:statusTag(mon, who)
+        local tag = origTag(self, mon, who)
+        if who == "enemy" then
+          self._suiteEnemyStatusTag = tag
+          return nil
+        end
+        return tag
+      end
+    end
     local result = next(screen)
     if not enabled() or type(screen) ~= "table" then return result end
     if type(screen.activeMon) ~= "function"
@@ -392,7 +406,8 @@ return function(mod)
 
     local enemy = screen:activeMon("enemy")
     local player = screen:activeMon("player")
-    local enemyStatus = enemy and screen:statusTag(enemy, "enemy")
+    local enemyStatus = screen._suiteEnemyStatusTag
+      or (enemy and screen:statusTag(enemy, "enemy"))
     local playerStatus = player and screen:statusTag(player, "player")
     local wasBattle = Font.useBattleExtra(true)
 
@@ -406,7 +421,10 @@ return function(mod)
     if enemyStatus and screen.showEnemyHud
         and (type(screen.hudCleared) ~= "function"
           or not screen:hudCleared("enemy")) then
-      printInk("<LV>" .. tostring(enemy.level or 1), 10 + enemyOffset, 1)
+      local tag = tostring(enemyStatus or "")
+      if #tag > 4 then tag = tag:sub(1, 4) end
+      -- Native Lv is tile 6, gender tile 9. Status sits immediately left.
+      printInk(tag, math.max(1, 6 - #tag) + enemyOffset, 1)
     end
     -- Recolor the native caught marker (black top -> red) on wild fights.
     pcall(function()
@@ -533,7 +551,7 @@ return function(mod)
         coverBar(16 + dx, 16, 64, 8, shown / math.max(1, maxHp),
           hpColor(shown / math.max(1, maxHp)), text)
       end
-      if player and screen.showPlayerHud then
+      if false and player and screen.showPlayerHud then
         local maxHp = (player.stats and player.stats.hp) or player.maxHp or 1
         local shown = hudHp(player, "player")
         coverBar(80 + dx, 72, 64, 8, shown / math.max(1, maxHp),

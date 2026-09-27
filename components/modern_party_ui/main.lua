@@ -17,11 +17,6 @@ return function(mod)
     -- control both easy to miss and unclear about what it changed.
     { key = "animate_icons", label = "ICON ANIMATION", type = "toggle",
       default = true },
-    { key = "sprite_source", label = "ICON SOURCE", type = "choice",
-      default = "auto", choices = {
-        { "AUTO", "auto" }, { "ORIGINAL", "original" },
-        { "MENU PACK", "menu_pack" }, { "FOLLOWER PACK", "follower_pack" },
-      } },
     { key = "hp_text", label = "HP DISPLAY", type = "choice",
       default = "bar", choices = {
         { "VALUES", "values" }, { "PERCENT", "percent" },

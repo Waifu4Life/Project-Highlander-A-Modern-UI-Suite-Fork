@@ -348,6 +348,18 @@ return function(mod)
   end
   local function follower(screen, mon, x, y, target)
     if not mon then return false end
+    local pokeIcons = mod.suite and mod.suite.pokeIcons
+    if pokeIcons and pokeIcons.wants("pc", "followers") then
+      return pokeIcons.draw(screen.game, mon, x, y, {
+        animate = true,
+        counter = screen.blink or screen.modernPCElapsed or 0,
+        size = target or 16,
+        markTrueColor = false,
+      })
+    end
+    if pokeIcons and pokeIcons.wants("pc", "original") then
+      return false
+    end
     local wilds = mod.find and mod.find("overworld_wild_spawns")
     local resolve = wilds and wilds.exports and wilds.exports.resolveFollowerSprite
     if type(resolve) ~= "function" then return false end

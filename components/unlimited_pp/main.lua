@@ -29,6 +29,8 @@ return function(mod)
       default = false },
     { key = "sparkling_hidden", label = "SPARKLING HIDDEN ITEMS", type = "toggle",
       default = false },
+    { key = "use_repel_again", label = "USE REPEL AGAIN?", type = "toggle",
+      default = false },
     { key = "rematch_anyone", label = "REMATCH ANYONE", type = "toggle",
       default = false },
     { key = "gen3_catch_rate", label = "GEN3 CATCH RATE", type = "toggle",
@@ -61,6 +63,26 @@ return function(mod)
     { key = "gen1_linkc", label = "TRADE WITH LINK C.",
       type = "toggle", default = false },
     { key = "gen1_mystery", label = "GET ???",
+      type = "toggle", default = false },
+    { key = "gen2_features_migrated", label = "GEN2 FEATURES MIGRATED",
+      type = "toggle", default = false },
+    { key = "gen2_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN2 GAMES",
+      type = "toggle", default = false },
+    { key = "gen2_starters", label = "OBTAIN THE OTHER JOHTO STARTERS",
+      type = "toggle", default = false },
+    { key = "gen2_fossil", label = "KIM FOSSIL TRADES",
+      type = "toggle", default = false },
+    { key = "gen2_celebi", label = "GS BALL / CELEBI",
+      type = "toggle", default = false },
+    { key = "gen2_linkc", label = "TRADE WITH LINK C.",
+      type = "toggle", default = false },
+    { key = "gen2_kanto_starters", label = "OAK KANTO STARTERS",
+      type = "toggle", default = false },
+    { key = "gen2_birds", label = "KANTO LEGENDARY BIRDS",
+      type = "toggle", default = false },
+    { key = "gen2_mew", label = "MEW AND MEWTWO",
+      type = "toggle", default = false },
+    { key = "gen2_roaming_hunter", label = "ROAMING HUNTER",
       type = "toggle", default = false },
   })
 
@@ -688,20 +710,19 @@ return function(mod)
   end)
   pcall(function()
     local Player = require("src.world.Player")
-    local Game = require("src.core.Game")
     if type(Player) ~= "table" or type(Player.update) ~= "function"
         or Player._suiteRunningShoes then return end
     Player._suiteRunningShoes = true
     local vanillaUpdate = Player.update
     function Player:update(...)
-      if runTrigger() == "toggle" then
-        local input = Game and Game.input
-        if input and input.wasPressed and input:wasPressed("b") then
-          runToggled = not runToggled
-        end
-      else
-        runToggled = false
-      end
+      -- B-toggle handling lives solely in the "input.step" hook above, which
+      -- uses the live game.input object. This override used to duplicate
+      -- that same toggle here via Game.input (the required module, not the
+      -- active game's own input instance) -- running the same "was B just
+      -- pressed" edge-check twice per frame could toggle runToggled on and
+      -- back off within the same tick, feeding an inconsistent running
+      -- state into the animClock/progress math below and producing the
+      -- occasional movement-lock this was tracked down to.
       local stepLen = self._suiteRunning and self.moving and self.stepFramesCur
       local progress = stepLen and (self.progress or 0)
       local landed = vanillaUpdate(self, ...)
@@ -1101,6 +1122,9 @@ return function(mod)
     return ok and value == true
   end
   local rematchScale = false
+  -- Set only from Gen1 OverworldController.talkTo. Never infer from
+  -- Game.version (empty during some hooks and flattened Gold parties).
+  local rematchGen1 = false
   local function weakestLevel(game)
     local min
     for _, mon in ipairs((game.save and game.save.party) or {}) do
@@ -1114,30 +1138,146 @@ return function(mod)
     for _ = 1, 4 do
       local def = data and data.pokemon and data.pokemon[current]
       if type(def) ~= "table" then break end
-      local levelInto, itemInto, itemCount, tradeInto
+      local levelInto, itemInto, itemCount, tradeInto, happyInto
       itemCount = 0
       for _, evo in ipairs(def.evolutions or {}) do
-        local method = tostring(evo.method or ""):upper()
-        local into = evo.species or evo.into
+        local method = tostring(evo.method or evo.type or ""):upper()
+        local into = evo.species or evo.into or evo.target
+        local evoLv = tonumber(evo.level or evo.minLevel or evo.at)
         if into then
-          if method == "LEVEL" and (tonumber(evo.level) or 0) <= level then
+          if method == "" and evoLv and evoLv <= level then
             levelInto = into
             break
-          elseif method == "ITEM" then
+          elseif method:find("LEVEL", 1, true) and (evoLv or 0) <= level then
+            levelInto = into
+            break
+          elseif method:find("ITEM", 1, true) or method:find("STONE", 1, true)
+              or method:find("HOLD", 1, true) then
             itemCount = itemCount + 1
             itemInto = into
-          elseif method == "TRADE" then
+          elseif method:find("TRADE", 1, true) then
             tradeInto = into
+          elseif method:find("HAPP", 1, true) or method:find("FRIEND", 1, true) then
+            happyInto = into
           end
         end
       end
       local next = levelInto
       if not next and level >= 30 and itemCount == 1 then next = itemInto end
+      if not next and level >= 32 then next = happyInto end
       if not next and level >= 30 then next = tradeInto end
       if not next then break end
       current = next
     end
     return current
+  end
+  local function movesForLevel(data, species, level)
+    local def = data and data.pokemon and data.pokemon[species]
+    if type(def) ~= "table" then return {} end
+    local ids = {}
+    local okP, Pokemon = pcall(require, "src.pokemon.Pokemon")
+    if okP and type(Pokemon.movesAtLevel) == "function" then
+      local ok, list = pcall(Pokemon.movesAtLevel, def, level)
+      if ok and type(list) == "table" then ids = list end
+    end
+    if #ids == 0 then
+      local function add(id)
+        if not id then return end
+        for _, existing in ipairs(ids) do
+          if existing == id then return end
+        end
+        ids[#ids + 1] = id
+      end
+      for _, m in ipairs(def.level1Moves or def.moves or {}) do
+        add(type(m) == "table" and (m.id or m.move) or m)
+      end
+      for _, entry in ipairs(def.learnset or def.levelMoves or {}) do
+        local lv = type(entry) == "table" and tonumber(entry.level) or nil
+        local mv = type(entry) == "table" and (entry.move or entry.id) or entry
+        if not lv or lv <= level then add(mv) end
+      end
+      while #ids > 4 do table.remove(ids, 1) end
+    end
+    local moves = {}
+    for _, id in ipairs(ids) do
+      local mdef = data.moves and data.moves[id]
+      moves[#moves + 1] = { id = id, pp = mdef and mdef.pp or 20 }
+    end
+    return moves
+  end
+  local function rebuildMon(slot, data, level)
+    if type(slot) ~= "table" or not slot.species then
+      return slot
+    end
+    local species = evolveForLevel(data, slot.species, level)
+    local built
+    for _, name in ipairs({
+      "src.battle.gen2.Mon", "src.pokemon.gen2.Mon", "src.pokemon.Pokemon",
+    }) do
+      local okM, Mon = pcall(require, name)
+      if okM and type(Mon) == "table" and type(Mon.new) == "function" then
+        local opts = {
+          dvs = slot.dvs or { attack = 9, defense = 8, speed = 8, special = 8 },
+        }
+        local ok, mon = pcall(Mon.new, data, species, level, opts)
+        if not ok then
+          ok, mon = pcall(Mon.new, Mon, data, species, level, opts)
+        end
+        if ok and type(mon) == "table" and mon.species then
+          built = mon
+          break
+        end
+      end
+    end
+    if built then
+      built.level = level
+      if not built.moves or #built.moves == 0 then
+        built.moves = movesForLevel(data, species, level)
+      end
+      local hp = built.maxHp or built.maxhp
+        or (built.stats and (built.stats.hp or built.stats.HP))
+      if hp then
+        built.hp = hp
+        built.maxHp = built.maxHp or hp
+        built.maxhp = built.maxhp or hp
+      end
+      return built
+    end
+    slot.species = species
+    slot.level = level
+    slot.moves = movesForLevel(data, species, level)
+    local def = data and data.pokemon and data.pokemon[species]
+    pcall(function()
+      local Stats = require("src.pokemon.Stats")
+      if type(Stats) == "table" and type(Stats.calc) == "function" and def then
+        local stats = Stats.calc(def, level, slot.dvs)
+        slot.stats = stats
+        local hp = stats and (stats.hp or stats.HP)
+        if hp then
+          slot.hp = hp
+          slot.maxHp = hp
+          slot.maxhp = hp
+        end
+      end
+    end)
+    local full = slot.maxHp or slot.maxhp
+      or (slot.stats and (slot.stats.hp or slot.stats.HP))
+    if full then
+      slot.hp = full
+      slot.maxHp = slot.maxHp or full
+      slot.maxhp = slot.maxhp or full
+    end
+    return slot
+  end
+  local function healRematch(mon)
+    if type(mon) ~= "table" then return end
+    local full = mon.maxHp or mon.maxhp
+      or (mon.stats and (mon.stats.hp or mon.stats.HP))
+    if full then
+      mon.hp = full
+      mon.maxHp = mon.maxHp or full
+      mon.maxhp = mon.maxhp or full
+    end
   end
   pcall(function()
     local BattleState = require("src.battle.BattleState")
@@ -1147,7 +1287,34 @@ return function(mod)
       local origNew = BattleState.newTrainer
       function BattleState.newTrainer(...)
         local battle = origNew(...)
+        if rematchGen1 and type(battle) == "table" then
+          local data = (battle.game and battle.game.data)
+            or (require("src.core.Game").data)
+          for _, mon in ipairs(battle.enemyParty or {}) do
+            if type(mon) == "table" then
+              local usable = 0
+              for _, mv in ipairs(mon.moves or {}) do
+                if type(mv) == "table" and (tonumber(mv.pp) or 0) > 0 then
+                  usable = usable + 1
+                end
+              end
+              if usable == 0 then
+                mon.moves = movesForLevel(data, mon.species, mon.level or 5)
+              else
+                for _, mv in ipairs(mon.moves) do
+                  if type(mv) == "table" then
+                    local mdef = data and data.moves and data.moves[mv.id]
+                    local pp = mdef and mdef.pp or mv.pp or 20
+                    mv.pp = pp
+                    mv.maxPp = mv.maxPp or pp
+                  end
+                end
+              end
+            end
+          end
+        end
         rematchScale = false
+        rematchGen1 = false
         return battle
       end
     end
@@ -1163,9 +1330,23 @@ return function(mod)
         local copy = {}
         if type(slot) == "table" then
           for k, v in pairs(slot) do copy[k] = v end
-          copy.level = level
-          copy.species = evolveForLevel(game.data, slot.species, level)
-          copy.moves = nil
+          copy = rebuildMon(copy, game.data, level)
+          -- Gen1 newTrainer treats slot.moves as an ID list. Move
+          -- objects made pp lookup fail (pp=0) so the AI only Struggle.
+          if rematchGen1 then
+            local ids = {}
+            local function addId(m)
+              local id = type(m) == "table" and (m.id or m.move) or m
+              if id then ids[#ids + 1] = id end
+            end
+            for _, m in ipairs(copy.moves or {}) do addId(m) end
+            if #ids == 0 then
+              for _, m in ipairs(movesForLevel(game.data, copy.species, level)) do
+                addId(m)
+              end
+            end
+            copy = { species = copy.species, level = level, moves = ids }
+          end
         else
           copy = slot
         end
@@ -1211,6 +1392,7 @@ return function(mod)
             return
           end
           rematchScale = true
+          rematchGen1 = true
           local ok, err = pcall(function()
             if type(self.engageTrainer) == "function" then
               self:engageTrainer(npc, unfreeze)
@@ -1220,6 +1402,7 @@ return function(mod)
                 npc.def.trainerClass, npc.def.trainerParty)
               battle.rematch = true
               rematchScale = false
+              rematchGen1 = false
               if type(self.pushBattle) == "function" then
                 self:pushBattle(battle)
               else
@@ -1230,11 +1413,321 @@ return function(mod)
           end)
           if not ok then
             rematchScale = false
+            rematchGen1 = false
             unfreeze()
             error(err, 0)
           end
         end,
       }))
+    end
+  end)
+
+  -- Gen 2 World talks through interactBody, not OverworldController.talkTo.
+  -- Regular trainers: npc.def.trainer + trainerBeaten.
+  -- Gym leaders often use a map script + badge flag instead of that event.
+  pcall(function()
+    local World = require("src.world.gen2.World")
+    if type(World) ~= "table" or World._suiteRematchAnyone then
+      return
+    end
+    World._suiteRematchAnyone = true
+
+    local LEADER_BADGE = {
+      FALKNER = "ZEPHYR", BUGSY = "HIVE", WHITNEY = "PLAIN", MORTY = "FOG",
+      CHUCK = "STORM", JASMINE = "MINERAL", PRYCE = "GLACIER", CLAIR = "RISING",
+      BROCK = "BOULDER", MISTY = "CASCADE", SURGE = "THUNDER",
+      LT_SURGE = "THUNDER", LTSURGE = "THUNDER",
+      ERIKA = "RAINBOW", JANINE = "SOUL", SABRINA = "MARSH",
+      BLAINE = "VOLCANO", BLUE = "EARTH", GIOVANNI = "EARTH",
+    }
+    local function blobOf(npc)
+      local d = npc and npc.def or npc or {}
+      local t = d.trainer or {}
+      return table.concat({
+        tostring(d.sprite or ""), tostring(d.spriteName or ""),
+        tostring(d.name or ""), tostring(d.scriptKey or ""),
+        tostring(d.trainerClass or ""), tostring(t.class or ""),
+        tostring(t.rawClass or ""),
+      }, " "):upper()
+    end
+    local function leaderOf(npc)
+      local blob = blobOf(npc)
+      local best, badge, len
+      for name, b in pairs(LEADER_BADGE) do
+        if blob:find(name, 1, true) and (not len or #name > len) then
+          best, badge, len = name, b, #name
+        end
+      end
+      return best, badge
+    end
+    local function badgeOwned(world, name)
+      if not name then return false end
+      if type(world.hasBadge) == "function" then
+        local ok, has = pcall(world.hasBadge, world, name)
+        if ok and has == true then return true end
+        ok, has = pcall(world.hasBadge, world, name .. "BADGE")
+        if ok and has == true then return true end
+      end
+      local save = (world.game and world.game.save) or world.save
+      local player = save and save.player or {}
+      for _, store in ipairs({ player.badges, player.kantoBadges, player.johtoBadges }) do
+        if type(store) == "table" then
+          if store[name] or store[name .. "BADGE"] then return true end
+          for _, v in pairs(store) do
+            if type(v) == "string" and v:upper():find(name, 1, true) then
+              return true
+            end
+          end
+        end
+      end
+      return false
+    end
+    local function trainerBeaten(world, npc)
+      local rec = npc and npc.def and npc.def.trainer
+      if rec and type(world.trainerBeaten) == "function" then
+        local ok, value = pcall(world.trainerBeaten, world, rec)
+        if ok and value == true then return true end
+      end
+      local _, badge = leaderOf(npc)
+      if badge and badgeOwned(world, badge) then return true end
+      return false
+    end
+    local origStart = World.startTrainerScript
+    local origInteract = World.interactBody
+    local rematchBusy = false
+    local skipTrainerScript = false
+
+    local function rematchScript(npc)
+      local rec = npc and npc.def and npc.def.trainer
+      local class = rec and (rec.class or rec.rawClass)
+      local member = rec and (rec.member or rec.party or rec.id or 1) or 1
+      if not class then
+        class = select(1, leaderOf(npc))
+      end
+      local ops = { { op = "faceplayer" } }
+      if class then
+        ops[#ops + 1] = { op = "loadtrainer", class = class, member = member }
+      else
+        ops[#ops + 1] = { op = "loadtemptrainer" }
+      end
+      ops[#ops + 1] = { op = "encountermusic" }
+      if class then
+        ops[#ops + 1] = { op = "loadtrainer", class = class, member = member }
+      else
+        ops[#ops + 1] = { op = "loadtemptrainer" }
+      end
+      ops[#ops + 1] = { op = "startbattle" }
+      ops[#ops + 1] = { op = "reloadmapafterbattle" }
+      ops[#ops + 1] = { op = "scripttalkafter" }
+      return ops
+    end
+    local function offerGen2Rematch(world, npc, onNo)
+      if rematchBusy then return true end
+      rematchBusy = true
+      local game = world.game or require("src.core.Game")
+      local TextBox = require("src.render.TextBox")
+      if type(world.freezeNpc) == "function" then
+        pcall(world.freezeNpc, world, npc)
+      end
+      if npc and npc.facePlayer then
+        pcall(npc.facePlayer, npc, world.player)
+      elseif type(world.turnObject) == "function" and npc and npc.def then
+        pcall(world.turnObject, world, npc.def.id or npc.id)
+      end
+      game.stack:push(TextBox.new(game,
+        "Would you like\na rematch?", nil, {
+        choice = function(yes)
+          rematchBusy = false
+          if not yes then
+            if world.player then
+              world.player.frozen = false
+              world.player.moving = false
+            end
+            if onNo then onNo() end
+            return
+          end
+          rematchScale = true
+          local ok, err = pcall(function()
+            if world.player then
+              world.player.moving = false
+              world.player.frozen = true
+            end
+            local data = world.game and world.game.data
+            local Trainers
+            pcall(function()
+              Trainers = require("src.world.gen2.Trainers")
+            end)
+            local function lookupClass(className)
+              if not (Trainers and data and className) then return nil end
+              local pack = data.trainers or data
+              local classes = pack.classes or {}
+              local class = classes[className] or classes["OPP_" .. className]
+              if not class then
+                for id, row in pairs(classes) do
+                  if tostring(id):upper():find(className, 1, true)
+                      or (row.id and tostring(row.id):upper():find(className, 1, true)) then
+                    class = row
+                    break
+                  end
+                end
+              end
+              if not class then return nil end
+              local idx = class.index or className
+              local rec = Trainers.lookup(pack, idx, 1)
+              return rec
+            end
+            local rec = npc and npc.def and npc.def.trainer
+            local leader = select(1, leaderOf(npc))
+            if leader then
+              rec = lookupClass(leader) or rec
+            end
+            if npc and npc.def and rec then
+              npc.def.trainer = rec
+            end
+            if world.vm then
+              world.vm.trainerObject = rec
+              world.trainerNpc = npc
+              world.talkNpc = npc
+            end
+            if leader and Trainers and rec and type(world.startBattle) == "function" then
+              local party = Trainers.party(data, rec)
+              local level = weakestLevel(world.game or game)
+              for i, mon in ipairs(party or {}) do
+                party[i] = rebuildMon(mon, data, level)
+                healRematch(party[i])
+              end
+              world:startBattle({
+                trainer = {
+                  class = rec.class,
+                  classId = rec.classId or leader,
+                  memberId = rec.id or rec.member or 1,
+                  name = rec.name,
+                  className = rec.className,
+                  party = party,
+                  baseMoney = rec.baseMoney,
+                  attributes = rec.attributes,
+                  items = rec.items,
+                },
+              })
+              return
+            end
+            if type(origStart) == "function" then
+              origStart(world, npc, {
+                { op = "faceplayer" },
+                { op = "loadtemptrainer" },
+                { op = "startbattle" },
+                { op = "reloadmapafterbattle" },
+              }, nil)
+              return
+            end
+            local party
+            pcall(function()
+              local Trainers = require("src.world.gen2.Trainers")
+              party = Trainers.party(world.game and world.game.data, rec)
+            end)
+            if type(world.startBattle) == "function" then
+              world:startBattle({
+                trainer = {
+                  class = rec.class,
+                  classId = rec.classId or rec.class,
+                  memberId = rec.id or rec.member,
+                  name = rec.name,
+                  party = party or rec.party or rec.roster,
+                  baseMoney = rec.baseMoney,
+                  attributes = rec.attributes,
+                  items = rec.items,
+                },
+              })
+            end
+          end)
+          if not ok then
+            rematchScale = false
+            error(err, 0)
+          end
+        end,
+      }))
+      return true
+    end
+
+    if type(origStart) == "function" then
+      function World:startTrainerScript(npc, script, sight)
+        if skipTrainerScript then
+          return
+        end
+        if rematchBusy or sight or not rematchOn() or not npc then
+          return origStart(self, npc, script, sight)
+        end
+        local leader, badge = leaderOf(npc)
+        -- Gyms are handled in interactBody. Their fight script must
+        -- never run on "No" (badge-owned leaders still carry startbattle).
+        if leader and badge and badgeOwned(self, badge) then
+          return origStart(self, npc, script, sight)
+        end
+        if not trainerBeaten(self, npc) then
+          return origStart(self, npc, script, sight)
+        end
+        return offerGen2Rematch(self, npc, function()
+          origStart(self, npc, script, sight)
+        end)
+      end
+    end
+
+    if type(origInteract) == "function" then
+      function World:interactBody()
+        if rematchBusy then return true end
+        if rematchOn() and type(self.facingObject) == "function" then
+          local npc = self:facingObject()
+          local leader, badge = leaderOf(npc)
+          if leader and badge and badgeOwned(self, badge) then
+            return offerGen2Rematch(self, npc, function()
+              skipTrainerScript = true
+              pcall(origInteract, self)
+              skipTrainerScript = false
+            end)
+          end
+        end
+        return origInteract(self)
+      end
+    end
+  end)
+  pcall(function()
+    local Battle = require("src.battle.gen2.Battle")
+    if type(Battle) ~= "table" or Battle._suiteRematchScale then return end
+    Battle._suiteRematchScale = true
+    -- After Battle.new the current enemy IS party[1]. Replacing those
+    -- tables with new ones left a ghost first send-out (KO did not
+    -- cross a ball, then the real team fought). Only heal in place.
+    local function applyScale(battle)
+      if not rematchScale or type(battle) ~= "table" then return end
+      for _, list in ipairs({
+        battle.enemyParty, battle.foes, battle.trainerParty,
+        battle.trainer and battle.trainer.party,
+        battle.trainer and battle.trainer.team,
+        battle.enemy and battle.enemy.party,
+      }) do
+        if type(list) == "table" then
+          for _, mon in ipairs(list) do healRematch(mon) end
+        end
+      end
+      healRematch(battle.enemy)
+    end
+    if type(Battle.new) == "function" then
+      local origNew = Battle.new
+      function Battle.new(...)
+        local battle = origNew(...)
+        applyScale(battle)
+        rematchScale = false
+        return battle
+      end
+    end
+    if type(Battle.newTrainer) == "function" then
+      local origNT = Battle.newTrainer
+      function Battle.newTrainer(...)
+        local battle = origNT(...)
+        applyScale(battle)
+        rematchScale = false
+        return battle
+      end
     end
   end)
 
@@ -1286,6 +1779,22 @@ return function(mod)
     end
   end)
 
+  pcall(function()
+    local src
+    if type(mod.read) == "function" then
+      local ok, data = pcall(function() return mod:read("all_pkmn_gen2.lua") end)
+      if ok then src = data end
+    end
+    if not src then
+      local fh = io.open((mod.path or ".") .. "/all_pkmn_gen2.lua", "r")
+      if fh then src = fh:read("*a"); fh:close() end
+    end
+    if type(src) == "string" and src ~= "" then
+      local fn = load(src, "@all_pkmn_gen2")
+      if fn then fn()(mod) end
+    end
+  end)
+
   local function loadSibling(name)
     local src
     if type(mod.read) == "function" then
@@ -1298,10 +1807,14 @@ return function(mod)
     end
   end
   loadSibling("map_icon.lua")
+  loadSibling("fly_regions.lua")
+  loadSibling("trainer_card.lua")
   loadSibling("sneakers.lua")
   loadSibling("game_corner.lua")
   loadSibling("gen2_qol.lua")
   loadSibling("catch_rate.lua")
+  loadSibling("roaming_hunter.lua")
+  loadSibling("repel_again.lua")
 
   do
     local src = assert(mod:read("force_crystal.lua"), "force_crystal.lua missing")

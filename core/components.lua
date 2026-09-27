@@ -85,9 +85,9 @@ return {
     installOrder = 8,
     defaultEnabled = true,
     bulkUI = false,
-    files = { "main.lua", "secret_mew.lua", "all_pkmn_gen1.lua", "force_crystal.lua",
-      "catch_rate.lua" },
-    assets = { "assets/sparkle.png" },
+    files = { "main.lua", "secret_mew.lua", "all_pkmn_gen1.lua", "all_pkmn_gen2.lua",
+      "force_crystal.lua", "catch_rate.lua" },
+    assets = { "assets/sparkle.png", "assets/kanto_leaders_gen1.png" },
   },
   {
     id = "controller_rumble",

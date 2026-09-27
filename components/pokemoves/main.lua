@@ -159,6 +159,39 @@ return function(mod)
       return false
     end
 
+    local function markSkipFlash(ow)
+      local game = ow and ow.game or require("src.core.Game")
+      if game then game._suiteSkipNextFlash = true end
+    end
+    if type(OverworldState.trySurf) == "function" then
+      local orig = OverworldState.trySurf
+      function OverworldState:trySurf(...)
+        if instantOn() then markSkipFlash(self) end
+        return orig(self, ...)
+      end
+    end
+    if type(OverworldState.tryCut) == "function" then
+      local orig = OverworldState.tryCut
+      function OverworldState:tryCut(...)
+        if instantOn() then markSkipFlash(self) end
+        return orig(self, ...)
+      end
+    end
+    if type(OverworldState.useStrengthFieldMove) == "function" then
+      local orig = OverworldState.useStrengthFieldMove
+      function OverworldState:useStrengthFieldMove(...)
+        if instantOn() then markSkipFlash(self) end
+        return orig(self, ...)
+      end
+    end
+    if type(OverworldState.useFlashFieldMove) == "function" then
+      local orig = OverworldState.useFlashFieldMove
+      function OverworldState:useFlashFieldMove(...)
+        if instantOn() then markSkipFlash(self) end
+        return orig(self, ...)
+      end
+    end
+
     local DIG_TILESETS = {
       FOREST = true, CEMETERY = true, CAVERN = true,
       FACILITY = true, INTERIOR = true,
@@ -675,7 +708,14 @@ return function(mod)
     end
     local function isHmFlavor(text)
       local s = flatten(text):upper()
-      s = s:gsub("[\nvrft]", " ")
+      s = s:gsub("[\r\n\t]", " ")
+      if s:find("GOT ON", 1, true) or s:find("HACKED", 1, true)
+          or s:find("AWAY WITH CUT", 1, true)
+          or s:find("MOVE BOULDERS", 1, true)
+          or s:find("BLINDING", 1, true)
+          or s:find("LIGHTS THE AREA", 1, true) then
+        return true
+      end
       local hit = false
       for name in pairs(MOVES) do
         if s:find(name, 1, true) then hit = true; break end
@@ -692,11 +732,13 @@ return function(mod)
         or s:find("WHIRL", 1, true) or s:find("CALM", 1, true)
         or s:find("CAN BE", 1, true) or s:find("SMASH", 1, true)
         or s:find("HEADBUTT", 1, true) or s:find("SCENT", 1, true)
+        or s:find("GOT ON", 1, true) or s:find("HACKED", 1, true)
     end
     function TextBox.new(game, text, onDone, opts)
       if not instantOn() or not isHmFlavor(text) then
         return orig(game, text, onDone, opts)
       end
+      if game then game._suiteSkipNextFlash = true end
       local s = flatten(text):upper()
       if s:find("ROCK SMASH", 1, true) or s:find("ROCKSMASH", 1, true)
           or s:find("SMASH", 1, true) then
@@ -726,6 +768,52 @@ return function(mod)
       box.advance = box.update
       return box
     end
+    pcall(function()
+      local Transition = require("src.render.Transition")
+      if type(Transition) ~= "table" or type(Transition.whiteFlash) ~= "function"
+          or Transition._suiteSkipHmFlash then
+        return
+      end
+      Transition._suiteSkipHmFlash = true
+      local flash = Transition.whiteFlash
+      function Transition.whiteFlash(game, a, onDone, ...)
+        if instantOn() and game and game._suiteSkipNextFlash then
+          game._suiteSkipNextFlash = nil
+          if type(onDone) == "function" then pcall(onDone) end
+          return {
+            draw = function() end,
+            update = function(self)
+              if game.stack and game.stack.top and game.stack:top() == self then
+                pcall(game.stack.pop, game.stack)
+              end
+            end,
+          }
+        end
+        return flash(game, a, onDone, ...)
+      end
+    end)
+    pcall(function()
+      local Game = require("src.core.Game")
+      if type(Game) ~= "table" or type(Game.say) ~= "function"
+          or Game._suiteSkipHmSay then
+        return
+      end
+      Game._suiteSkipHmSay = true
+      local say = Game.say
+      function Game:say(text, onDone, opts)
+        if instantOn() and isHmFlavor(text) then
+          local s = flatten(text):upper()
+          if not (s:find("ROCK SMASH", 1, true) or s:find("ROCKSMASH", 1, true)
+              or s:find("SMASH", 1, true)) then
+            local choice = type(opts) == "table" and opts.choice
+            if type(choice) == "function" then pcall(choice, true) end
+            if type(onDone) == "function" then pcall(onDone) end
+            return self
+          end
+        end
+        return say(self, text, onDone, opts)
+      end
+    end)
         pcall(function()
       local F = require("src.world.gen2.FieldMoves")
       if type(F) ~= "table" or F._suiteSkipConfirm then return end

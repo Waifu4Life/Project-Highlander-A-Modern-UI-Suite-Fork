@@ -17,8 +17,8 @@ These run whenever the matching UI / event is in play. There is no extra toggle.
 | Area | What you get |
 | --- | --- |
 | Start Menu | **PokéBox** shortcut (Bill’s PC, modern PC UI). Backing out of PokéBox or Mods returns to the Start Menu. |
-| Start Menu | Gender-neutral lines: “All children leave home some day.” / “Whoa, kid!” |
 | New game | Boy / Girl before Oak (Red / Blue / Yellow / Gold / Silver) when Crystal sprites are present. Crystal’s own gender prompt is left alone. Default name lists follow gender and version. |
+| Script | Gender-neutral lines: “All children leave home some day.” / “Whoa, kid!” |
 | Trainer ID | Colored Kanto Gym Leaders + spinning badges. Gen 2 also has a Johto page; Left / Right flips pages. |
 | Pokégear map | **Select** swaps Johto and Kanto (same rule as Fly: unvisited towns stay locked). |
 | Party | **Select** on the Moves tab reorders moves. |

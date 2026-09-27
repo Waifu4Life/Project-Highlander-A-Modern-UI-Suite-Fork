@@ -188,7 +188,7 @@ Same keep-on-disable rule.
 | Exclusive PKMN from other Gen 2 games | Gold / Silver tables; Crystal exclusives from those tables. |
 | Other Johto starters | Elm leftovers, Lv 5. |
 | Kim fossil trades | Route 14. Extra Chansey → Omanyte, then Kabuto. Same trade rules as Aerodactyl. |
-| GS Ball / Celebi | Get the GS Ball. |
+| GS Ball | Get the GS Ball. |
 | Trade with Link C. | Replaces the Ecruteak Center bench guy (Game Boy Kid, PAL_OW_RED). Player and NPC must hold the evolution item when the trade needs one. |
 | Oak Kanto starters | Show him the Legendary Beasts in slot 1. |
 | Kanto legendary birds | Find them in Johto and Kanto. |

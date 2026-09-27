@@ -10,7 +10,7 @@ Repo: https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
 
 ---
 
-## Always on
+## Always on or on by default
 
 These run whenever the matching UI / event is in play. There is no extra toggle.
 
@@ -56,18 +56,19 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 ## Start Menu
 
 - Theme: Red, Blue, Green, Yellow, Gold, Silver, Crystal, DMG.
+- Save theme per game or per save.
 - Icon overrides and start-icon order.
 - Clock on / off.
-- Position.
+- Icon Position.
 - PokéBox (always listed when the modern Start Menu is on).
 
 ## Party
 
 - Modern party screen (Gen 1 layout on Gen 2 as well).
-- HP / EXP as amount or percent, values in the bars.
-- Stats / Moves tabs (plural labels).
-- Select reorders moves.
-- Sprite info from the suite’s portrait pipeline.
+- Pressing Select allows you to re-order PKMN in main screen.
+- Scrolling Menus when there's more than 8 items in Gen2.
+- Gen2: HP / EXP as amount or percent, values in the bars.
+- Pressing Select reorders moves on PKMN move screen.
 
 ## Bag
 
@@ -76,6 +77,7 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 - Pocket order editor.
 - 255 item cap on the modern bag.
 - TM / HM descriptions from the move they teach.
+- Pressing Start allows for sorting the items in Tabs/Pockets
 
 ## PC
 
@@ -86,20 +88,17 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 ## Pokédex
 
 - Info / Stats / Family / Moves.
-- Follower icons in the list and summaries (optional).
 - Locations (Start), color legend (Select), sort (A).
 - Catch rate on Info.
-- Gen 2 shiny history + L / R shiny-only filter (from Ish 0.1.31).
 - L / R still skip pages on the main list.
 
 ## Battle HUD
 
-- Modern player HUD (thicker Gen 1-style bars where that pack is on).
+- Modern player HUD (thicker Gen 1 HP en XP bars where that pack is on).
 - **Enemy HP Counter** — current / max inside the enemy bar.
 - **Reduce Low HP Beeping** — On / Off / Reduce (double beep).
 - **Sprite** — menu sprite source for battle.
 - Aspect ratio shared with other modern windows.
-- Gen 2: native player HP / EXP; suite enemy HP + status left of `Lv`.
 
 ## Move Colors
 
@@ -115,11 +114,11 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 | Unlimited PP | PP does not drop. |
 | Always Boosted EXP | Trade-boosted EXP for your own Pokémon, with the boosted line. |
 | Modern EXP Sharing | Switch-style share. Off = use the Gen 1 EXP.ALL item. Bench mons get a grouped line. |
-| Running Shoes | Off / Hold B / Toggle B at 2×. Locked until Mom (or Elm) hands over sneakers. |
+| Running Shoes | Off / Hold B / Toggle B at 2×. Locked until getting starter then talking to Mom. |
 | Decapitalize Words | Sentence case on dialogue. |
 | Display Area Names | White box, two seconds, wraps long names, spaced town names. |
 | Modern Stores | Shows how many you already hold. Every mart including Indigo. |
-| Infinite Safari | Steps do not end the Safari; balls or leaving do. |
+| Infinite Safari | Steps do not end the Safari; out of balls or leaving do. |
 | Sparkling Hidden Items | Sparkles on hidden items. No Itemfinder required. |
 | Use Repel Again? | One reuse prompt when a Repel expires. |
 | Rematch Anyone | Defeated trainers / Gym Leaders offer a rematch. Teams scale to your weakest mon. |
@@ -136,12 +135,12 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 | TMs Forever | TMs are not consumed. |
 | Instant TMs and HMs | A in front of water / trees / boulders. Select menu for Dig, Teleport, Fly, Flash (and Sweet Scent in Gen 2). Field prompts stripped where the engine allows. |
 | No Learn HMs | Badge + compatible species can Cut / Surf / Strength / Fly / Flash without the HM on the moveset. |
-| Move Relearning | Party A-menu. Includes stone-evolution misses. Not a substitute for Forgettable HMs. |
+| Move Relearning | Party A-menu. Includes stone-evolution misses.|
 
 ## Full Control
 
 Rebinds Up, Down, Left, Right, B, A, Start, Select, Speed+, Speed−.  
-Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disabled. Stock Controls page is hidden while this is On. (Item shortcuts were dropped.)
+Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disabled. Stock Controls page is hidden while this is On.
 
 ## Cont. Rumble
 

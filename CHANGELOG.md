@@ -1,3 +1,55 @@
+## [2.97.0]
+- Custom Letterbox: replaced all 7 SGB-style borders (Red, Green, Blue, Yellow, Gold, Silver, Crystal) with hand-retouched art. The automatic downscale from the previous versions left the small sprites noisy; these are cleaned up by hand at native size. Layout, colours and template rules (art only in the red zones, centre fully transparent) are unchanged.
+
+## [2.96.0]
+- Modern Start Menu: the icon order now carries over between Gen 1 and Gen 2. The order was saved with per-game keys (Gen 1 "party" / "bag" / "option" vs Gen 2 "pokemon" / "pack", or a value or label instead of an id), so only the two entries this mod adds itself (Trainer ID and PokeBox) matched in the other game and jumped to the top. Built-in icons (Pokedex, Pokemon, Bag, Trainer, PokeBox, Save, Options, Mods, Quit, PokeGear) now order by a game-independent key, and orders saved by older versions are read the same way, so the order you set up already works.
+- The Gen 2-only POKeGEAR is not in a Gen 1 order, so it falls after the saved entries and lands on page 2. Moving it in either game is remembered for both.
+- Third-party menu entries keep the keys they had. Icon overrides (which picture an entry uses) are unchanged.
+- Build files are now named with dots (project_highlander-2.96.0.zip).
+
+## [2.95.0]
+- Gen 2 coin clerk (2X COINS on): the intro is now a single page. The game's intro is one text holding both "Do you need some game coins?" and "It costs 1000 for 50 coins. Do you want some?". The 2.94.0 greeting rule skipped it because it contains prices (digits). It now matches that text and replaces all of it with "Would you like to purchase some coins?", so the purchase menu follows straight after.
+- A stand-alone "It costs ... for 50 coins. Do you want some?" box, if the engine ever splits it out, is dismissed silently.
+- A box carrying a Yes/No callback is never dismissed silently, whatever its text.
+- Prize Corner "It costs N coins" lines are still untouched.
+
+## [2.94.0]
+- Gen 2 coin clerk dialogue now matches 2X COINS FOR MONEY (only while 2X is on):
+  - He greets with "Would you like to purchase some coins?" (same line Gen 1 uses).
+  - The "Here are your N coins" line shows the doubled number.
+  - The welcome line and the "No coins for you? Come again!" line are not shown. They are dismissed the frame they appear, by popping that exact box and running its own continuation (the Rock Smash method).
+- Lines are matched by meaning, not exact wording. Prize Corner, COIN CASE, not-enough-money and case-full lines are never touched. With 2X off, Gen 1 and Gen 3 nothing changes.
+- Logs one line per clerk line it changes or deliberately leaves alone, so any line that does not match can be named exactly.
+
+## [2.93.0]
+- 2X COINS FOR MONEY now works in Gen 2. The 2.92.0 version only armed itself when a Gen 1 style menu object appeared, but the Gen 2 coin clerk is the game's own script and never builds one, so nothing happened. Now:
+  - Bonus: when the game completes its own purchase (money down by exactly 1000 or 10000 and coins up by exactly 50 or 500, in either order, within a few seconds) the same number of coins is added again, capped at 9999. Reads only the save's player money/coins, so it does not depend on the menu.
+  - Menu: the two rows are drawn as 100 / 1000 at the same prices, using the same text hook as DECAPITALIZE. Only a line that starts with the amount and ends with the matching price is changed.
+- Gen 1 (menu replaced by the mod), and Gen 2 with 2X off, are unchanged. Gen 3 is untouched.
+- Writes a few short log lines (fields found, rows rewritten, bonus paid, and any unmatched text containing 1000) to help diagnose the Gen 2 menu if the rows do not change.
+
+## [2.92.0]
+- Custom Letterbox: no longer offered on the Modern UI Suite screens (Party, Bag, PC, Pokedex, Start menu); they are true 4:3 and the borders are made for the square Game Boy shape. Title, Options, Mods, Trainer ID and OG battles keep the frame.
+- Custom Letterbox: Gen 2 overworld no longer gets the frame. Gen 2 keeps its overworld off the screen stack (game.phase "play"), so the frame is now off whenever the world is running.
+- Custom Letterbox: removed the FireRed/LeafGreen entries (Gen 3 is widescreen only). Writes one log line whenever it decides to show or hide the frame, naming the screen.
+- Pokedex list: the follower icon on the selected row no longer sits in a grey square. Only the sprite's own pixels are claimed as true colour now, and the icon is drawn at its native 16px.
+- Game Corner (Gen 2): fixed the freeze after buying or cancelling at the coin clerk (Johto and Kanto). The Gen 1 coin hooks replaced the game's dialogue/menu callbacks; they now run on Gen 1 only, so with 2X COINS off nothing here touches Gen 2. With 2X COINS on, Gen 2 keeps its own menu and script, shows 100 / 1000 and adds the extra coins after the game's own purchase.
+- Game Corner: the hooks no longer drop extra arguments passed to TextBox / ChoiceBox.
+
+## [2.91.0]
+- Custom Letterbox is now its own PROJECT HIGHLANDER sub-menu (CUSTOM LETTERBOX) and is gone from QoL. ENABLED toggle (Off by default), BORDER and BORDER SCOPE.
+- BORDER: AUTOMATIC (follows the cartridge: R/B/Y/G/GS/C), Red, Green, Blue, Yellow, Gold, Silver, Crystal, Custom 1-4. New redesigned SGB-style borders; custom1-4.png are blank templates in components/custom_letterbox/assets/borders/.
+- BORDER SCOPE: BY SAVE or BY GAME, remembered like the Start Menu colour. BY SAVE with nothing stored yet inherits the BY GAME choice.
+- Frame now also shows on the Title screen, Mods menu and every other full-screen 4:3 menu, plus the Modern UI Suite screens (Party, Bag, PC, Pokedex) while their aspect ratio is 4:3. Still never over the overworld or widescreen battles.
+- The frame never draws over the game-screen area, so a custom PNG can leave its centre white or transparent.
+- Removed the old Leaf frame and the QoL letterbox toggle.
+
+## [2.90.0]
+- Custom Letterbox only on Options / Mods / Trainer ID / OG 4:3 battles. QoL list restored.
+
+## [2.89.0]
+- Custom Letterbox: Leaf SGB frame on the 4:3 pillars. QoL toggle plus UI Letterbox CUSTOM.
+
 ## [2.88.0]
 - Dropped unused unlimited_pp ID draft PNGs. Kept sparkle.png and kanto_leaders_gen1.png.
 

@@ -1009,9 +1009,19 @@ return function(mod, compatibility)
     local mon = syntheticMon(def)
     local pokeIcons = mod.suite and mod.suite.pokeIcons
     local pokeDex = pokeIcons and pokeIcons.source("pokedex")
-    if pokeDex == "followers" and pokeIcons.draw(game, mon, x, y, {
-        animate = selected, counter = counter, size = target or 16,
-      }) then return end
+    if pokeDex == "followers" then
+      -- Draw at the sheet's native 16px (centred in the slot) so every sprite
+      -- pixel maps 1:1, and publish only the sprite's opaque pixels. Claiming
+      -- the whole square restored its transparent pixels un-tinted: a grey
+      -- box behind the icon on the selected (green) row.
+      local slot = target or 16
+      local size = slot <= 17 and 16 or slot
+      local off = math.floor((slot - size) / 2)
+      if pokeIcons.draw(game, mon, x + off, y + off, {
+          animate = selected, counter = counter, size = size,
+          regions = regions,
+        }) then return end
+    end
     if pokeDex ~= "original" and compatibility.wildsOfKanto and drawWildsIcon(game, mon, x, y,
         target, selected, counter, regions) then return end
     if compatibility.drawIcon then

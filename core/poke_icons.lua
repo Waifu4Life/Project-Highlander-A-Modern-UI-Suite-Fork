@@ -145,6 +145,52 @@ return function(mod, settings)
     return img
   end
 
+  -- Opaque pixel runs of one sheet frame, so a caller can claim only the
+  -- sprite's real pixels as true colour instead of the whole 16x16 square
+  -- (claiming the square restores its transparent pixels un-tinted, which
+  -- shows up as a grey box on a coloured/selected row).
+  local datas, runCache = {}, {}
+  local function imageData(rel)
+    if datas[rel] ~= nil then return datas[rel] or nil end
+    local data
+    local okA, Assets = pcall(require, "src.render.Assets")
+    if okA and type(Assets) == "table" and type(Assets.imageData) == "function" then
+      local path = mod.assets and mod.assets.path and mod.assets:path(rel) or rel
+      local ok, loaded = pcall(Assets.imageData, path)
+      if ok and loaded and type(loaded.getPixel) == "function" then data = loaded end
+    end
+    datas[rel] = data or false
+    return data
+  end
+
+  local function frameRuns(rel, frame, frameW, frameH)
+    local key = rel .. ":" .. frame
+    local cached = runCache[key]
+    if cached ~= nil then return cached or nil end
+    local data = imageData(rel)
+    if not data then runCache[key] = false; return nil end
+    local ok, runs = pcall(function()
+      local out = {}
+      for py = 0, frameH - 1 do
+        local start
+        for px = 0, frameW - 1 do
+          local _, _, _, alpha = data:getPixel(px, frame * frameH + py)
+          local opaque = (alpha == nil) or alpha > 0.01
+          if opaque and start == nil then start = px end
+          if start ~= nil and (not opaque or px == frameW - 1) then
+            local finish = opaque and px or px - 1
+            out[#out + 1] = { x = start, y = py, w = finish - start + 1 }
+            start = nil
+          end
+        end
+      end
+      return out
+    end)
+    if not ok then runCache[key] = false; return nil end
+    runCache[key] = runs
+    return runs
+  end
+
   local api = {}
 
   function api.source(surface)
@@ -167,7 +213,8 @@ return function(mod, settings)
       dex, shiny and "shiny" or "normal")
     local image = loadImage(rel)
     if not image and shiny then
-      image = loadImage(string.format("assets/poke_followers/follower_%03d_normal.png", dex))
+      rel = string.format("assets/poke_followers/follower_%03d_normal.png", dex)
+      image = loadImage(rel)
     end
     if not image then return false end
     local iw, ih = image:getDimensions()
@@ -204,6 +251,25 @@ return function(mod, settings)
     -- remap those RGB values as Game Boy greys unless this rect is claimed.
     -- Party cards can pass markTrueColor=false and publish the well after
     -- the action popup cutout is known, so icons do not punch through.
+    if type(opts.regions) == "table" then
+      -- Caller collects true-colour regions itself (and applies its own popup
+      -- cutouts): give it just the sprite's opaque pixels.
+      local runs = frameRuns(rel, frame, frameW, frameH)
+      if runs then
+        for _, run in ipairs(runs) do
+          local x0 = math.floor(run.x * scale)
+          local x1 = math.ceil((run.x + run.w) * scale)
+          local y0 = math.floor(run.y * scale)
+          local y1 = math.ceil((run.y + 1) * scale)
+          opts.regions[#opts.regions + 1] = {
+            x = dx + x0, y = dy + y0,
+            w = math.max(1, x1 - x0), h = math.max(1, y1 - y0),
+          }
+        end
+        return true
+      end
+      -- No pixel data available: fall back to claiming the whole square.
+    end
     if opts.markTrueColor ~= false then
       local okFx, PaletteFX = pcall(require, "src.render.PaletteFX")
       if okFx and PaletteFX and type(PaletteFX.markTrueColor) == "function" then

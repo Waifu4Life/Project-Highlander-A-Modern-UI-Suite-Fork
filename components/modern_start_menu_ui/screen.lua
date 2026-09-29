@@ -276,6 +276,81 @@ return function(mod, icons)
     return playerName == "" or label ~= playerName
   end
 
+  -- ORDER keys. The same built-in icon must have the same key in every game,
+  -- otherwise an order set up in Gen 1 matches nothing in Gen 2 (the two
+  -- games name the same entries differently: id "party" vs "pokemon", "bag"
+  -- vs "pack", a value instead of an id, or just a label). Only the entries
+  -- this mod adds itself (trainer, PokeBox) happened to share keys, so only
+  -- those two kept their place. Built-ins therefore order by "builtin:<name>";
+  -- third-party entries keep the keys they have always had. Icon overrides use
+  -- entryKey and are deliberately unaffected.
+  local function orderKey(item, game)
+    local key = entryKey(item, game)
+    if key == "builtin:trainer" or type(item) ~= "table"
+        or isCustomItem(item, game) then
+      return key
+    end
+    local id = detectedId(item, game)
+    if id and id ~= "generic" and (icons.frames or {})[id] ~= nil then
+      return "builtin:" .. id
+    end
+    return key
+  end
+
+  -- Translate a key saved by an older version (id:/value:/label: forms) into
+  -- the game-independent form when it names a built-in entry.
+  local function canonicalOrderKey(key)
+    if type(key) ~= "string" then return key end
+    local kind, rest = key:match("^(%a+):(.+)$")
+    if kind == "id" or kind == "value" then
+      if BUILTIN_IDS[rest] then return "builtin:" .. (VALUE_IDS[rest] or rest) end
+    elseif kind == "label" then
+      local canon = LABEL_IDS[rest]
+      if canon and not CUSTOM_ALIAS_LABELS[rest] then return "builtin:" .. canon end
+    end
+    return key
+  end
+
+  -- Put a live menu's items into the saved order. Saved keys that are not in
+  -- this game's menu are simply skipped; entries the saved order does not
+  -- mention (for example the Gen 2-only POKeGEAR) follow, in their native
+  -- order, so they fall onto the end of the list.
+  local function arrange(items, saved, game)
+    local entries, byKey, occurrences = {}, {}, {}
+    for _, item in ipairs(items) do
+      local base = orderKey(item, game)
+      occurrences[base] = (occurrences[base] or 0) + 1
+      local key = base .. (occurrences[base] > 1 and ("#" .. occurrences[base]) or "")
+      local entry = { key = key, label = tostring(item.label or item.id or "MENU"), item = item }
+      entries[#entries + 1], byKey[key] = entry, entry
+    end
+    local function isNameKey(key)
+      if type(key) ~= "string" then return false end
+      local label = key:match("^label:(.+)$") or key:match("^id:(.+)$") or key:match("^value:(.+)$")
+      if not label then return false end
+      label = label:upper()
+      if label == "TRAINER" or label == "STATUS" or label == "PLAYER" then return true end
+      return label:match("^[A-Z0-9]+$") ~= nil and #label <= 7
+        and label ~= "POKEDEX" and label ~= "PARTY" and label ~= "PKMN"
+        and label ~= "BAG" and label ~= "ITEM" and label ~= "ITEMS"
+        and label ~= "SAVE" and label ~= "OPTION" and label ~= "OPTIONS"
+        and label ~= "MODS" and label ~= "QUIT" and label ~= "LINK"
+        and label ~= "POKEBOX" and label ~= "BOX"
+    end
+    local ordered, used = {}, {}
+    for _, key in ipairs(saved or {}) do
+      if byKey[key] and not used[key] then
+        ordered[#ordered + 1], used[key] = byKey[key], true
+      elseif isNameKey(key) and byKey["builtin:trainer"] and not used["builtin:trainer"] then
+        ordered[#ordered + 1], used["builtin:trainer"] = byKey["builtin:trainer"], true
+      end
+    end
+    for _, entry in ipairs(entries) do
+      if not used[entry.key] then ordered[#ordered + 1] = entry end
+    end
+    return ordered
+  end
+
   local function normalizedId(item, game)
     if mod and type(mod.startMenuIconOverrideFor) == "function" then
       local ok, override = pcall(mod.startMenuIconOverrideFor, item, game)
@@ -967,6 +1042,9 @@ return function(mod, icons)
   Presentation.iconFor = normalizedId
   Presentation.detectedIconFor = detectedId
   Presentation.entryKeyFor = entryKey
+  Presentation.orderKeyFor = orderKey
+  Presentation.canonicalOrderKey = canonicalOrderKey
+  Presentation.arrange = arrange
   Presentation.isCustomItem = isCustomItem
   Presentation.normalizeText = miniText
   Presentation.tileLabelFor = tileLabel

@@ -33,6 +33,7 @@ return function(parent, components)
     pokedex = "DEX",
     battle_hud = "HUD",
     move_colors = "MOVE",
+    letterbox = "LETTERBOX",
   }
   local MANAGER_DETAIL = {
     start_menu = {
@@ -64,6 +65,10 @@ return function(parent, components)
       enabled = "RUMBLE", intensity = "INTENSITY",
       battle_fx = "BATTLE FX", ambient = "AMBIENT",
       story = "STORY", menus = "MENUS",
+    },
+    letterbox = {
+      border = "BORDER", border_scope = "SCOPE",
+      border_by_game = "BORDER BY GAME",
     },
     pokemoves = {
       forgettable_hms = "FORGET HMS",
@@ -443,7 +448,8 @@ return function(parent, components)
     for _, component in ipairs(self.components) do
       for _, source in ipairs(component.schema or {}) do
         if source.key ~= component.enabledOption
-            and source.key ~= "theme_by_game" then
+            and source.key ~= "theme_by_game"
+            and source.key ~= "border_by_game" then
           local row = copy(source)
           row.key = self:keyFor(component, source.key)
           row.label = self:managerLabel(component, source)

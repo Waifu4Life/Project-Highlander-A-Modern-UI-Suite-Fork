@@ -100,7 +100,7 @@ return function(mod, settings, state, components)
         gen2_birds = true, gen2_mew = true, gen2_roaming_hunter = true,
       }
       if row.key ~= component.enabledOption and row.key ~= "enabled"
-          and row.key ~= "theme_by_game"
+          and row.key ~= "theme_by_game" and row.key ~= "border_by_game"
           and not (component.key == "qol" and hideQol[row.key])
           and not (row.key == "force_crystal_settings"
             and not (mod.find("crystal_animated_sprites_with_shiny_visuals")
@@ -121,6 +121,25 @@ return function(mod, settings, state, components)
               local exports = component.exports or {}
               if type(exports.stepTheme) == "function" then
                 return exports.stepTheme(activeGame, direction)
+              end
+              return stepOption(activeGame, component, source, direction)
+            end,
+          }
+        elseif component.id == "custom_letterbox" and source.key == "border" then
+          body[#body + 1] = {
+            id = component.key .. ".border",
+            label = labelFor(source, component),
+            value = function()
+              local exports = component.exports or {}
+              if type(exports.borderLabel) == "function" then
+                return exports.borderLabel()
+              end
+              return optionValue(component, source)
+            end,
+            step = function(activeGame, direction)
+              local exports = component.exports or {}
+              if type(exports.stepBorder) == "function" then
+                return exports.stepBorder(activeGame, direction)
               end
               return stepOption(activeGame, component, source, direction)
             end,
@@ -435,6 +454,7 @@ return function(mod, settings, state, components)
         items[#items + 1] = {
           id = component.id,
           label = component.short,
+          fullLabel = component.fullLabel,
           right = "OPEN",
           component = component,
           openOnly = true,

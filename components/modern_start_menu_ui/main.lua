@@ -77,6 +77,10 @@ return function(mod)
           or (name ~= "" and (key == "label:" .. name
             or key == "id:" .. name or key == "value:" .. name)) then
         key = "builtin:trainer"
+      elseif presentation and presentation.canonicalOrderKey then
+        -- Orders saved by older versions use per-game keys; read them as the
+        -- game-independent form so one order serves Gen 1 and Gen 2.
+        key = presentation.canonicalOrderKey(key)
       end
       if type(key) == "string" and not seen[key] then
         out[#out + 1] = key
@@ -88,38 +92,7 @@ return function(mod)
 
   local function rememberLiveMenu(menu, game)
     if not game then return end
-    local entries, byKey, occurrences = {}, {}, {}
-    for _, item in ipairs(menu.items) do
-      local base = presentation.entryKeyFor(item, game)
-      occurrences[base] = (occurrences[base] or 0) + 1
-      local key = base .. (occurrences[base] > 1 and ("#" .. occurrences[base]) or "")
-      local entry = { key = key, label = tostring(item.label or item.id or "MENU"), item = item }
-      entries[#entries + 1], byKey[key] = entry, entry
-    end
-    local ordered, used = {}, {}
-    local function isNameKey(key)
-      if type(key) ~= "string" then return false end
-      local label = key:match("^label:(.+)$") or key:match("^id:(.+)$") or key:match("^value:(.+)$")
-      if not label then return false end
-      label = label:upper()
-      if label == "TRAINER" or label == "STATUS" or label == "PLAYER" then return true end
-      return label:match("^[A-Z0-9]+$") ~= nil and #label <= 7
-        and label ~= "POKEDEX" and label ~= "PARTY" and label ~= "PKMN"
-        and label ~= "BAG" and label ~= "ITEM" and label ~= "ITEMS"
-        and label ~= "SAVE" and label ~= "OPTION" and label ~= "OPTIONS"
-        and label ~= "MODS" and label ~= "QUIT" and label ~= "LINK"
-        and label ~= "POKEBOX" and label ~= "BOX"
-    end
-    for _, key in ipairs(savedOrder(game)) do
-      if byKey[key] and not used[key] then
-        ordered[#ordered + 1], used[key] = byKey[key], true
-      elseif isNameKey(key) and byKey["builtin:trainer"] and not used["builtin:trainer"] then
-        ordered[#ordered + 1], used["builtin:trainer"] = byKey["builtin:trainer"], true
-      end
-    end
-    for _, entry in ipairs(entries) do
-      if not used[entry.key] then ordered[#ordered + 1] = entry end
-    end
+    local ordered = presentation.arrange(menu.items, savedOrder(game), game)
     -- Keep the original array shared with Gen 2's native list controller.
     for index, entry in ipairs(ordered) do menu.items[index] = entry.item end
     liveMenus[game] = ordered

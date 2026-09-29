@@ -142,6 +142,10 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 Rebinds Up, Down, Left, Right, B, A, Start, Select, Speed+, Speed−.  
 Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disabled. Stock Controls page is hidden while this is On.
 
+## Custom Letterbox
+
+Choose from 7 frames made with Member Berries of the Super Game Boy Borders. Set your favorite, set it to Auto for the proper frame to be picked or customize your own using one of the 4 custom options (make sure to backup your work or it will be lost on the next build update). These frames will be used on the Title Screen, Trainer ID Screen, Option Menu, Mods Menu and Battle Screen if you didn't set battles in widescreen and are not using any Voxel mods. You can also have the frame setting be remembered by game or saved game.
+
 ## Cont. Rumble
 
 Full masterwebx option set. Credit line: `Copyright (c) 2026 masterwebx`.

@@ -144,7 +144,7 @@ Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disab
 
 ## Custom Letterbox
 
-Choose from 7 frames made with Member Berries of the Super Game Boy Borders. Set your favorite, set it to Auto for the proper frame to be picked or customize your own using one of the 4 custom options (make sure to backup your work or it will be lost on the next build update). These frames will be used on the Title Screen, Trainer ID Screen, Option Menu, Mods Menu and Battle Screen if you didn't set battles in widescreen and are not using any Voxel mods. You can also have the frame setting be remembered by game or saved game.
+Choose from 7 frames made with Member Berries of the Super Game Boy Borders. Set your favorite, set it to Auto for the proper frame to be picked or customize your own using one of the 4 custom options (make sure to backup your work or it will be lost on the next build update). These frames will be used on the Title Screen, Trainer ID Screen, Option Menu, Mods Menu and Battle Screen if you didn't set battles in widescreen and are not using any Voxel mods. It will also work with the OG PokéDex and OG Party menu if for some reason, you've disabled the Modern UI ones. You can also have the frame setting be remembered by game or saved game.
 
 ## Cont. Rumble
 

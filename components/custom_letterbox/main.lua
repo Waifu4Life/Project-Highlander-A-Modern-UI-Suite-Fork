@@ -316,8 +316,8 @@ return function(mod)
         local s = states[i]
         if type(s) == "table" then
           if s.isOverworld then return "skip" end
-          if isBattleScreen(s) then return "battle" end
           if isSkipScreen(s) then return "skip" end
+          if isBattleScreen(s) then return "battle" end
           if isOptionsLike(s) or isTrainerId(s) or s.isOpaque then
             return "screen"
           end

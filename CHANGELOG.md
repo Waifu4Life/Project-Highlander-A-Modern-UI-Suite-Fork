@@ -1,3 +1,9 @@
+## [2.99.0]
+- Custom Letterbox: fixed the border covering the Modern Party UI when it's opened mid-battle (e.g. switching Pokemon). The screen classifier checked "is this a battle" before "is this a suite screen", and the in-battle Party UI carries a reference to the current enemy (for its type-matchup display), so it was misidentified as a battle screen and given the border meant for the plain 160x144 game rect instead of being skipped like every other suite screen. Suite screens are now always checked first, regardless of what else they carry.
+
+## [2.98.0]
+- Custom Letterbox: small pixel fixes to the Blue border art (2 pixels, left side).
+
 ## [2.97.0]
 - Custom Letterbox: replaced all 7 SGB-style borders (Red, Green, Blue, Yellow, Gold, Silver, Crystal) with hand-retouched art. The automatic downscale from the previous versions left the small sprites noisy; these are cleaned up by hand at native size. Layout, colours and template rules (art only in the red zones, centre fully transparent) are unchanged.
 

@@ -156,12 +156,12 @@ TRW Crystal Animated Sprites with Shiny Visuals (integrated with permission). Pl
 
 ## Custom Letterbox — New sub-menu of its own, separate from QoL, with its own ENABLED toggle (off by default).
 
--BORDER: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal) or a fixed choice, plus 4 custom slots.
+- BORDER: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal) or a fixed choice, plus 4 custom slots.
 
--BORDER SCOPE: By Save or By Game, remembered the same way as the Start Menu colour.
+- BORDER SCOPE: By Save or By Game, remembered the same way as the Start Menu colour.
 Shown on the Title screen, Options, Mods, Trainer ID and OG (non-widescreen) battles. Never drawn over the overworld in Gen 1 or Gen 2, and never over the Modern UI Suite screens (Party / Bag / PC / Pokédex / Start menu), since those are true 4:3 rather than the square Game Boy shape the border art is made for.
 
--All 7 borders (Red, Green, Blue, Yellow, Gold, Silver, Crystal) are hand-retouched pixel art.
+- All 7 borders (Red, Green, Blue, Yellow, Gold, Silver, Crystal) are hand-retouched pixel art.
 Game Corner clerk dialogue (Gen 2, 2X Coins on) — The clerk now greets with the same line Gen 1 uses, states the doubled coin count on purchase, and skips the welcome / "no coins" lines instead of showing numbers that no longer match.
 
 ## Poké Icons

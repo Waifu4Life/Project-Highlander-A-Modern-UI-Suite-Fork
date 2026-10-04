@@ -97,7 +97,6 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 - Modern player HUD (thicker Gen 1 HP en XP bars where that pack is on).
 - **Enemy HP Counter** — current / max inside the enemy bar.
 - **Reduce Low HP Beeping** — On / Off / Reduce (double beep).
-- **Sprite** — menu sprite source for battle.
 - Aspect ratio shared with other modern windows.
 
 ## Move Colors
@@ -156,7 +155,7 @@ TRW Crystal Animated Sprites with Shiny Visuals (integrated with permission). Pl
 
 ## Custom Letterbox — New sub-menu of its own, separate from QoL, with its own ENABLED toggle (off by default).
 
-- BORDER: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal) or a fixed choice, plus 4 custom slots.
+- Custom Borders: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal), 3 classics for Red, Blue and Green, a fixed Automatic choice and 4 custom slots.
 
 - BORDER SCOPE: By Save or By Game, remembered the same way as the Start Menu colour.
 Shown on the Title screen, Options, Mods, Trainer ID and OG (non-widescreen) battles. Never drawn over the overworld in Gen 1 or Gen 2, and never over the Modern UI Suite screens (Party / Bag / PC / Pokédex / Start menu), since those are true 4:3 rather than the square Game Boy shape the border art is made for.
@@ -185,7 +184,9 @@ Turning a row **Off** does not take away anything already unlocked.
 | Other fossil | Super Nerd after the ticket is in Key Items. |
 | Other fighting PKMN | Dojo leftover after the Karate Master rematch (Lv 70, best natural moves). |
 | More Eevees | Mr. Fuji after each bird; greed line if you grab extra balls. |
+| Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
 | Trade with Link C. | Celadon Department 3F Game Boy Kid. Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
+
 | Get ??? | Get the final Pokémon |
 
 ## Gen2 Get All the Pokémon
@@ -202,6 +203,7 @@ Same keep-on-disable rule.
 | Oak Kanto starters | Show him the Legendary Beasts in slot 1. |
 | Kanto legendary birds | Find them in Johto and Kanto. |
 | Mew and Mewtwo | Mew and Mewtwo are now available, find them!. |
+| Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
 | Roaming Hunter | 100% on the current route, no flee, no Roar. Does not invent map pins. |
 
 ---

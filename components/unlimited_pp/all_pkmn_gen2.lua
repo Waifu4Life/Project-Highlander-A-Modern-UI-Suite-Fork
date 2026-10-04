@@ -1823,10 +1823,21 @@ return function(mod)
     local key, def
     if tostring(species or ""):upper():find("MEW") then
       key, def = monsterSpriteDef(ow)
-      if not key then key = "SPRITE_MONSTER" end
     else
       key, def = birdSpriteDef(ow)
-      if not key then key = "SPRITE_HO_OH" end
+    end
+    if not key then
+      -- Every candidate sprite lookup came up empty. This used to fall back
+      -- to a hardcoded sprite name (SPRITE_MONSTER / SPRITE_HO_OH) that was
+      -- never confirmed to exist -- in Gen 1, SPRITE_HO_OH isn't a real
+      -- asset at all, and the engine throws rather than drawing nothing.
+      -- Abort the spawn instead; same safe pattern paintBird already uses
+      -- a few lines below for the same "no def found" case.
+      pcall(function()
+        mod.log:warn("Project Highlander: no sprite found for %s static spawn (id=%s); skipping rather than guessing",
+          tostring(species), tostring(id))
+      end)
+      return nil
     end
     local mid = mapId(ow)
     if type(ow.addRuntimeObject) == "function" then
@@ -2047,6 +2058,20 @@ return function(mod)
   end
 
   local function handleStaticTalk(game, ow, npc)
+    -- Unlike every other handler in this chain, this one has no feature
+    -- toggle to gate it (it's meant to always catch the mod's own
+    -- suite_moltres/zapdos/articuno/mew2/mewtwo/celebi NPCs regardless of
+    -- settings) -- but that also means it runs for EVERY piece of Gen 2
+    -- scripted text shown via showMapText's unconditional branch, not just
+    -- real NPC interactions. A generic, narrator-style line (no specific
+    -- NPC attached, e.g. "Wow, that's a cute Pokemon.") passes npc as nil,
+    -- which indexing npc.id below would throw on -- uncaught, since this
+    -- runs during real gameplay, not inside the one-time pcall'd setup
+    -- block that installs the hook. An error here partway through the
+    -- engine's own "resume this script" callback is a very plausible
+    -- freeze, not just a crash: the native script interpreter may simply
+    -- never advance, having gotten an error instead of the normal return.
+    if type(npc) ~= "table" then return false end
     local id = tostring(npc.id or npc.suiteBird or "")
     local s = blob(npc)
     local mid = mapId(ow)
@@ -2231,14 +2256,62 @@ return function(mod)
     if not npc or (not npc.id and not npc.name and not npc.text and not npc.sprite and t == "") then
       return false
     end
-    if handleStaticTalk(game, self, npc) then return true end
-    if handleElm(game, npc) then return true end
-    if handleElmBall(game, self, npc) then return true end
-    if handleOak(game, npc) then return true end
-    if handleKim(game, npc) then return true end
-    if handleLinkC(game, self, npc) then return true end
-    if handleGsCenter(game, npc) then return true end
-    if handleKurt(game, npc) then return true end
+    -- DIAGNOSTIC (temporary): a real freeze was reported right after Elm's
+    -- "go see your mom" story beat, and interceptTalk's showMapText path
+    -- calls this unconditionally for any Gen2 scripted text, not just
+    -- inside Elm's lab or gated by badge count the way the other call site
+    -- is. Logging which handler actually fires (if any) for the text that
+    -- froze, instead of guessing which of the 8 chained handlers is at
+    -- fault, since changing the wrong one risks breaking something that
+    -- already works correctly.
+    local function logHandler(name)
+      local seenKey = "seen:" .. name .. ":" .. t
+      if mod._suiteInterceptLog and mod._suiteInterceptLog[seenKey] then return end
+      mod._suiteInterceptLog = mod._suiteInterceptLog or {}
+      if mod._suiteInterceptLog.count and mod._suiteInterceptLog.count >= 40 then return end
+      mod._suiteInterceptLog[seenKey] = true
+      mod._suiteInterceptLog.count = (mod._suiteInterceptLog.count or 0) + 1
+      pcall(function()
+        mod.log:info("Gen2 All Pkmn DIAGNOSTIC: %s fired for text %q (npc id=%s name=%s)",
+          name, t, tostring(npc.id), tostring(npc.name))
+      end)
+    end
+    -- SAFETY NET: a real, total engine hang (no input at all, only a hard
+    -- reset recovers) was reported right after a Gen2 story conversation,
+    -- which this system's showMapText path runs unconditionally for. An
+    -- uncaught Lua error partway through whichever native "resume this
+    -- script" callback led here is a very plausible cause of exactly that
+    -- kind of hang. Extensive manual tracing did not conclusively find the
+    -- one bad line (and a prior, narrower fix did not resolve the actual
+    -- report), so rather than guess a fourth time, every one of these 8
+    -- handlers -- and anything they call -- now runs inside a single pcall.
+    -- Any error anywhere in this chain is caught, logged with the exact
+    -- message and the text being shown, and safely falls through to
+    -- ordinary vanilla dialogue instead of ever being able to hang the
+    -- game again. If this was the actual cause, the log will now also
+    -- name the exact line for a permanent, precise fix.
+    local ok, intercepted = pcall(function()
+      if handleStaticTalk(game, self, npc) then return "handleStaticTalk" end
+      if handleElm(game, npc) then return "handleElm" end
+      if handleElmBall(game, self, npc) then return "handleElmBall" end
+      if handleOak(game, npc) then return "handleOak" end
+      if handleKim(game, npc) then return "handleKim" end
+      if handleLinkC(game, self, npc) then return "handleLinkC" end
+      if handleGsCenter(game, npc) then return "handleGsCenter" end
+      if handleKurt(game, npc) then return "handleKurt" end
+      return nil
+    end)
+    if not ok then
+      pcall(function()
+        mod.log:error("Gen2 All Pkmn SAFETY NET: a handler errored for text %q: %s -- falling through to vanilla instead of hanging",
+          t, tostring(intercepted))
+      end)
+      return false
+    end
+    if intercepted then
+      logHandler(intercepted)
+      return true
+    end
     return false
   end
 
@@ -2405,15 +2478,24 @@ return function(mod)
       local origShow = OverworldState.showMapText
       function OverworldState:showMapText(textConst, npc, unfreeze)
         local game = self.game
-        if game and isGen2(game) and isElmLab(mapId(self))
-            and feat("gen2_starters") and badgeCount(game.save) >= 8
-            and not flags(game).SUITE_ELM_TOOK_2 then
+        local gateMatch = game and isGen2(game) and isElmLab(mapId(self))
+          and feat("gen2_starters") and badgeCount(game.save) >= 8
+          and not flags(game).SUITE_ELM_TOOK_2
+        if gateMatch then
           if interceptTalk(self, npc or { name = "ELM", text = tostring(textConst or "") }, textConst) then
+            pcall(function()
+              mod.log:info("Gen2 All Pkmn DIAGNOSTIC: showMapText gated-branch intercepted text %q",
+                tostring(textConst))
+            end)
             if unfreeze then unfreeze() end
             return
           end
         end
         if interceptTalk(self, npc, textConst) then
+          pcall(function()
+            mod.log:info("Gen2 All Pkmn DIAGNOSTIC: showMapText UNCONDITIONAL branch intercepted text %q (gated check was %s)",
+              tostring(textConst), tostring(gateMatch))
+          end)
           if unfreeze then unfreeze() end
           return
         end

@@ -253,13 +253,27 @@ return function(mod)
     end
   end)
 
+  local heldBy
+  local releaseHeld
   local function wrapInput()
     local ok, Input = pcall(require, "src.core.Input")
     if not ok or type(Input) ~= "table" or Input._suiteFullCtl then return end
     Input._suiteFullCtl = true
 
-    local function fireButton(input, btn)
+    -- Every press we generate remembers what physical control caused it,
+    -- so a release that never arrives (window focus lost, Steam overlay,
+    -- controller asleep/disconnected, a missed event) can be detected and
+    -- cleared on the next frame instead of leaving the player walking.
+    heldBy = heldBy or {}
+    local function remember(btn, source)
+      if not (btn and source) then return end
+      heldBy[btn] = heldBy[btn] or {}
+      heldBy[btn][source.id] = source
+    end
+
+    local function fireButton(input, btn, source)
       if not (input and btn) then return end
+      remember(btn, source)
       if type(input.press) == "function" then
         pcall(input.press, input, btn)
         return
@@ -277,8 +291,15 @@ return function(mod)
     -- cleared, since the untouched native gamepadreleased has no record of
     -- a press it never saw. This was the cause of movement occasionally
     -- sticking in a direction until spinning the D-pad happened to clear it.
-    local function releaseButton(input, btn)
+    local function releaseButton(input, btn, sourceId)
       if not (input and btn) then return end
+      local sources = heldBy[btn]
+      if sources then
+        if sourceId then sources[sourceId] = nil else heldBy[btn] = nil end
+        -- Another physical control still holds the same direction.
+        if sourceId and next(sources) ~= nil then return end
+        heldBy[btn] = nil
+      end
       if type(input.release) == "function" then
         pcall(input.release, input, btn)
         return
@@ -289,13 +310,14 @@ return function(mod)
     local origKey = Input.keypressed
     if type(origKey) == "function" then
       function Input:keypressed(key, ...)
+        self._suiteLastDevice = "key"
         local extra = extras.key[key]
         if extra and extra:sub(1, 4) == "item" then
           self._suiteItemTap = extra
           return
         end
         if extra then
-          fireButton(self, extra)
+          fireButton(self, extra, { id = "k:" .. key, kind = "key", key = key })
           return
         end
         return origKey(self, key, ...)
@@ -306,7 +328,7 @@ return function(mod)
       function Input:keyreleased(key, ...)
         local extra = extras.key[key]
         if extra and extra:sub(1, 4) ~= "item" then
-          if self.state then self.state[extra] = false end
+          releaseButton(self, extra, "k:" .. key)
           return
         end
         return origKeyUp(self, key, ...)
@@ -315,6 +337,7 @@ return function(mod)
 
     local origPad = Input.gamepadpressed
     function Input:gamepadpressed(joystick, button)
+      self._suiteLastDevice = "pad"
       if self.captureArmed and type(origPad) == "function" then
         pcall(origPad, self, joystick, button)
       end
@@ -323,13 +346,15 @@ return function(mod)
         self._suiteItemTap = extra
         return
       end
+      local source = { id = "p:" .. tostring(button), kind = "pad",
+        joystick = joystick, button = button }
       if extra then
-        fireButton(self, extra)
+        fireButton(self, extra, source)
         return
       end
       local mapped = (self.padBindings or {})[button]
       if mapped then
-        fireButton(self, mapped)
+        fireButton(self, mapped, source)
       end
     end
 
@@ -343,12 +368,12 @@ return function(mod)
         return
       end
       if extra then
-        releaseButton(self, extra)
+        releaseButton(self, extra, "p:" .. tostring(button))
         return
       end
       local mapped = (self.padBindings or {})[button]
       if mapped then
-        releaseButton(self, mapped)
+        releaseButton(self, mapped, "p:" .. tostring(button))
       end
     end
 
@@ -363,6 +388,9 @@ return function(mod)
     local origAxis = Input.gamepadaxis
     if type(origAxis) == "function" then
       function Input:gamepadaxis(joystick, axis, value, ...)
+        if math.abs(tonumber(value) or 0) >= 0.5 then
+          self._suiteLastDevice = "pad"
+        end
         local leftOn = mod.options:get("analog_left") ~= false
         local rightOn = mod.options:get("analog_right") == true
         if rightOn and (axis == "rightx" or axis == "righty") then
@@ -379,10 +407,13 @@ return function(mod)
             newDir = nil
           end
           if newDir ~= self._suiteRsDir then
-            if self._suiteRsDir and self.state then
-              self.state[self._suiteRsDir] = false
+            if self._suiteRsDir then
+              releaseButton(self, self._suiteRsDir, "rs")
             end
-            if newDir then fireButton(self, newDir) end
+            if newDir then
+              fireButton(self, newDir, { id = "rs", kind = "stick",
+                joystick = joystick, dir = newDir })
+            end
             self._suiteRsDir = newDir
           end
           return
@@ -401,12 +432,31 @@ return function(mod)
                 self._suiteItemTap = extra
                 self._suiteRsLatch = name
               end
-            else
-              fireButton(self, extra)
+            elseif self._suiteRsHeld ~= name then
+              -- Fire once per push and remember it, so letting the stick
+              -- go actually releases the bound button.
+              local previous = self._suiteRsHeld
+                and extras.pad[self._suiteRsHeld]
+              if previous then
+                releaseButton(self, previous, "rsx:" .. self._suiteRsHeld)
+              end
+              fireButton(self, extra, { id = "rsx:" .. name, kind = "axis",
+                joystick = joystick, axis = axis,
+                sign = value > 0 and 1 or -1 })
+              self._suiteRsHeld = name
             end
             return
           end
-          if math.abs(value or 0) < 0.3 then self._suiteRsLatch = nil end
+          if math.abs(value or 0) < 0.3 then
+            self._suiteRsLatch = nil
+            local was = self._suiteRsHeld
+            if was and ((axis == "rightx" and (was == "rs_left" or was == "rs_right"))
+                  or (axis == "righty" and (was == "rs_up" or was == "rs_down"))) then
+              local bound = extras.pad[was]
+              if bound then releaseButton(self, bound, "rsx:" .. was) end
+              self._suiteRsHeld = nil
+            end
+          end
           return
         end
         if (axis == "leftx" or axis == "lefty") and not leftOn then return end
@@ -419,19 +469,150 @@ return function(mod)
                 self._suiteItemTap = extra
                 self._suiteTrigLatch = true
               end
-            else
-              fireButton(self, extra)
+            elseif not (heldBy[extra] and heldBy[extra]["t:" .. axis]) then
+              fireButton(self, extra, { id = "t:" .. axis, kind = "axis",
+                joystick = joystick, axis = axis, sign = 1 })
             end
             return
           elseif math.abs(value or 0) < 0.3 then
             self._suiteTrigLatch = false
-            if extra and extra:sub(1, 4) ~= "item" and self.state then
-              self.state[extra] = false
+            if extra and extra:sub(1, 4) ~= "item" then
+              releaseButton(self, extra, "t:" .. axis)
             end
           end
         end
         return origAxis(self, joystick, axis, value, ...)
       end
+    end
+
+    -- Once per frame: drop any press whose physical control is no longer
+    -- held. Normally the release event already did this; this only acts
+    -- when that event was lost.
+    local function physicallyHeld(src)
+      if src.kind == "key" then
+        return love.keyboard and love.keyboard.isDown(src.key) or false
+      end
+      local js = src.joystick
+      if not js or (js.isConnected and not js:isConnected()) then return false end
+      if src.kind == "pad" then
+        local ok, down = pcall(js.isGamepadDown, js, src.button)
+        return ok and down == true
+      end
+      if src.kind == "axis" then
+        local ok, v = pcall(js.getGamepadAxis, js, src.axis)
+        return ok and (tonumber(v) or 0) * (src.sign or 1) >= 0.3
+      end
+      if src.kind == "stick" then
+        local okx, x = pcall(js.getGamepadAxis, js, "rightx")
+        local oky, y = pcall(js.getGamepadAxis, js, "righty")
+        x, y = okx and tonumber(x) or 0, oky and tonumber(y) or 0
+        local ax, ay = math.abs(x), math.abs(y)
+        if ax < 0.3 and ay < 0.3 then return false end
+        local dir = ax >= ay and (x > 0 and "right" or "left")
+          or (y > 0 and "down" or "up")
+        return dir == src.dir
+      end
+      return true
+    end
+
+    releaseHeld = function(input, all)
+      if not input then return end
+      for btn, sources in pairs(heldBy) do
+        for id, src in pairs(sources) do
+          if all or not physicallyHeld(src) then
+            sources[id] = nil
+            if id == "rs" then input._suiteRsDir = nil end
+            if id:sub(1, 4) == "rsx:" then input._suiteRsHeld = nil end
+          end
+        end
+        if next(sources) == nil then
+          heldBy[btn] = nil
+          if type(input.release) == "function" then
+            pcall(input.release, input, btn)
+          elseif input.state then
+            input.state[btn] = false
+          end
+        end
+      end
+    end
+
+    -- Directions the game itself is holding (its own left-stick handling,
+    -- which Full Control passes through untouched). If the stick rests just
+    -- inside the game's release zone, a direction can stay held with nothing
+    -- touched. While playing on a controller, a direction the game still
+    -- holds with no D-pad, stick or bound key behind it for ~1/4 second is
+    -- released, the same as tapping it.
+    local DIRS = {
+      up = { pad = "dpup", axis = "lefty", sign = -1, keys = { "up", "w" } },
+      down = { pad = "dpdown", axis = "lefty", sign = 1, keys = { "down", "s" } },
+      left = { pad = "dpleft", axis = "leftx", sign = -1, keys = { "left", "a" } },
+      right = { pad = "dpright", axis = "leftx", sign = 1, keys = { "right", "d" } },
+    }
+    local orphanFrames = {}
+
+    local function inputHolds(input, dir)
+      if type(input.isDown) == "function" then
+        local ok, down = pcall(input.isDown, input, dir)
+        if ok then return down == true end
+      end
+      return input.state and input.state[dir] == true or false
+    end
+
+    local function anythingHolds(dir, spec)
+      if heldBy[dir] and next(heldBy[dir]) ~= nil then return true end
+      local bound = packOf("bind_" .. dir)
+      if love.keyboard then
+        for _, key in ipairs(spec.keys) do
+          if love.keyboard.isDown(key) then return true end
+        end
+        if bound.key and bound.key ~= "" then
+          local ok, down = pcall(love.keyboard.isDown, bound.key)
+          if ok and down then return true end
+        end
+      end
+      local pads = love.joystick and love.joystick.getJoysticks
+        and love.joystick.getJoysticks() or {}
+      for _, js in ipairs(pads) do
+        if js.isGamepad and js:isGamepad() then
+          for _, button in ipairs({ spec.pad, bound.pad }) do
+            if button and button ~= "" and not button:find("_", 1, true) then
+              local ok, down = pcall(js.isGamepadDown, js, button)
+              if ok and down then return true end
+            end
+          end
+          local ok, v = pcall(js.getGamepadAxis, js, spec.axis)
+          if ok and (tonumber(v) or 0) * spec.sign >= 0.4 then return true end
+        end
+      end
+      return false
+    end
+
+    local function releaseOrphanDirections(input)
+      if input._suiteLastDevice ~= "pad" then
+        for dir in pairs(DIRS) do orphanFrames[dir] = nil end
+        return
+      end
+      for dir, spec in pairs(DIRS) do
+        if inputHolds(input, dir) and not anythingHolds(dir, spec) then
+          orphanFrames[dir] = (orphanFrames[dir] or 0) + 1
+          if orphanFrames[dir] >= 15 then
+            orphanFrames[dir] = nil
+            if type(input.release) == "function" then
+              pcall(input.release, input, dir)
+            elseif input.state then
+              input.state[dir] = false
+            end
+          end
+        else
+          orphanFrames[dir] = nil
+        end
+      end
+    end
+
+    local releaseTracked = releaseHeld
+    releaseHeld = function(input, all)
+      releaseTracked(input, all)
+      if input then releaseOrphanDirections(input) end
     end
 
     local origPressed = Input.wasPressed
@@ -645,6 +826,7 @@ return function(mod)
         if slot then useShortcut(game, slot) end
       end
       pollShortcuts(game)
+      if releaseHeld and input then pcall(releaseHeld, input, false) end
       return result
     end)
   end)
@@ -656,7 +838,10 @@ return function(mod)
       local ok, Input = pcall(require, "src.core.Input")
       if input and ok and type(Input) == "table" then
         input.gamepadpressed = Input.gamepadpressed
+        input.gamepadreleased = Input.gamepadreleased
         input.gamepadaxis = Input.gamepadaxis
+        if rawget(input, "keypressed") ~= nil then input.keypressed = Input.keypressed end
+        if rawget(input, "keyreleased") ~= nil then input.keyreleased = Input.keyreleased end
         input.wasPressed = Input.wasPressed
         input.padAction = Input.padAction
         input.padBindings = Input.padBindings

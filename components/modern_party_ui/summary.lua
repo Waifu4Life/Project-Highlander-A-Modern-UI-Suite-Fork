@@ -324,12 +324,6 @@ return function(mod, genderExports, compatibility)
   local function drawBackdrop(layout)
     gray(WHITE)
     love.graphics.rectangle("fill", 0, 0, layout.width, layout.height)
-    if setting("pattern", "grid") ~= "grid" then return end
-    gray(LIGHT)
-    for x = -layout.height, layout.width, 16 do
-      love.graphics.line(x, 0, x + layout.height, layout.height)
-      love.graphics.line(x + layout.height, 0, x, layout.height)
-    end
   end
 
   local function definition(summary)

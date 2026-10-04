@@ -1,11 +1,10 @@
 {
   "id": "project_highlander",
   "name": "Project Highlander - A Modern UI Suite Fork",
-  "version": "2.99.0",
+  "version": "3.32.0",
   "api": 2,
   "games": ["gen1", "gen2"],
   "entry": "main.lua",
-  "assets_transforms": "transforms.lua",
   "profile": "content",
   "game_version": ">=0.0.0-dev <1.0.0",
   "category": "UI",

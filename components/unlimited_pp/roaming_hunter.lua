@@ -44,31 +44,23 @@ return function(mod)
     return false
   end
 
+  -- Returns whatever is already in save.roamers, unchanged. This used to
+  -- also CREATE entries for any of the three beasts missing from the list
+  -- (gated only by the feature toggle, not by any story progress check),
+  -- which meant turning this feature on made Raikou/Entei/Suicune start
+  -- roaming immediately on a brand new save -- before the player had been
+  -- to the Burned Tower at all, which is what actually releases them in
+  -- the real games. The feature's own job (100% encounter, no flee, no
+  -- Roar) only applies to beasts that are ALREADY roaming; it was never
+  -- meant to make them start roaming early, and doing so bypassed
+  -- whatever the native game uses to gate that in the first place. Rather
+  -- than guess at the exact flag the native game checks, this just stops
+  -- creating entries altogether and only ever reads the list the native
+  -- game itself populated.
   local function ensureSlots(save)
-    if type(save) ~= "table" then return end
+    if type(save) ~= "table" then return nil end
     local list = save.roamers
-    if type(list) ~= "table" or #list == 0 then list = {} end
-    local have = {}
-    for _, slot in ipairs(list) do
-      if type(slot) == "table" and slot.species then
-        have[tostring(slot.species):upper()] = true
-      end
-    end
-    local changed = false
-    for _, row in ipairs(START) do
-      if not have[row.species] and not owned(save, row.species) then
-        list[#list + 1] = {
-          species = row.species,
-          level = row.level,
-          map = row.map,
-          hp = 0,
-        }
-        changed = true
-      end
-    end
-    if changed or save.roamers ~= list then
-      save.roamers = list
-    end
+    if type(list) ~= "table" then return nil end
     return list
   end
 
@@ -102,11 +94,8 @@ return function(mod)
         Roamers.__highlanderHunterInit = true
         local origInit = Roamers.init
         function Roamers.init(save, opts)
-          opts = opts or {}
-          if on() and type(save) == "table"
-              and (type(save.roamers) ~= "table" or #save.roamers == 0) then
-            opts = { force = true, encounters = opts.encounters, data = opts.data }
-          end
+          -- No force override: let the native game decide if/when
+          -- save.roamers gets populated at all (see ensureSlots above).
           return origInit(save, opts)
         end
       end

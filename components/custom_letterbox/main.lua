@@ -10,7 +10,9 @@
 return function(mod)
   local BORDERS = {
     { "AUTOMATIC", "auto" },
-    { "RED", "red" }, { "GREEN", "green" }, { "BLUE", "blue" },
+    { "RED MODERN", "red_modern" }, { "RED CLASSIC", "red_classic" },
+    { "GREEN MODERN", "green_modern" }, { "GREEN CLASSIC", "green_classic" },
+    { "BLUE MODERN", "blue_modern" }, { "BLUE CLASSIC", "blue_classic" },
     { "YELLOW", "yellow" }, { "GOLD", "gold" }, { "SILVER", "silver" },
     { "CRYSTAL", "crystal" },
     { "CUSTOM 1", "custom1" }, { "CUSTOM 2", "custom2" },
@@ -19,10 +21,18 @@ return function(mod)
   local BORDER_OK = {}
   for _, choice in ipairs(BORDERS) do BORDER_OK[choice[2]] = true end
 
+  -- Builds before 3.23.0 stored plain "red" / "green" / "blue". Those were
+  -- the modern-style borders, so old choices carry over as the MODERN ones.
+  local LEGACY = { red = "red_modern", green = "green_modern", blue = "blue_modern" }
+  local function migrate(value)
+    return LEGACY[value] or value
+  end
+
   -- AUTOMATIC follows the cartridge that is running (Gen 1 and Gen 2 only;
   -- Gen 3 is widescreen-only, so it has no letterbox).
   local AUTO = {
-    red = "red", blue = "blue", yellow = "yellow", green = "green",
+    red = "red_modern", blue = "blue_modern", yellow = "yellow",
+    green = "green_modern",
     gold = "gold", silver = "silver", crystal = "crystal",
   }
 
@@ -98,6 +108,7 @@ return function(mod)
     if type(raw) ~= "string" or raw == "" then return out end
     for pair in raw:gmatch("[^;]+") do
       local key, value = pair:match("^%s*([%w_]+)%s*=%s*([%w_]+)%s*$")
+      value = migrate(value)
       if key and BORDER_OK[value] then out[key] = value end
     end
     return out
@@ -132,7 +143,7 @@ return function(mod)
     local found
     if scope() == "save" then
       local bucket = saveBucket(game, false)
-      found = bucket and bucket.letterbox_border
+      found = migrate(bucket and bucket.letterbox_border)
     end
     if not BORDER_OK[found] then found = byGameMap()[cartId(game)] end
     if not BORDER_OK[found] then found = "auto" end
@@ -160,7 +171,7 @@ return function(mod)
   local function resolveKey(game)
     local choice = storedChoice(game)
     if choice ~= "auto" then return choice end
-    return AUTO[cartId(game)] or "red"
+    return AUTO[cartId(game)] or "red_modern"
   end
 
   local function labelFor(choice)
@@ -231,6 +242,7 @@ return function(mod)
       for _, row in ipairs(s.rows) do
         local label = tostring((row and (row.id or row.label)) or ""):lower()
         if label:find("letterbox", 1, true)
+            or label:find("custom borders", 1, true)
             or label:find("project highlander", 1, true)
             or label:find("enable all ui", 1, true)
             or label == "mods" then

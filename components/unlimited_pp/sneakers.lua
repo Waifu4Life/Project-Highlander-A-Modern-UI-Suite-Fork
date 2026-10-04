@@ -104,7 +104,10 @@ return function(mod)
     game.stack:push(TextBox.new(game, text, done))
   end
 
+  -- Gen 2 has no sneakers story at all: running works from the start, so
+  -- Elm's call, Mom's sneakers talk and the phone hook stay out of the way.
   local function oakPhone(game)
+    if gen2() then return false end
     local f = flags(game)
     if not f or f[SENT] or gotSneakers(game) then return false end
     if not hasStarter(game) then return false end
@@ -114,9 +117,24 @@ return function(mod)
     return true
   end
 
+  local SEEN_MOM = "SUITE_MOM_STORY_SEEN"
+
   local function momTalk(game, ow, npc)
+    if gen2() then return false end
     if gotSneakers(game) then return false end
     if not hasStarter(game) then return false end
+    local f = flags(game)
+    if f and not f[SEEN_MOM] then
+      -- The very first time these conditions are met is very likely a
+      -- real, story-critical "talk to Mom" conversation (in Gen 2, this is
+      -- the one right after Elm's "go see your mom" line following the
+      -- rival/police sequence -- replacing it with the sneakers dialogue
+      -- skipped whatever that conversation needed to set/continue and
+      -- froze the game). Let the first one play entirely untouched, and
+      -- only start offering sneakers from the next Mom conversation on.
+      f[SEEN_MOM] = true
+      return false
+    end
     if npc and npc.facePlayer and ow and ow.player then
       pcall(npc.facePlayer, npc, ow.player)
     end
@@ -181,7 +199,7 @@ return function(mod)
   end)
 
   local function tryAuto(game, ow)
-    if not game then return end
+    if not game or gen2() then return end
     ow = ow or game.overworld
     local mapId = (ow and ow.map and ow.map.id) or (game.save and game.save.player and game.save.player.map)
     if not isLabId(mapId) then
@@ -273,6 +291,7 @@ return function(mod)
   end)
 
   function mod.exports.canRun(game)
+    if gen2() then return true end
     return hasStarter(game) and gotSneakers(game)
   end
 end

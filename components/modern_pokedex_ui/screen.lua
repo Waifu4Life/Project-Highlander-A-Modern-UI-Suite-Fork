@@ -647,12 +647,6 @@ return function(mod, compatibility)
     gray(darkTheme() and BLACK or WHITE)
     love.graphics.rectangle("fill", 0, 0, layout.width, layout.height)
     GEN2_RAMP = prev
-    if setting("pattern", "grid") ~= "grid" then return end
-    gray(darkTheme() and DARK or LIGHT)
-    for x = -SCREEN_H, layout.width, 16 do
-      love.graphics.line(x, HEADER_H, x + SCREEN_H, layout.footerY)
-      love.graphics.line(x + SCREEN_H, HEADER_H, x, layout.footerY)
-    end
   end
 
   local function dexRows(game)

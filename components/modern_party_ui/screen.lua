@@ -498,15 +498,6 @@ return function(mod, genderExports, compatibility)
   local function drawBackdrop(layout)
     gray(WHITE)
     love.graphics.rectangle("fill", 0, 0, layout.width, layout.height)
-    if setting("pattern", "grid") ~= "grid" then return end
-
-    -- A restrained diagonal grid nods to the reference screen's hex field,
-    -- but is still drawn from the Game Boy's four shades.
-    gray(LIGHT)
-    for x = -layout.height, layout.width, 16 do
-      love.graphics.line(x, 0, x + layout.height, layout.height)
-      love.graphics.line(x + layout.height, 0, x, layout.height)
-    end
   end
 
   local function drawHeader(menu, party, layout)

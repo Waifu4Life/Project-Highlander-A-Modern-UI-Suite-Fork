@@ -179,11 +179,6 @@ return function(mod)
     local width = screenWidth(menu)
     setColor({ 0, 0, 0 })
     G.rectangle("fill", 0, 0, width, 144)
-    setColor({ 0.75, 0.78, 0.95 })
-    for x = -144, width, 16 do
-      G.line(x, 18, x + 112, 132)
-      G.line(x + 112, 18, x, 132)
-    end
   end
 
 

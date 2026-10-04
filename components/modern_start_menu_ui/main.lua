@@ -555,9 +555,17 @@ return function(mod)
     end
   end
 
+  -- Bill's PC has nothing to show (and the box screens can lock up) before
+  -- the player owns a single PKMN, so the shortcut stays hidden until then.
+  local function hasStarter(game)
+    local save = game and game.save
+    local party = save and save.party
+    return type(party) == "table" and #party > 0
+  end
+
   mod.hooks:wrap("ui.start_menu.items", function(next, game, items)
     items = next(game, items) or items or {}
-    if pokeboxEnabled() and not alreadyHasPokebox(items) then
+    if pokeboxEnabled() and hasStarter(game) and not alreadyHasPokebox(items) then
       items[#items + 1] = {
         id = "pokebox",
         label = "POKEBOX",

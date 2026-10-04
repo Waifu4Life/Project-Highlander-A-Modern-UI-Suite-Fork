@@ -12,6 +12,19 @@ local BattleState = require("src.battle.BattleState")
 -- is the mod's generation flag and reads warning-free on both sides.
 local isGen2 = BattleState.new ~= nil
 
+-- Crystal (unlike Gold/Silver) has its own native Boy/Girl choice with a
+-- real Kris walker, so forcing a specific sprite the way Gold/Silver need
+-- (handled by force_crystal.lua, which deliberately excludes Crystal
+-- carts) is both unnecessary and wrong there -- it previously meant a
+-- Crystal save that picked Kris still rendered as Gold by default.
+local isCrystalCart = false
+pcall(function()
+  local GV = require("src.core.GameVersion")
+  if type(GV) == "table" and type(GV.get) == "function" then
+    isCrystalCart = tostring(GV.get() or ""):lower() == "crystal"
+  end
+end)
+
 -- A require that only happens on a Gen 1 boot.  The Gen 2 adapter serves
 -- just the fifteen Gen 1 names in its coverage table; every other Gen 1
 -- module is absent or a copy Gold never instantiates, so on Gen 2 the
@@ -83,8 +96,19 @@ local trainerMode = "both"
 -- player portrait.  Synced from the save like the other options; the row
 -- cycles listPlayerSprites().  A new game defaults to the game's own
 -- hero -- Red on Gen 1, Gold's trainer (gold_flip.png) on Gen 2 -- so a
--- Gold save no longer starts on the wrong character.
-local DEFAULT_PLAYER_SPRITE = isGen2 and "gold_flip.png" or "red.png"
+-- Gold save no longer starts on the wrong character. Crystal is the
+-- exception: it already has a real native Boy/Girl choice (Kris for
+-- girl), so the default there is "default" (PLAYER_SPRITE_DEFAULT below --
+-- keep the game's own native portrait, no override) rather than forcing
+-- gold_flip.png regardless of what the player actually picked.
+local DEFAULT_PLAYER_SPRITE
+if isCrystalCart then
+  DEFAULT_PLAYER_SPRITE = "default"
+elseif isGen2 then
+  DEFAULT_PLAYER_SPRITE = "gold_flip.png"
+else
+  DEFAULT_PLAYER_SPRITE = "red.png"
+end
 local playerSprite = DEFAULT_PLAYER_SPRITE
 
 -- OPTIONS > BATTLE PIC: which view of the chosen player sprite fills the
@@ -4510,6 +4534,17 @@ return function()
 
   local function normalizePlayerSprite(v)
     if type(v) ~= "string" or v == "" then
+      return DEFAULT_PLAYER_SPRITE
+    end
+    -- "red.png" is the options schema's own stored default regardless of
+    -- generation, so a Gen2 save can easily have it persisted even though
+    -- it's a Gen1-only asset -- every other case below already resets an
+    -- invalid-for-this-generation choice to DEFAULT_PLAYER_SPRITE, but
+    -- this one slipped through (it just returned "red.png" verbatim),
+    -- which meant a Gen2 character could end up rendered from a
+    -- mismatched Gen1 sprite file instead of either a real portrait or
+    -- the intended "default" (keep native art) fallback.
+    if isGen2 and v == "red.png" then
       return DEFAULT_PLAYER_SPRITE
     end
     if v == "leaf.png" or v == "leaf_flip.png" then

@@ -4,7 +4,7 @@ return function(mod)
       default = false },
     { key = "tms_forever", label = "TMS FOREVER", type = "toggle",
       default = false },
-    { key = "instant_tmhm", label = "INSTANT TMS AND HMS", type = "toggle",
+    { key = "instant_tmhm", label = "INSTANT TMS/HMS", type = "toggle",
       default = false },
     { key = "no_learn_hms", label = "NO LEARN HMS", type = "toggle",
       default = false },
@@ -706,6 +706,27 @@ return function(mod)
       end
       return tostring(text or "")
     end
+    -- Word-boundary match (not plain substring) for both the move-name and
+    -- context-word checks below: the Gen 2 version of this exact mechanism
+    -- (pokemoves/gen2.lua) caused a real, confirmed total engine hang,
+    -- traced to "CUT" matching inside "CUTE" via a plain substring search.
+    -- This Gen1 function has the same MOVES table (CUT included) checked
+    -- the same unsafe way, gated behind a second plain-substring check
+    -- whose words are equally risky as whole-word fragments -- TREE is a
+    -- substring of STREET, USE of EXCUSE, DARK of DARKNESS, CURRENT of
+    -- CURRENTLY, CALM of CALMLY, ROCK of ROCKY -- and this function has the
+    -- identical "build an invisible box, fake completion instead of
+    -- actually showing the text" mechanism that made the Gen 2 false match
+    -- into a hang rather than just a visual glitch. Fixed proactively here
+    -- rather than waiting for a Gen1 report of the same bug.
+    local function wordMatch(s, word)
+      if word:find("%A") then
+        -- Multi-word / punctuation phrases (e.g. "GOT ON", "CAN BE", "?")
+        -- are specific enough that a plain substring search is fine.
+        return s:find(word, 1, true) ~= nil
+      end
+      return s:find("%f[%a]" .. word .. "%f[%A]") ~= nil
+    end
     local function isHmFlavor(text)
       local s = flatten(text):upper()
       s = s:gsub("[\r\n\t]", " ")
@@ -718,21 +739,20 @@ return function(mod)
       end
       local hit = false
       for name in pairs(MOVES) do
-        if s:find(name, 1, true) then hit = true; break end
+        if wordMatch(s, name) then hit = true; break end
       end
-      if s:find("HEADBUTT", 1, true) then
+      if wordMatch(s, "HEADBUTT") then
         return true
       end
       if not hit then return false end
-      return s:find("USE", 1, true) or s:find("USED", 1, true)
-        or s:find("WANT", 1, true) or s:find("?", 1, true)
-        or s:find("TREE", 1, true) or s:find("WATER", 1, true)
-        or s:find("BOULDER", 1, true) or s:find("ROCK", 1, true)
-        or s:find("DARK", 1, true) or s:find("CURRENT", 1, true)
-        or s:find("WHIRL", 1, true) or s:find("CALM", 1, true)
-        or s:find("CAN BE", 1, true) or s:find("SMASH", 1, true)
-        or s:find("HEADBUTT", 1, true) or s:find("SCENT", 1, true)
-        or s:find("GOT ON", 1, true) or s:find("HACKED", 1, true)
+      for _, word in ipairs({
+        "USE", "USED", "WANT", "?", "TREE", "WATER", "BOULDER", "ROCK",
+        "DARK", "CURRENT", "WHIRL", "CALM", "CAN BE", "SMASH", "HEADBUTT",
+        "SCENT", "GOT ON", "HACKED",
+      }) do
+        if wordMatch(s, word) then return true end
+      end
+      return false
     end
     function TextBox.new(game, text, onDone, opts)
       if not instantOn() or not isHmFlavor(text) then

@@ -95,19 +95,38 @@ return function(mod)
     return species ~= nil and owned and owned[species] == true or false
   end
 
+  -- Caught marker, drawn in code: no ROM-derived image and nothing written
+  -- to the game's AppData save folder. Same 7x7 ball as the Gen 2 HUD,
+  -- centred in its 8x8 tile; a black-and-white version for the OG palettes.
+  local CAUGHT_BALL = {
+    "  ###  ",
+    " #RRR# ",
+    "#RRWRR#",
+    "#######",
+    "#WWWWW#",
+    " #WWW# ",
+    "  ###  ",
+  }
+
   local function drawCaughtBall(x, y)
-    -- A caught marker is one tile, not a party row. Companion renderers can
-    -- defer drawBallRow to an overlay (Crystal sprites) or disable scissors
-    -- during HUD capture (Battle Art), exposing all six slots after clipping.
     local mono = PaletteFX.mode == "og" or PaletteFX.mode == "og_inv"
       or PaletteFX.mode == "classic"
-    local file = mono and "caught_ball_mono.png" or "caught_ball.png"
-    local ok, img = pcall(Assets.image,
-      "save/mod-derived/modern_ui_suite/battle/" .. file)
-    if not ok then return false end
+    local ink = { 0.08, 0.08, 0.10, 1 }
+    local top = mono and { 0.33, 0.33, 0.33, 1 } or { 0.91, 0.25, 0.25, 1 }
+    local white = { 1, 1, 1, 1 }
     local g = love.graphics
+    for row, line in ipairs(CAUGHT_BALL) do
+      for col = 1, #line do
+        local c = line:sub(col, col)
+        local color = c == "#" and ink or c == "R" and top
+          or c == "W" and white or nil
+        if color then
+          g.setColor(color)
+          g.rectangle("fill", x + col - 1, y + row, 1, 1)
+        end
+      end
+    end
     g.setColor(1, 1, 1, 1)
-    g.draw(img, x, y)
     return true, not mono
   end
 
@@ -321,6 +340,255 @@ return function(mod)
     else extras() end
   end
 
+  ---------------------------------------------------------------------------
+  -- Classic 160x144 battle (OG layout): the cartridge's own HP bars and the
+  -- player's own HP numbers stay exactly as the game draws them. On top:
+  --   * ENEMY HP COUNTER ON: a plain "85/115" under the enemy HP bar. The
+  --     enemy bracket drops 4 px to make room (the Gen 1 row is too tight).
+  --   * A Gen 2 style EXP bar (2 px, blue, fills right to left) under the
+  --     player's HP numbers. The player bracket drops 4 px to make room.
+  -- Staged companion layouts and the wide layout keep their own renderers.
+  ---------------------------------------------------------------------------
+  local ENEMY_DROP, PLAYER_DROP = 5, 4
+  local XP_BLUE = { 33 / 255, 140 / 255, 255 / 255, 1 }
+  local XP_SPEED = 60 -- pixels per second, about Gen 2's own fill speed
+
+  -- Which native panels the engine actually painted on the last classic HUD
+  -- pass. Our additions follow these, so they appear and disappear together
+  -- with the game's own HUD instead of ahead of it.
+  local nativeShown = setmetatable({}, { __mode = "k" })
+
+  local function clock()
+    return (love.timer and love.timer.getTime and love.timer.getTime()) or 0
+  end
+
+  -- Only trust a reading taken this frame: the colour pass can run while
+  -- the HUD is still sliding in, before the engine has drawn any panel.
+  local function shownFlag(battle, side)
+    local seen = nativeShown[battle]
+    if not seen or clock() - (seen.at or 0) > 0.05 then return false end
+    return seen[side] == true
+  end
+
+  local loveMajor = (love.getVersion and select(1, love.getVersion())) or 11
+  local function layerHasInk(layer, x, y)
+    local ok, data
+    if loveMajor >= 11 then
+      ok, data = pcall(layer.newImageData, layer, 1, 1, x, y, 1, 1)
+    else
+      ok, data = pcall(layer.newImageData, layer, x, y, 1, 1)
+    end
+    if not ok or not data then return nil end
+    local _, _, _, a = data:getPixel(0, 0)
+    if type(data.release) == "function" then pcall(data.release, data) end
+    return a > 0.5
+  end
+
+  local scratchLayer
+  local quads = {}
+  local function quad(x, y, w, h)
+    local key = x .. ":" .. y .. ":" .. w .. ":" .. h
+    if not quads[key] then
+      quads[key] = love.graphics.newQuad(x, y, w, h, 160, 144)
+    end
+    return quads[key]
+  end
+
+  -- Moves already-painted native pixels inside the HUD layer. Each move is
+  -- { srcX, srcY, w, h, dstX, dstY, keep }: sources are cleared unless keep.
+  local function moveLayerPixels(layer, moves)
+    local g = love.graphics
+    if type(g.newQuad) ~= "function" then return end
+    if not scratchLayer then
+      local ok, canvas = pcall(g.newCanvas, 160, 144)
+      if not ok or not canvas then return end
+      if canvas.setFilter then canvas:setFilter("nearest", "nearest") end
+      scratchLayer = canvas
+    end
+    g.push("all")
+    g.origin()
+    g.setScissor()
+    g.setCanvas(scratchLayer)
+    g.clear(0, 0, 0, 0)
+    g.setBlendMode("replace", "premultiplied")
+    g.setColor(1, 1, 1, 1)
+    g.draw(layer, 0, 0)
+    g.setCanvas(layer)
+    g.setColor(0, 0, 0, 0)
+    for _, m in ipairs(moves) do
+      if not m[7] then g.rectangle("fill", m[1], m[2], m[3], m[4]) end
+    end
+    g.setBlendMode("alpha", "premultiplied")
+    g.setColor(1, 1, 1, 1)
+    for _, m in ipairs(moves) do
+      g.draw(scratchLayer, quad(m[1], m[2], m[3], m[4]), m[5], m[6])
+    end
+    g.pop()
+  end
+
+  -- Runs right after the engine painted its own HUD into the layer.
+  local function lowerClassicBrackets(battle, layer)
+    -- A canvas cannot be read back while it is the render target.
+    local g = love.graphics
+    g.push("all")
+    g.setCanvas()
+    local enemyOn = layerHasInk(layer, 40, 18)
+    local playerOn = layerHasInk(layer, 110, 74)
+    g.pop()
+    if enemyOn == nil then enemyOn = enemyVisible(battle) end
+    if playerOn == nil then playerOn = playerVisible(battle) end
+    enemyOn = enemyOn and enemyVisible(battle)
+    playerOn = playerOn and playerVisible(battle)
+    nativeShown[battle] = { enemy = enemyOn, player = playerOn, at = clock() }
+    local moves = {}
+    if enemyOn and enemyHpCounter() then
+      local sx = math.floor((battle.fx and battle.fx.hudShakeX) or 0)
+      -- Left edge (with its corner), then the bottom line and arrow.
+      moves[#moves + 1] = { 8 + sx, 16, 8, 16, 8 + sx, 16 + ENEMY_DROP }
+      moves[#moves + 1] = { 16 + sx, 24, 96, 8, 16 + sx, 24 + ENEMY_DROP }
+    end
+    if playerOn then
+      -- Bottom line and arrow, then a copy of the right edge to fill the
+      -- gap the drop opens between the HP numbers and the corner.
+      moves[#moves + 1] = { 64, 88, 96, 6, 64, 88 + PLAYER_DROP }
+      moves[#moves + 1] = { 144, 84, 8, 4, 144, 88, true }
+    end
+    if #moves > 0 then pcall(moveLayerPixels, layer, moves) end
+  end
+
+  local function drawEnemyHpText(battle, dx, dy)
+    if not enemyHpCounter() or not shownFlag(battle, "enemy") then return end
+    local current, maximum = Meters.values(battle.data, battle.enemy, "HP")
+    local text = ("%d/%d"):format(current or 0, maximum or 0)
+    love.graphics.setColor(0, 0, 0, 1)
+    Font.draw(text, 80 - Font.width(text) + (dx or 0), 23 + (dy or 0))
+  end
+
+  -- EXP fill with Gen 2's behaviour: it climbs instead of jumping, runs to
+  -- full and restarts from empty on a level up, and ticks while it moves.
+  local xpAnim = setmetatable({}, { __mode = "k" })
+  local tickSource
+
+  local function playXpTick(battle, pixels)
+    local pitch = 0.8 + 0.8 * math.max(0, math.min(64, pixels)) / 64
+    local data = battle and battle.data
+    local played = false
+    local ok, Sound = pcall(require, "src.core.Sound")
+    local wav = (mod.path or ".") .. "/assets/exp_bar_tick.wav"
+    if ok and type(Sound) == "table" and type(Sound.play) == "function" and data then
+      data.audio = data.audio or {}
+      data.audio.sfx = data.audio.sfx or {}
+      data.audio.sfx.Sfx_HighlanderExpTick = data.audio.sfx.Sfx_HighlanderExpTick
+        or { file = wav }
+      local src
+      played = pcall(function() src = Sound.play(data, "Sfx_HighlanderExpTick") end)
+        and src ~= nil
+      if played and (type(src) == "userdata" or type(src) == "table") then
+        pcall(function() src:setPitch(pitch) end)
+      end
+    end
+    if played then return end
+    if tickSource == nil then
+      local made, src = pcall(love.audio.newSource, wav, "static")
+      tickSource = made and src or false
+    end
+    if tickSource then
+      pcall(function()
+        tickSource:stop()
+        tickSource:setVolume(0.6)
+        tickSource:setPitch(pitch)
+        tickSource:play()
+      end)
+    end
+  end
+
+  local function xpFillPixels(battle)
+    local player = battle.player
+    local mon = player and player.mon
+    local _, _, ratio = Meters.values(battle.data, player, "XP")
+    ratio = math.max(0, math.min(1, tonumber(ratio) or 0))
+    local target = math.floor(64 * ratio + 0.5)
+    if ratio > 0 then target = math.max(1, target) end
+    local level = mon and tonumber(mon.level) or 0
+    local now = clock()
+    local st = xpAnim[battle]
+    if not st or st.mon ~= mon then
+      st = { mon = mon, level = level, shown = target, time = now, tick = target }
+      xpAnim[battle] = st
+      return target
+    end
+    local dt = math.max(0, math.min(0.1, now - st.time))
+    st.time = now
+    if level < st.level or (level == st.level and target < st.shown) then
+      st.level, st.shown, st.tick = level, target, target
+      return target
+    end
+    if level > st.level and st.shown >= 64 then
+      st.level, st.shown, st.tick = st.level + 1, 0, 0
+    end
+    local goal = level > st.level and 64 or target
+    if st.shown < goal then
+      st.shown = math.min(goal, st.shown + dt * XP_SPEED)
+      local whole = math.floor(st.shown)
+      if whole - st.tick >= 2 or st.shown >= goal then
+        st.tick = whole
+        playXpTick(battle, whole)
+      end
+    end
+    return math.floor(st.shown)
+  end
+
+  local function drawGen2StyleXp(battle, dx, dy, markColor)
+    if not shownFlag(battle, "player") then return end
+    dx, dy = dx or 0, dy or 0
+    local fill = xpFillPixels(battle)
+    local g = love.graphics
+    if fill > 0 then
+      g.setColor(XP_BLUE)
+      g.rectangle("fill", 144 - fill + dx, 92 + dy, fill, 2)
+      if markColor ~= false then
+        PaletteFX.markTrueColor(144 - fill + dx, 92 + dy, fill, 2)
+      end
+    end
+    -- The thick end cap Gen 2 puts where the EXP bar meets the bracket.
+    g.setColor(0, 0, 0, 1)
+    g.rectangle("fill", 144 + dx, 92 + dy, 5, 3)
+  end
+
+  -- Drawn into the classic HUD layer (before the SGB colour pass).
+  local function drawClassicHudContent(battle)
+    if enemyVisible(battle) then
+      love.graphics.push()
+      love.graphics.translate(battle.fx and battle.fx.hudShakeX or 0, 0)
+      drawEnemyHpText(battle)
+      drawStatusAfterLevel(battle, battle.enemy, 40, 8, 88)
+      if isCaught(battle, battle.enemy)
+        and not (classicHudDepth > 0 and type(battle.colorMode) == "function"
+          and battle:colorMode()) then
+        local x = nameX(1, battle.enemy.name)
+        drawCaughtBall(caughtBallX(battle.enemy.name, x), 0)
+      end
+      love.graphics.pop()
+    end
+    if playerVisible(battle) then
+      drawGen2StyleXp(battle, 0, 0, true)
+      drawStatusAt(battle, battle.player, 80, 64)
+    end
+  end
+
+  -- Repainted after the SGB colour pass so the blue EXP fill and the enemy
+  -- readout are never turned gray by palette conversion.
+  local function drawClassicExtras(battle, sx, sy)
+    local g = love.graphics
+    g.push("all")
+    sx, sy = sx or 0, sy or 0
+    if enemyVisible(battle) then
+      drawEnemyHpText(battle, sx + (battle.fx and battle.fx.hudShakeX or 0), sy)
+    end
+    if playerVisible(battle) then drawGen2StyleXp(battle, sx, sy) end
+    g.pop()
+  end
+
   local function renderWide(battle)
     local fx = battle.fx
     if fx and fx.flash and fx.flash > 0
@@ -474,10 +742,16 @@ return function(mod)
       g.setCanvas(layer)
       g.clear(0, 0, 0, 0)
       result = withNativeLevels(battle, false, function()
-        local nativeResult = withoutNativeHPBars(battle, slide, function()
-          return originalClassicDrawHUDs(battle, slide, unpack(args))
-        end)
-        drawStagedHudContent(battle, false, true, true)
+        if stagedLayout(battle) then
+          local nativeResult = withoutNativeHPBars(battle, slide, function()
+            return originalClassicDrawHUDs(battle, slide, unpack(args))
+          end)
+          drawStagedHudContent(battle, false, true, true)
+          return nativeResult
+        end
+        local nativeResult = originalClassicDrawHUDs(battle, slide, unpack(args))
+        lowerClassicBrackets(battle, layer)
+        drawClassicHudContent(battle)
         return nativeResult
       end)
       g.pop()
@@ -511,7 +785,7 @@ return function(mod)
   BattleState.drawZonePass = function(battle, src, sx, sy, ...)
     local result = originalClassicZonePass(battle, src, sx, sy, ...)
     if classicEnhancementActive(battle, 0) and not stagedLayout(battle) then
-      drawClassicMeters(battle, sx, sy)
+      drawClassicExtras(battle, sx, sy)
       drawClassicCaughtMarker(battle, sx, sy)
     end
     return result

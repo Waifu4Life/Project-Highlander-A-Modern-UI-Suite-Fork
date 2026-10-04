@@ -543,13 +543,40 @@ return function(mod)
         return mon and (tonumber(mon.hp) or 0) or 0
       end
 
-      -- LOCKED: enemy HP overlay. Do not edit unless the user asks.
-      if enemy and screen.showEnemyHud then
-        local maxHp = (enemy.stats and enemy.stats.hp) or enemy.maxHp or 1
-        local shown = hudHp(enemy, "enemy")
-        local text = enemyHpOn() and Meters.readout(shown, maxHp, false, 56) or nil
-        coverBar(16 + dx, 16, 64, 8, shown / math.max(1, maxHp),
-          hpColor(shown / math.max(1, maxHp)), text)
+      -- Enemy HP: the cartridge's own bar is left untouched. ENEMY HP COUNTER
+      -- only adds the plain "85/115" readout on the free row under that bar,
+      -- right-aligned to the bar's end, above the bracket's bottom line.
+      if enemy and screen.showEnemyHud and enemyHpOn()
+          and (type(screen.hudCleared) ~= "function"
+            or not screen:hudCleared("enemy")) then
+        local maxHp = math.floor(tonumber((enemy.stats and enemy.stats.hp)
+          or enemy.maxHp or 1) or 1)
+        local shown = math.max(0, math.min(maxHp,
+          math.floor((tonumber(hudHp(enemy, "enemy")) or 0) + 0.5)))
+        local text = ("%d/%d"):format(shown, maxHp)
+        local width = 0
+        for _, code in ipairs(Font.encode(text)) do
+          width = width + (Font.advanceOf(code) or 8)
+        end
+        -- Drop the bracket's corner, bottom line and arrow 2 px so the
+        -- readout no longer touches it. Same pixels as the cartridge's own
+        -- bracket, just lower: erase the old rows, then redraw them.
+        local G = love.graphics
+        G.setColor(1, 1, 1, 1)
+        G.rectangle("fill", 13 + dx, 27, 3, 4)
+        G.rectangle("fill", 9 + dx, 29, 4, 2)
+        G.rectangle("fill", 16 + dx, 30, 72, 1)
+        G.rectangle("fill", 79 + dx, 27, 7, 3)
+        G.setColor(0, 0, 0, 1)
+        G.rectangle("fill", 9 + dx, 27, 4, 2)   -- left edge, 2 px longer
+        G.rectangle("fill", 9 + dx, 29, 5, 1)
+        G.rectangle("fill", 9 + dx, 30, 6, 1)
+        G.rectangle("fill", 10 + dx, 31, 6, 1)
+        G.rectangle("fill", 11 + dx, 32, 77, 1) -- bottom line
+        G.rectangle("fill", 80 + dx, 29, 2, 1)  -- arrow
+        G.rectangle("fill", 80 + dx, 30, 4, 1)
+        G.rectangle("fill", 80 + dx, 31, 6, 1)
+        printInkPx(text, 80 + dx - width, 23, { 0, 0, 0 })
       end
       if false and player and screen.showPlayerHud then
         local maxHp = (player.stats and player.stats.hp) or player.maxHp or 1

@@ -151,10 +151,6 @@ return function(mod)
   local optionSchema = {
     { key = "responsive", label = "POKEDEX WIDESCREEN", type = "toggle",
       default = true },
-    { key = "pattern", label = "POKEDEX BACKDROP", type = "choice",
-      default = "grid", choices = {
-        { "GRID", "grid" }, { "PLAIN", "plain" },
-      } },
     { key = "theme", label = "POKEDEX COLOURS", type = "choice",
       default = "light", choices = {
         { "LIGHT", "light" }, { "DARK", "dark" },

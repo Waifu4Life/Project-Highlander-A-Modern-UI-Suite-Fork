@@ -130,6 +130,19 @@ end
     local flavor={CUT=true,SURF=true,STRENGTH=true,FLASH=true,FLY=true,
       WHIRLPOOL=true,WATERFALL=true,DIG=true,TELEPORT=true,
       HEADBUTT=true,["ROCK SMASH"]=true,ROCK_SMASH=true,["SWEET SCENT"]=true}
+    -- Word-boundary match (not plain substring): a real total engine hang
+    -- was traced to this exact function. "CUT" via plain find(...,1,true)
+    -- matches inside ordinary words like "CUTE" -- e.g. a generic "Wow,
+    -- that's a cute Pokemon." story line -- which made this treat an
+    -- unrelated message as an HM flavor-text prompt and skip actually
+    -- displaying it, faking completion instead (see Game2:say below). That
+    -- desync between what the engine expected and what actually happened
+    -- is consistent with a silent total hang: nothing ever threw, so there
+    -- was nothing to catch or log.
+    local FLAVOR_WORDS = {
+      "HEADBUTT", "ROCK SMASH", "ROCKSMASH", "CUT", "SURF", "STRENGTH",
+      "FLASH", "WHIRLPOOL", "WATERFALL", "SWEET SCENT",
+    }
     local function isFlavor(text)
       local s=tostring(text or ""):upper()
       if type(text)=="table" then
@@ -138,11 +151,12 @@ end
         s=table.concat(parts," "):upper()
       end
       s=s:gsub("[\nvrft]"," ")
-      return s:find("HEADBUTT",1,true) or s:find("ROCK SMASH",1,true)
-        or s:find("ROCKSMASH",1,true) or s:find("CUT",1,true)
-        or s:find("SURF",1,true) or s:find("STRENGTH",1,true)
-        or s:find("FLASH",1,true) or s:find("WHIRLPOOL",1,true)
-        or s:find("WATERFALL",1,true) or s:find("SWEET SCENT",1,true)
+      for _, word in ipairs(FLAVOR_WORDS) do
+        if s:find("%f[%a]" .. word:gsub(" ", "%%s") .. "%f[%A]") then
+          return true
+        end
+      end
+      return false
     end
     function Game2:say(text,onDone,opts)
       local s=tostring(text or ""):upper()

@@ -6,9 +6,9 @@ return function(mod)
   mod.options:define({
     { key = "unlimited_pp", label = "UNLIMITED PP", type = "toggle",
       default = false },
-    { key = "always_boosted_exp", label = "ALWAYS BOOSTED EXP", type = "toggle",
+    { key = "always_boosted_exp", label = "GET BOOSTED EXP", type = "toggle",
       default = false },
-    { key = "modern_exp_share", label = "MODERN EXP SHARING", type = "choice",
+    { key = "modern_exp_share", label = "MODERN EXP SHARE", type = "choice",
       default = "off",
       choices = {
         { "OFF (USE GEN1 ITEM EXP SHARE)", "off" },
@@ -19,9 +19,9 @@ return function(mod)
       choices = {
         { "OFF", "off" }, { "HOLD B", "hold" }, { "TOGGLE B", "toggle" },
       } },
-    { key = "decapitalize", label = "DECAPITALIZE WORDS", type = "toggle",
+    { key = "decapitalize", label = "DECAP. WORDS", type = "toggle",
       default = false },
-    { key = "display_area_names", label = "DISPLAY AREA NAMES", type = "toggle",
+    { key = "display_area_names", label = "SHOW AREA NAMES", type = "toggle",
       default = false },
     { key = "modern_stores", label = "MODERN STORES", type = "toggle",
       default = false },
@@ -35,7 +35,7 @@ return function(mod)
       default = false },
     { key = "gen3_catch_rate", label = "GEN3 CATCH RATE", type = "toggle",
       default = false },
-    { key = "coins_2x", label = "2X COINS FOR MONEY",
+    { key = "coins_2x", label = "2X COINS FOR CASH",
       type = "toggle", default = false },
     { key = "pikachu_sound", label = "PIKACHU SOUND", type = "choice",
       default = "yellow",
@@ -52,37 +52,41 @@ return function(mod)
       type = "toggle", default = false },
     { key = "gen1_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN1 GAMES",
       type = "toggle", default = false },
-    { key = "gen1_starters", label = "OBTAIN ALL THE STARTERS PKMN (IN RED AND BLUE)",
+    { key = "gen1_starters", label = "GET ALL STARTERS",
       type = "toggle", default = false },
-    { key = "gen1_fossil", label = "OBTAIN THE OTHER FOSSIL",
+    { key = "gen1_fossil", label = "GET OTHER FOSSIL",
       type = "toggle", default = false },
-    { key = "gen1_fighting", label = "OBTAIN THE OTHER FIGHTING PKMN",
+    { key = "gen1_fighting", label = "GET OTHER FIGHTER",
       type = "toggle", default = false },
-    { key = "gen1_eevee", label = "OBTAIN MORE EEVEES",
+    { key = "gen1_eevee", label = "GET MORE EEVEES",
       type = "toggle", default = false },
-    { key = "gen1_linkc", label = "TRADE WITH LINK C.",
+    { key = "gen1_linkc", label = "TRADE W/ LINK C.",
       type = "toggle", default = false },
     { key = "gen1_mystery", label = "GET ???",
+      type = "toggle", default = false },
+    { key = "gen1_legendary_persist", label = "INFINITE TRIES FOR LIMITED ENCOUNTERS",
       type = "toggle", default = false },
     { key = "gen2_features_migrated", label = "GEN2 FEATURES MIGRATED",
       type = "toggle", default = false },
     { key = "gen2_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN2 GAMES",
       type = "toggle", default = false },
-    { key = "gen2_starters", label = "OBTAIN THE OTHER JOHTO STARTERS",
+    { key = "gen2_starters", label = "GET ALL STARTERS",
       type = "toggle", default = false },
     { key = "gen2_fossil", label = "KIM FOSSIL TRADES",
       type = "toggle", default = false },
     { key = "gen2_celebi", label = "GS BALL / CELEBI",
       type = "toggle", default = false },
-    { key = "gen2_linkc", label = "TRADE WITH LINK C.",
+    { key = "gen2_linkc", label = "TRADE W/ LINK C.",
       type = "toggle", default = false },
-    { key = "gen2_kanto_starters", label = "OAK KANTO STARTERS",
+    { key = "gen2_kanto_starters", label = "GET OG STARTERS",
       type = "toggle", default = false },
-    { key = "gen2_birds", label = "KANTO LEGENDARY BIRDS",
+    { key = "gen2_birds", label = "GET LEGEND. BIRDS",
       type = "toggle", default = false },
-    { key = "gen2_mew", label = "MEW AND MEWTWO",
+    { key = "gen2_mew", label = "GET MEW/MEWTWO",
       type = "toggle", default = false },
     { key = "gen2_roaming_hunter", label = "ROAMING HUNTER",
+      type = "toggle", default = false },
+    { key = "gen2_legendary_persist", label = "INFINITE TRIES FOR LIMITED ENCOUNTERS",
       type = "toggle", default = false },
   })
 
@@ -642,6 +646,12 @@ return function(mod)
       want = input and input.isDown and input:isDown("b") == true
     end
     if not want then return false end
+    -- Gen 2: Running Shoes work from the very start (no Mom/Elm dialogue).
+    local okV, GV = pcall(require, "src.core.GameVersion")
+    if okV and type(GV) == "table" and type(GV.generation) == "function"
+        and GV.generation() == 2 then
+      return true
+    end
     if not hasStarter(game) then return false end
     local f = game and game.save and game.save.flags
     if not (f and f.SUITE_GOT_SNEAKERS) then return false end
@@ -1815,6 +1825,7 @@ return function(mod)
   loadSibling("catch_rate.lua")
   loadSibling("roaming_hunter.lua")
   loadSibling("repel_again.lua")
+  loadSibling("legendary_persist.lua")
 
   do
     local src = assert(mod:read("force_crystal.lua"), "force_crystal.lua missing")

@@ -376,12 +376,6 @@ return function(mod, _, compatibility)
   local function drawBackdrop(layout)
     gray(WHITE)
     love.graphics.rectangle("fill", 0, 0, layout.width, SCREEN_H)
-    if setting("pattern", "grid") ~= "grid" then return end
-    gray(LIGHT)
-    for x = -SCREEN_H, layout.width, 16 do
-      love.graphics.line(x, 0, x + SCREEN_H, SCREEN_H)
-      love.graphics.line(x + SCREEN_H, 0, x, SCREEN_H)
-    end
   end
 
   local function drawHeader(state, layout, owned)

@@ -397,11 +397,6 @@ return function(mod)
 
     setColor({ 1, 1, 1 })
     G.rectangle("fill", 0, 0, width, SCREEN_H)
-    setColor({ 0.67, 0.67, 0.67 })
-    for x = -SCREEN_H, width, 16 do
-      G.line(x, 0, x + SCREEN_H, SCREEN_H)
-      G.line(x + SCREEN_H, 0, x, SCREEN_H)
-    end
 
     setColor(HEADER)
     G.rectangle("fill", 0, 0, width, HEADER_H)
@@ -610,11 +605,6 @@ return function(mod)
     local width = self and self.modernPartyWideWidth or 160
     setColor(BACKDROP)
     G.rectangle("fill", 0, 0, width, 144)
-    setColor({ 0.82, 0.82, 0.90 })
-    for x = -144, width, 16 do
-      G.line(x, 16, x + 128, 136)
-      G.line(x + 128, 16, x, 136)
-    end
   end
 
   local function drawSummaryHeader(self, title)

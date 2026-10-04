@@ -31,10 +31,6 @@ return function(mod)
       default = true },
     { key = "empty_slots", label = "EMPTY SLOTS", type = "toggle",
       default = true },
-    { key = "pattern", label = "BACKDROP", type = "choice",
-      default = "grid", choices = {
-        { "GRID", "grid" }, { "PLAIN", "plain" },
-      } },
     { key = "responsive", label = "WIDESCREEN", type = "toggle",
       default = true },
     { key = "rename_style", label = "RENAME STYLE", type = "choice",

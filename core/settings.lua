@@ -33,7 +33,7 @@ return function(parent, components)
     pokedex = "DEX",
     battle_hud = "HUD",
     move_colors = "MOVE",
-    letterbox = "LETTERBOX",
+    letterbox = "BORDERS",
   }
   local MANAGER_DETAIL = {
     start_menu = {
@@ -73,7 +73,7 @@ return function(parent, components)
     pokemoves = {
       forgettable_hms = "FORGET HMS",
       tms_forever = "TMS FOREVER",
-      instant_tmhm = "INSTANT TMS AND HMS",
+      instant_tmhm = "INSTANT TMS/HMS",
       no_learn_hms = "NO LEARN HMS",
       move_relearning = "RELEARN",
     },

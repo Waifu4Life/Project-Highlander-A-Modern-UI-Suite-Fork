@@ -93,11 +93,12 @@ return function(mod, settings, state, components)
         gen1_features_migrated = true,
         gen1_exclusive = true, gen1_starters = true, gen1_fossil = true,
         gen1_fighting = true, gen1_eevee = true, gen1_linkc = true,
-        gen1_mystery = true,
+        gen1_mystery = true, gen1_legendary_persist = true,
         gen2_features_migrated = true,
         gen2_exclusive = true, gen2_starters = true, gen2_fossil = true,
         gen2_celebi = true, gen2_linkc = true, gen2_kanto_starters = true,
         gen2_birds = true, gen2_mew = true, gen2_roaming_hunter = true,
+        gen2_legendary_persist = true,
       }
       if row.key ~= component.enabledOption and row.key ~= "enabled"
           and row.key ~= "theme_by_game" and row.key ~= "border_by_game"
@@ -209,16 +210,6 @@ return function(mod, settings, state, components)
         end
       end
     end
-    if component.key == "battle_hud" then
-      body[#body + 1] = {
-        id = "menu_sprite_source",
-        label = "SPRITE",
-        value = function() return settings:menuSpriteLabel() end,
-        step = function(activeGame, direction)
-          return settings:toggleMenuSpriteSource(activeGame, direction)
-        end,
-      }
-    end
     if component.id == "modern_start_menu_ui" then
       body[#body + 1] = {
         id = "start_menu.icon_overrides",
@@ -259,11 +250,9 @@ return function(mod, settings, state, components)
         }
       end
     end
-    if component.id ~= "full_control" then
-      table.sort(body, function(a, b)
-        return tostring(a.label or "") < tostring(b.label or "")
-      end)
-    end
+    table.sort(body, function(a, b)
+      return tostring(a.label or "") < tostring(b.label or "")
+    end)
     local rows = { enabledRow }
     for _, row in ipairs(body) do rows[#rows + 1] = row end
     if component.key == "rumble" then
@@ -331,24 +320,26 @@ return function(mod, settings, state, components)
 
   local GEN1_FEATURE_ROWS = {
     { key = "gen1_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN1 GAMES" },
-    { key = "gen1_starters", label = "OBTAIN ALL THE STARTERS PKMN (IN RED AND BLUE)" },
-    { key = "gen1_fossil", label = "OBTAIN THE OTHER FOSSIL" },
-    { key = "gen1_fighting", label = "OBTAIN THE OTHER FIGHTING PKMN" },
-    { key = "gen1_eevee", label = "OBTAIN MORE EEVEES" },
-    { key = "gen1_linkc", label = "TRADE WITH LINK C." },
+    { key = "gen1_starters", label = "GET ALL STARTERS" },
+    { key = "gen1_fossil", label = "GET OTHER FOSSIL" },
+    { key = "gen1_fighting", label = "GET OTHER FIGHTER" },
+    { key = "gen1_eevee", label = "GET MORE EEVEES" },
+    { key = "gen1_linkc", label = "TRADE W/ LINK C." },
     { key = "gen1_mystery", label = "GET ???" },
+    { key = "gen1_legendary_persist", label = "INFINITE TRIES FOR LIMITED ENCOUNTERS" },
   }
 
   local GEN2_FEATURE_ROWS = {
     { key = "gen2_exclusive", label = "GET EXCLUSIVE PKMN FROM OTHER GEN2 GAMES" },
-    { key = "gen2_starters", label = "OBTAIN THE OTHER JOHTO STARTERS" },
+    { key = "gen2_starters", label = "GET ALL STARTERS" },
     { key = "gen2_fossil", label = "KIM FOSSIL TRADES" },
     { key = "gen2_celebi", label = "GS BALL / CELEBI" },
-    { key = "gen2_linkc", label = "TRADE WITH LINK C." },
-    { key = "gen2_kanto_starters", label = "OAK KANTO STARTERS" },
-    { key = "gen2_birds", label = "KANTO LEGENDARY BIRDS" },
-    { key = "gen2_mew", label = "MEW AND MEWTWO" },
+    { key = "gen2_linkc", label = "TRADE W/ LINK C." },
+    { key = "gen2_kanto_starters", label = "GET OG STARTERS" },
+    { key = "gen2_birds", label = "GET LEGEND. BIRDS" },
+    { key = "gen2_mew", label = "GET MEW/MEWTWO" },
     { key = "gen2_roaming_hunter", label = "ROAMING HUNTER" },
+    { key = "gen2_legendary_persist", label = "INFINITE TRIES FOR LIMITED ENCOUNTERS" },
   }
 
   local function migrateGen1Features(game, qol)
@@ -395,6 +386,9 @@ return function(mod, settings, state, components)
         end,
       }
     end
+    table.sort(pageRows, function(a, b)
+      return tostring(a.label or "") < tostring(b.label or "")
+    end)
     local page = OptionsMenu.new(game)
     page.rows, page.view = pageRows, pageRows
     page.index, page.scroll, page.sub = 1, 0, true
@@ -428,6 +422,9 @@ return function(mod, settings, state, components)
         end,
       }
     end
+    table.sort(pageRows, function(a, b)
+      return tostring(a.label or "") < tostring(b.label or "")
+    end)
     pageRows[#pageRows + 1] = {
       id = "poke_icons.copyright",
       label = "Copyright (c) YoDrehDenSwagAuf",
@@ -444,34 +441,28 @@ return function(mod, settings, state, components)
   openHub = function(game)
     local menu
     local function buildItems()
-      local items = {
-        { id = "enable_all", label = "ENABLE ALL UI", action = "enable" },
-        { id = "disable_all", label = "DISABLE ALL UI", action = "disable" },
-        { id = "aspect_ratio", label = "ASPECT RATIO", right = aspectLabel(),
-          action = "aspect" },
-      }
+      local items = {}
       for _, component in ipairs(components) do
         items[#items + 1] = {
           id = component.id,
           label = component.short,
           fullLabel = component.fullLabel,
-          right = "OPEN",
           component = component,
           openOnly = true,
         }
       end
       items[#items + 1] = {
         id = "poke_icons_menu", label = "POKE ICONS",
-        right = "OPEN", action = "poke_icons",
+        action = "poke_icons",
       }
       items[#items + 1] = {
         id = "gen1_all_menu", label = "GEN1 GET ALL THE POKEMON",
-        fullLabel = "GEN1 GET ALL THE POKEMON", right = "OPEN",
+        fullLabel = "GEN1 GET ALL THE POKEMON",
         action = "gen1_all",
       }
       items[#items + 1] = {
         id = "gen2_all_menu", label = "GEN2 GET ALL THE POKEMON",
-        fullLabel = "GEN2 GET ALL THE POKEMON", right = "OPEN",
+        fullLabel = "GEN2 GET ALL THE POKEMON",
         action = "gen2_all",
       }
       items[#items + 1] = { id = "back", label = "BACK", cancel = true }
@@ -543,7 +534,7 @@ return function(mod, settings, state, components)
       self._suiteHubClock = (self._suiteHubClock or 0) + (tonumber(dt) or 0)
       for _, row in ipairs(self.items or {}) do
         if row.fullLabel then
-          row.label = marqueeLabel(row.fullLabel, self._suiteHubClock, 92)
+          row.label = marqueeLabel(row.fullLabel, self._suiteHubClock, 128)
         end
       end
       local item = self.items and self.items[self.index]

@@ -1,3 +1,147 @@
+## [3.32.0]
+- Running Shoes, Gen 2: scrapped the sneakers story (Elm's "your mom called" line and Mom's "you forgot your outdoor sneakers"). Running works from the start of a new game, following the RUNNING SHOES setting. Gen 1 keeps its Oak/Mom sneakers story, which still prevents running before the starter.
+
+## [3.31.0]
+- Full Control: third pass on the controller "stuck direction". 3.30.0 covered every press Full Control makes itself, but the left stick is passed straight to the game's own handling. While the last input was a controller, any direction the game still holds for about 1/4 second with no D-pad, left stick (past 40%) or movement key behind it is now released, exactly like tapping it.
+- Modern Start Menu: the POKEBOX shortcut is hidden until the party has at least one PKMN (it could lock up a brand-new Gen 1 or Gen 2 game).
+
+## [3.30.0]
+- Full Control: second pass on movement occasionally sticking in a direction.
+  - The game's live input object was given our D-pad press handler at startup but not our matching release handler, so on that object a release could still go to the game's own handler, which never saw the press. Both now go through Full Control.
+  - Keyboard extras, the right stick (as D-pad and as bound buttons) and the triggers now release through the same path they press with; the right stick bound to a button never released at all before.
+  - New safety net: every press remembers which key/button/stick caused it, and each frame any press whose control is no longer physically held is released. This covers releases the game never receives (alt-tab, Steam overlay, a controller sleeping or disconnecting).
+
+## [3.29.0]
+- Project Highlander no longer writes anything to the game's AppData save folder. The Gen 1 caught marker (the ball beside a caught wild PKMN's name) is now drawn in code, so transforms.lua and its generated images are gone.
+- Fixed: that Gen 1 caught marker never appeared, because the HUD looked for its images under the old modern_ui_suite name.
+
+## [3.28.0]
+- The game font has no "&", so the two labels that used it now use "/": INSTANT TMS/HMS and GET MEW/MEWTWO.
+
+## [3.27.0]
+- Main menu: removed every "OPEN"; long names now get the full row width before they scroll.
+- Renamed CUSTOM LETTERBOX to CUSTOM BORDERS.
+- Every sub-menu is alphabetical (ENABLED stays on top, copyright lines stay at the bottom), including Full Control, Poke Icons and both Get All The Pokemon pages.
+- Renames: COLORED MOVES; QoL: 2X COINS FOR CASH, GET BOOSTED EXP, DECAP. WORDS, SHOW AREA NAMES, MODERN EXP SHARE; PokeMoves: INSTANT TMS & HMS; Gen1 Get All: GET ALL STARTERS, GET OTHER FOSSIL, GET OTHER FIGHTER, GET MORE EEVEES, TRADE W/ LINK C.; Gen2 Get All: GET ALL STARTERS, TRADE W/ LINK C., GET OG STARTERS, GET LEGEND. BIRDS, GET MEW & MEWTWO. Saved settings are unchanged (only labels changed).
+
+## [3.26.0]
+- Gen 1 Battle HUD: the bracket lowering now works by moving the game's own painted pixels (3.25.0 tried to catch the tiles by position and missed). Enemy bracket drops 5 px under the HP readout; player bracket drops 4 px under the EXP bar, with the right edge extended to stay joined.
+- Gen 1 Battle HUD: the enemy HP readout and the EXP bar only appear on frames where the game itself has drawn that HUD, so they come in together with it.
+- Gen 1 EXP bar: now fills gradually (about 60 px/s) with a rising tick sound, runs to full and restarts on level up, like Gen 2.
+- Gen 2 Battle HUD: with ENEMY HP COUNTER on, the enemy bracket's corner, bottom line and arrow drop 2 px so the readout no longer touches it.
+
+## [3.25.0]
+- Battle HUD, Gen 1 (OG 4:3 battle): the game's own HP bars are back for both sides. ENEMY HP COUNTER now shows a plain "85/115" under the enemy HP bar; with it ON, the enemy bracket drops 4 px to make room (OFF = untouched original). The player keeps the game's own HP bar and HP numbers, and gets a Gen 2 style EXP bar (2 px, blue, fills right to left) under them; the player bracket drops 4 px to fit it.
+- Battle HUD, Gen 2: the custom enemy bar is gone; the game's own bar shows. ENEMY HP COUNTER adds a plain "85/115" squeezed under it (no bracket change needed). Player HUD unchanged.
+- Widescreen Gen 1 battles and staged-companion battles keep their previous HUD for now.
+- Party and PokeDex: removed the BACKDROP option; every screen is now plain (no grid).
+- Gen 2 Modern Party: removed the leftover diagonal grid that showed between cards even with PLAIN (main party screen and the modern backdrop). Gen 2 PokeDex backdrop is plain too.
+
+## [3.24.0]
+- Fixed "INFINITE TRIES FOR LIMITED ENCOUNTERS" showing up twice on the main QoL page. Its Gen1 and Gen2 keys were never added to the list of toggles that live only in the GEN1/GEN2 GET ALL PKMN sub-menus, so both leaked onto the main page. They now appear only in their sub-menus; saved ON/OFF values are unchanged.
+
+## [3.23.0]
+- Custom Letterbox now has 15 BORDER choices. RED, GREEN and BLUE are renamed RED MODERN, GREEN MODERN and BLUE MODERN, and each gains a CLASSIC companion: RED CLASSIC, GREEN CLASSIC, BLUE CLASSIC.
+- New art: red_modern.png, red_classic.png, green_modern.png, green_classic.png, blue_modern.png, blue_classic.png. The old red.png, green.png and blue.png are removed.
+- AUTOMATIC uses the MODERN border for Red, Green and Blue cartridges.
+- Existing choices carry over: a save or game previously set to RED, GREEN or BLUE now reads as the matching MODERN option (both BY SAVE and BY GAME).
+- Yellow, Gold, Silver, Crystal and Custom 1-4 are unchanged.
+
+## [3.22.0]
+- Gold/Silver boy now uses Crystal's actual boy portrait (the hand-on-chest sprite with the brown jacket and white cap) instead of the Gold/Silver one. The earlier 3.20.0/3.21.0 attempts could never have matched: the art in gold_flip.png was Gold/Silver's own pose recolored (its silhouette is pixel-identical to the native G/S boy, 1004 of 1004 pixels), not Crystal's boy, which is a different sprite. gold_flip.png now holds the real Crystal boy, extracted losslessly from an in-game Crystal capture (exact 15x grid, engine portrait box origin 48,32) and verified pixel-for-pixel against that capture.
+- Because gold_flip.png is the one file every Gold/Silver boy screen draws from, this applies to the opening presentation, the Trainer ID, the Hall of Fame, and existing Gold/Silver saves with no new game needed. It also changes the PLAYER SPRITE "GOLD" option and the boy's portrait in battle when BATTLE PIC is on FRONT; the dedicated back-view sprite (BATTLE PIC: BACK) is unchanged.
+- Fixed a latent hole in the intro portrait swap: it excluded Oak, the rival and the animated Marill demo, but not the engine's own Marill pic, so with the Crystal Sprites animation inactive the Marill screen would have shown the player's portrait instead of Marill. It is now excluded.
+- Crystal cartridges are untouched (native intro, native Trainer ID). The girl/Kris path is unchanged.
+- Tested against a mock engine (boy, girl, Crystal cart, Trainer ID) and a pixel-level art check. The real engine's Oak/Trainer Card code is not available to test against, so the opening presentation still needs an in-game look.
+
+## [3.21.0]
+- Gold/Silver boy Crystal look (retry): gold_flip.png baked to true RGBA; Oak drawPic swaps player portrait slot to Crystal art and clears picColors; Trainer ID draws gold_flip/kris_flip directly on Gen2 when gender is known.
+
+## [3.20.0]
+- Gold/Silver boy intro + Trainer ID: use Crystal Gold art (`gold_flip.png`) with true-color (nil palette), same path as Kris — matches the red-jacket Crystal look instead of the muted G/S intro sheet.
+
+## [3.19.0]
+- Crystal intro: fully native again. Oak.new, playerPicNow, and name presets no longer run Force Crystal / dressSpeech on the Crystal cart (boy/girl presentation is the game's own).
+- Gold/Silver Kris intro: still Crystal true-color art; palette tables cleared (nil colors) so Gen2 OakSpeech does not recolor the RGBA sheet to gray/B&W.
+
+## [3.18.0]
+- Reverted Crystal interference from 3.17.0: Force Crystal / dressSpeech no longer touch Crystal PLAYER SPRITE or Oak intro art (fixes Kris going B&W on Crystal).
+- Gold/Silver only: Kris Oak intro still uses Crystal true-color kris_flip art (blue as on Crystal), not the pink G/S palette.
+
+## [3.17.0]
+- Force Crystal Settings on **Crystal**: locks PLAYER SPRITE to **Default** (never gold_flip/kris_flip). Crystal already has native Boy/Girl; overriding with a fixed Gold file was why Kris could appear as Gold. Gold/Silver and Gen1 still lock to the hero chosen at the start.
+- Gold/Silver Kris intro (Oak speech): use Crystal Kris art with **true-color** so she keeps Crystal blue instead of the pink G/S palette. Prefer crystal `kris_flip.png` over `assets/generated/intro/kris.png`.
+
+## [3.16.0]
+- Found the actual remaining cause of both the "Force Crystal Settings not defaulting to Default" and "Kris rendered in black and white" reports -- they were the same bug. The options schema's own PLAYER SPRITE default is "red.png" regardless of generation, and the function that's supposed to correct an invalid-for-this-generation stored choice (the same one that already fixes a stray "silver.png" or "blue.png") never handled "red.png" -- it returned it unchanged. That meant a Gen2 save could easily have "red.png" literally persisted as its player sprite, which the game tried to render as a Gen2 character.
+- This also fully explains the black-and-white rendering, confirmed directly in this file's own comments: red.png is authored as part of a grayscale set that relies on Gen1-specific PaletteFX internals to add its color, which naturally aren't available when rendering in a Gen2 context -- so it rendered with no color pass applied at all.
+- Fixed by having that same correction function also catch "red.png" specifically when the active game is Gen2 (Gen1 games are completely unaffected -- red.png is their own correct, legitimate default and is left alone there). A stale "red.png" now correctly resolves to "default" on Crystal and to gold_flip.png on Gold/Silver, matching the 3.15.0 fix's intent.
+- Verified this one with a real end-to-end test against the actual file (not a mocked/mirrored copy) -- confirmed it fails on 3.15.0 in exactly the stale-red.png scenarios and passes on the fix.
+
+## [3.15.0]
+- Confirmed working in both Gold and Crystal: Infinite Tries for Limited Encounters (Gen1 half) and the pokemoves CUT/"cute" fix.
+- Fixed Force Crystal Settings defaulting an actual Crystal cartridge to the Gold sprite instead of Kris. Crystal has its own real native Boy/Girl choice (with a real Kris walker), so forcing a specific sprite the way Gold/Silver need was both unnecessary and wrong there. The fallback now defaults to "default" (keep the game's own native portrait) specifically for Crystal; Gold, Silver and the Gen1 games are unchanged and still lock in whichever player was chosen at the start.
+- Fixed Kris's colors in Gold and Silver: her battle-intro portrait and battle back sprite were using the wrong blue/skin tones (a cooler, more purple blue and a pinker skin tone) instead of her real Crystal colors. Recolored both to match the already-correct overworld sprite's palette exactly.
+- Fixed Roaming Hunter (the Entei/Raikou/Suicune feature) spawning the beasts immediately on a brand new save, before the Burned Tower event that actually releases them in the real games. The feature was creating roamer entries from scratch whenever the toggle was on, regardless of story progress, bypassing whatever the native game uses to gate that. It's now strictly an enhancement (100% encounter, no flee, no Roar) for beasts the native game has already started roaming on its own -- it no longer creates any roamer entries itself.
+
+## [3.14.0]
+- Proactively fixed the same bug class in Gen1 (pokemoves/main.lua's installSkipConfirm, which runs for both generations -- it's not gated to Gen1 only). This one requires a rarer combination to misfire (a move name AND a separate context word both present in the same text, versus Gen2's single-word match), but has the identical "build an invisible box, fake completion instead of showing the real text" mechanism that caused the Gen2 hang, and several of its context words carry the same substring risk: TREE inside STREET, USE inside EXCUSE, DARK inside DARKNESS, CURRENT inside CURRENTLY, CALM inside CALMLY. Fixed with the same whole-word matching as the Gen2 fix.
+- Audited every other plain-substring text match across the project for the same dangerous pattern (skip-and-fake-completion). None of the others use it -- the remaining matches (EXP, STONE, GEAR, HIT, TOUCH, COIN and similar) are used for categorization or display logic, not skipping real content, so a false match there doesn't carry the same silent-hang risk.
+
+## [3.13.0]
+- Found and fixed the actual cause of the New Bark Town freeze, after the player's own methodical bisection testing (disabling every component one at a time) narrowed it down to Pokemoves' "Instant TMs and HMs" option -- something five previous attempts, all inside the wrong files, never got close to.
+- The bug: Gen2's Game2:say wrapper for this feature checks incoming dialogue text for HM move names (CUT, SURF, FLASH, etc.) using a plain substring search, intending to instantly auto-confirm real "would you like to use CUT?" prompts. But a plain substring search for "CUT" also matches inside ordinary words -- "Wow, that's a cute Pokemon." contains "CUT" as part of "CUTE". When that match fired, the wrapper treated an unrelated story message as an HM prompt and skipped actually displaying it, faking completion instead of showing the real text. That desync between what the engine expected and what actually happened is consistent with a silent total hang with nothing to log, exactly matching what was reported.
+- Fixed by matching each flavor word (HEADBUTT, ROCK SMASH, CUT, SURF, STRENGTH, FLASH, WHIRLPOOL, WATERFALL, SWEET SCENT) as a whole word instead of a bare substring, so "CUTE" no longer matches "CUT" and "SURFACE" no longer matches "SURF", while real flavor-text prompts for these moves still match correctly.
+
+## [3.12.0]
+- Reverted the 3.11.0 removal of Gen2's Running Shoes quest -- confirmed by testing it did not resolve the freeze. sneakers.lua is back to exactly its 3.10.0 state.
+- Confirmed the freeze is a genuine total engine hang (no input at all, not even Start -- only a hard reset recovers), which rules out a stuck player.frozen flag (a menu would still open for that) and points at a real uncaught Lua error somewhere.
+- Compared against Waifu4Life's original Modern UI Suite (0.1.35, the base this project forked from, confirmed to not have this freeze): its unlimited_pp folder has only main.lua -- none of secret_mew.lua, all_pkmn_gen2.lua, sneakers.lua, or six other files exist upstream at all. Checked every remaining file in this project that touches OverworldState/talkTo/showMapText; none besides all_pkmn_gen2.lua's own Elm/starter system plausibly reach Mom's conversation.
+- Traced a concrete mechanism by hand: Elm's real "go see your Mom" message almost certainly contains the literal word "ELM" (as a speaker label), which makes all_pkmn_gen2.lua's interceptTalk rebuild its npc parameter from scratch using the entire message as text, before handleElm ever sees it. Manual tracing through handleElm's own logic for this exact shape did not conclusively find a crash, and a build with this traced scenario reproduced in a test does not crash either -- so this is not a certain fix.
+- Given three previous narrower attempts did not resolve the actual report, added a safety net instead of a fourth guess: all 8 handlers chained in interceptTalk (handleStaticTalk, handleElm, handleElmBall, handleOak, handleKim, handleLinkC, handleGsCenter, handleKurt) now run inside a single pcall. Any error anywhere in that chain is caught, logged with the exact message and the text being shown, and falls through to ordinary vanilla dialogue instead of ever being able to hang the game again. If this was the actual cause, the next freeze attempt should instead show normal dialogue, and the log will name the exact error for a permanent, precise fix.
+
+## [3.11.0]
+- The 3.10.0 fix (handleStaticTalk crashing on a nil NPC) was real but didn't resolve the reported Gen2 freeze -- confirmed by further testing. Rather than keep patching this piece by piece, removed the Running Shoes quest/dialogue entirely from Gen2: it only existed there to mirror Gen1 (where running before getting a starter caused its own freeze), and no amount of gating around Gen2's own "Elm sends you to see Mom" story conversation stopped the freeze, even with 3.8.0's "let the first conversation through" fix. There were also four separate trigger paths for this (talking to Mom, talking to Elm/Oak, an idle auto-trigger, and a "got Elm's phone number" text hook) -- auditing and gating all four individually was a much larger risk than removing it outright.
+- Gen2 now bypasses all four of those paths completely, and running is functional from the very start of a Gen2 save -- no quest, no dialogue, no conditions. Gen1's quest is completely unchanged (it still exists there for the reason it was originally added).
+
+## [3.10.0]
+- Fixed the Gen2 freeze after talking to Mom following the rival/police/Elm sequence in New Bark Town. Found via the player's own testing: disabling every toggleable feature still froze, which ruled out anything gated by a setting. Of the 8 handlers chained in all_pkmn_gen2.lua's Elm/starter dialogue system, handleStaticTalk is the one with no feature toggle at all (by design -- it always needs to catch this mod's own bird/Mew/Celebi NPCs) -- but that also meant it ran for every piece of Gen2 scripted text shown through showMapText's unconditional branch, not just real NPC interactions. A generic, narrator-style line with no NPC attached (e.g. "Wow, that's a cute Pokemon.") passed npc as nil, and indexing npc.id immediately threw -- uncaught, since this runs during real gameplay rather than the one-time setup block that installs the hook. An uncaught error in the middle of the engine's own "resume this script" callback is a very plausible freeze rather than a clean crash. handleStaticTalk now returns false immediately for anything that isn't a real NPC table, same as every other handler already does.
+
+## [3.9.0]
+- Correction: the 3.8.0 Mom-conversation fix doesn't explain the reported freeze after all -- confirmed the player already had the Running Shoes by that point, which means sneakers.lua's own gotSneakers check would already have skipped its interception, untouched. The 3.8.0 fix is kept (it's still a real, separate bug for anyone who reaches that story beat before getting the shoes), but it isn't the cause here.
+- Found a stronger lead instead: all_pkmn_gen2.lua's Elm/starter system (Gen2 Get All The Pokemon) hooks OverworldState:showMapText, and one of its two intercept checks runs unconditionally for ANY Gen2 scripted text shown that way -- not gated by being in Elm's lab or by badge count the way the other check is. If that chain (8 handlers deep: birds/Mew/Celebi, Elm, the extra-starter ball, Oak, Kim, Link C., the GS Center, Kurt) incorrectly claims a piece of real story text, the actual vanilla dialogue never runs at all, which fits a freeze like this.
+- Rather than guess which of those 8 handlers is actually misfiring and risk breaking one that already works correctly, this version only adds diagnostic logging: every time any handler claims a piece of text, and every time the unconditional branch intercepts anything, it's now logged with the handler name and the exact text. No behavior changes yet.
+- If this happens again, the log should show exactly which handler fired right before the freeze -- that's what's needed to fix the real cause with confidence instead of guessing a third time.
+
+## [3.8.0]
+- Fixed a Gen2 freeze: after the rival battle, the police, and Elm's "go see your mom" line in New Bark Town, talking to Mom could leave the player permanently stuck. The Running Shoes feature's Mom-interception (sneakers.lua, present before this collaboration started) replaced that conversation outright with "Honey, you forgot your outdoor sneakers" instead of letting it play -- skipping whatever that real conversation needed to set or continue. The very first qualifying Mom conversation after getting a starter now always plays through untouched; the sneakers offer starts from the next conversation with her instead. Elm's own side of this file is unchanged, since nothing pointed to it being involved.
+
+## [3.7.0]
+- Infinite Tries for Limited Encounters (Gen1): added the battle cry (sound + text) before the fight for Articuno, Zapdos, Moltres and Mewtwo, missing from the 3.6.0 takeover -- the same oversight Grok's own first pass at this had. Reuses the exact cry lines and Sound.playCry/TextBox sequencing all_pkmn_gen2.lua's own startWild already uses for these same four species in its Gen 2 Kanto encounters, rather than inventing new lines. The fight now only begins once the cry text box is dismissed, matching how it already works there.
+- No behavior change to catching, persistence, or the Snorlax exclusion -- this only adds the cry in front of the existing 3.6.0 flow.
+- Gen2 unchanged (still detection-only; nothing to attach a cry to yet since it doesn't take over the encounter).
+
+## [3.6.0]
+- Infinite Tries for Limited Encounters (Gen1): rebuilt from scratch around a different, proven architecture, after beating Articuno still left it gone on two previous attempts to passively detect the vanilla fight. Instead of watching for the vanilla battle to start, this now copies the approach secret_mew.lua already uses successfully for a real Gen 1 persistent encounter: OverworldState:talkTo is wrapped, and talking to one of these four NPCs is fully taken over -- the mod starts the fight itself with BattleState.newWild (the same confirmed call Mew's own fight uses) and tracks catch/not-caught with its own SUITE_*_CAUGHT save flag, the same way SUITE_MEW_CAUGHT already works. The vanilla trigger never runs for these four at all, so whatever its own bookkeeping does no longer matters.
+- Scope note: this covers Articuno, Zapdos, Moltres and Mewtwo only. The two Route Snorlax are deliberately left out of this feature -- unlike the birds, their map data has no pokemon= tag, and they're normally gated behind playing the Poke Flute to wake up first; taking over their talk handler the same way risked bypassing that mechanic entirely, which wasn't confirmed safe.
+- Gen2 is unchanged from 3.4.0/3.5.0 (still detection-only).
+
+## [3.5.0]
+- Infinite Tries for Limited Encounters (Gen1): fixed the Kanto Birds/Mewtwo not actually coming back after a non-catch (confirmed in testing: beating Articuno still left it gone). The previous version only wrapped BattleState.newWild, on the assumption these fights start the same way Mew's own mod-spawned fight does -- but the birds' own trainer_headers.lua data uses the same event/battle/won shape as a regular trainer, not wild-encounter data, so that assumption was likely wrong. Now also wraps BattleState.newTrainer and checks what it actually produced (a single-Pokemon enemy party matching one of the tracked species), since there's no way to predict the class/index arguments a bird would be started with.
+- Infinite Tries for Limited Encounters (Gen1): added a short re-assertion window after a non-catch, re-writing the objectToggles flag for a couple of seconds in case the engine sets it back to true sometime after onFinish runs rather than before it. The first version only wrote it once.
+- Both changes are Gen1-only; Gen2 is still detection-only, unchanged from 3.4.0.
+
+## [3.4.0]
+- Infinite Tries for Limited Encounters (new, under both GEN1 GET ALL THE POKEMON and GEN2 GET ALL THE POKEMON, off by default): stops the Kanto Birds, Mewtwo and the two Route Snorlax (Gen 1) -- and, detection-only for now, Lugia, Ho-Oh, the Route 11 Snorlax, Sudowoodo and Red Gyarados (Gen 2) -- from vanishing forever if you flee or fail to catch them without saving first.
+  - Gen 1 is fully active: confirmed directly against a real save file that the controlling field is save.objectToggles[MAP][OBJECT] (true = gone, false = still there), not the EVENT_BEAT_* flags the trainer_headers data seemed to suggest (those don't actually appear in a save at all). On a non-catch outcome, that flag is set back to false, undoing whatever the game just set; a catch is left alone, since vanilla's "gone for good" is correct in that case.
+  - Gen 2 only logs for now (species, map id, catch/no-catch) rather than writing anything -- the battle-detection hook is proven (reuses the same World.startBattle wrap the existing Kanto-birds-in-Gen2 feature already relies on), but the objectToggles key format for these five Gen 2 locations isn't confirmed yet, unlike Gen 1's.
+- Removed ENABLE ALL UI, DISABLE ALL UI and ASPECT RATIO from the main Project Highlander menu (sub-menus unaffected -- each component's own ENABLED toggle and ASPECT RATIO option still work normally from within its own page).
+- Removed the SPRITE row from the Battle HUD sub-menu. It was a specially-injected row controlling a global menu-icon-source setting unrelated to Battle HUD itself; the setting is untouched, just no longer editable from that page.
+
+## [3.3.0]
+- Based on 2.99.0. Battle Floors (3.0.0-3.2.0) is removed: testing confirmed it draws on top of the opponent's sprite rather than behind it, with no fix possible given the hooks exposed to mods, so it's been scrapped rather than shipped half-working.
+- Fixed a real crash, found while investigating an unrelated save-file test: in Gen 2's Kanto post-game bird/Mew/Celebi spawning (Project Highlander's own code, present since before this collaboration started), spawnStatic fell back to a hardcoded sprite name (SPRITE_MONSTER or SPRITE_HO_OH) whenever it couldn't find a proper sprite to use, without ever confirming that name was a real asset. In Gen 1, SPRITE_HO_OH is not a real asset at all, and the engine threw rather than drawing anything, crashing the game outright (src/world/NPC.lua:37: unknown sprite SPRITE_HO_OH). The surrounding code does check isGen2(game) before running at all, so why this fired in a Gen 1 Red save is not yet confirmed -- but a crash-causing fallback is worth fixing on its own regardless of how it was reached. It now aborts the spawn attempt instead of guessing, matching the safe pattern paintBird already used for the same "no sprite found" case a few lines below.
+
 ## [2.99.0]
 - Custom Letterbox: fixed the border covering the Modern Party UI when it's opened mid-battle (e.g. switching Pokemon). The screen classifier checked "is this a battle" before "is this a suite screen", and the in-battle Party UI carries a reference to the current enemy (for its type-matchup display), so it was misidentified as a battle screen and given the border meant for the plain 160x144 game rect instead of being skipped like every other suite screen. Suite screens are now always checked first, regardless of what else they carry.
 

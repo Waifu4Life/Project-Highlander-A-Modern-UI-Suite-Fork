@@ -5,7 +5,7 @@ return function(mod)
   local optionSchema = {
     { key = "colored_pokeballs", label = "COLORED POKEBALLS", type = "toggle",
       default = true },
-    { key = "colored_pokemoves", label = "COLORS TO POKEMOVES", type = "toggle",
+    { key = "colored_pokemoves", label = "COLORED MOVES", type = "toggle",
       default = true },
     { key = "battle_colors", label = "BATTLE COLORS", type = "toggle",
       default = true },
@@ -50,7 +50,7 @@ return function(mod)
 
   local mainLabels = {
     colored_pokeballs = "COLORED POKEBALLS",
-    colored_pokemoves = "COLORS TO POKEMOVES",
+    colored_pokemoves = "COLORED MOVES",
     battle_colors = "MOVE BATTLE",
     layout = "MOVE LAYOUT",
     effect_hints = "MOVE EFFECT",

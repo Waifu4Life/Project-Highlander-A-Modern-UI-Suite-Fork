@@ -3,10 +3,9 @@
 A Modern UI Suite fork for the [Pokémon Gen 1 Recompilation Project](https://github.com/pret).  
 Hub: **Options → Mods → PROJECT HIGHLANDER**.
 
-Do not install next to `modern_ui_suite`. This package conflicts with it.
+The goal of this suite of Mods if to keep the games looking and sounding 8-Bit, but with QoL additions to make them more playable nowadays.
 
-Current release: **2.88.0**  
-Repo: https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
+Do not install next to `modern_ui_suite`. This package conflicts with it.
 
 ---
 

@@ -656,6 +656,11 @@ return function(mod)
     "SEL SWAP  B BACK",
   }
 
+  local MOVE_SWAP_FOOTER = {
+    "SEL DROP  B CANCEL",
+    "SEL DROP B CANCEL",
+  }
+
   -- Scissors use render-target coordinates and ignore the current transform,
   -- so map the logical box through it first (the wide presenter translates
   -- and scales the whole panel). Intersect with the panel's own clip.
@@ -987,11 +992,14 @@ return function(mod)
     drawModernBackdrop(self)
     drawSummaryHeader(self, "MOVES")
     local moves = self.moveList and self:moveList() or (self.mon and self.mon.moves) or {}
+    -- Select-to-swap is handled by Project Highlander (modernMoveSwap), not
+    -- the native controller (swapFrom); either one means a move is held.
+    local holding = tonumber(self.modernMoveSwap) or tonumber(self.swapFrom)
     for i = 1, 4 do
       local move = moves[i]
       local color, def = moveColor(self, move)
       local selected = i == (self.moveIndex or 1)
-      local held = i == self.swapFrom
+      local held = i == holding
       local columns = wide and 2 or 1
       local col = (i - 1) % columns
       local row = math.floor((i - 1) / columns)
@@ -1007,7 +1015,7 @@ return function(mod)
       setColor(move and face or { 0.74, 0.76, 0.80 })
       chamfer("fill", x, y, cardW, cardH, 3)
       setColor(selected and INK_WHITE or (held and HEADER or { 0.15, 0.16, 0.20 }))
-      G.setLineWidth(selected and 2 or 1)
+      G.setLineWidth((selected or held) and 2 or 1)
       chamfer("line", x + 0.5, y + 0.5, cardW - 1, cardH - 1, 3)
       local ink = selected and INK_WHITE or INK_BLACK
       if move then
@@ -1028,7 +1036,7 @@ return function(mod)
     local _, def = moveColor(self, selected)
     setColor({ 0.08, 0.09, 0.12 })
     chamfer("fill", 5, 109, width - 10, 25, 3)
-    if self.swapFrom then
+    if holding then
       drawInkCentered("WHERE SHOULD IT MOVE?", 10, 117, width - 20,
         INK_WHITE)
     elseif def then
@@ -1040,7 +1048,7 @@ return function(mod)
         description, tostring(width) }, "\31"), description, 11, 122,
         width - 22, INK_WHITE)
     end
-    drawSummaryFooter(self, MOVE_DETAIL_FOOTER)
+    drawSummaryFooter(self, holding and MOVE_SWAP_FOOTER or MOVE_DETAIL_FOOTER)
   end
 
   local function modernSummaryPanel(self)

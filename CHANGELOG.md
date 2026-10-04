@@ -1,3 +1,6 @@
+## [3.34.0]
+- Modern Party, Gen 2 Move Stats: pressing SELECT on a move now shows "WHERE SHOULD IT MOVE?" in the description box, outlines the held move in blue, and changes the footer to "SEL DROP  B CANCEL" until you drop or cancel. (The page was checking the game's own swap flag, which Project Highlander's SELECT swap never sets.)
+
 ## [3.33.0]
 - Modern Party, Gen 2 Summary: the MOVES page footer now reads "L/R PAGE  B BACK  SELECT MOVE STATS" (shortens on narrow layouts so it never cuts off mid-word).
 - Modern Party, Gen 2 Move Stats: the footer now ends in "B BACK" instead of a lone "B".

@@ -1,3 +1,8 @@
+## [3.33.0]
+- Modern Party, Gen 2 Summary: the MOVES page footer now reads "L/R PAGE  B BACK  SELECT MOVE STATS" (shortens on narrow layouts so it never cuts off mid-word).
+- Modern Party, Gen 2 Move Stats: the footer now ends in "B BACK" instead of a lone "B".
+- Modern Party, Gen 2 Move Stats: move descriptions show both cartridge lines as one sentence, and scroll left when they don't fit (same timing as the Bag: 1 s hold, glide, 3/4 s hold, repeat). The scroll restarts when you pick another move.
+
 ## [3.32.0]
 - Running Shoes, Gen 2: scrapped the sneakers story (Elm's "your mom called" line and Mom's "you forgot your outdoor sneakers"). Running works from the start of a new game, following the RUNNING SHOES setting. Gen 1 keeps its Oak/Mom sneakers story, which still prevents running before the starter.
 

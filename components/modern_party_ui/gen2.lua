@@ -622,13 +622,96 @@ return function(mod)
     drawInkRight(title, width - 4, 4, 40, INK_LIGHT)
   end
 
+  -- Footers may be given as a list of variants, longest first. The first one
+  -- that fits the current layout is drawn, so narrow layouts shorten the
+  -- wording instead of cutting a hint off mid-word.
+  local function fittingVariant(text, maxWidth)
+    if type(text) ~= "table" then return text end
+    for _, variant in ipairs(text) do
+      if Font.width(variant) <= maxWidth then return variant end
+    end
+    return text[#text]
+  end
+
   local function drawSummaryFooter(self, text)
     local G = love.graphics
     local width = self.modernPartyWideWidth or 160
     setColor(HEADER)
     G.rectangle("fill", 0, 136, width, 8)
-    drawInkCentered(text or "L/R PAGE  B BACK", 2, 136, width - 4,
-      INK_WHITE)
+    text = fittingVariant(text or "L/R PAGE  B BACK", width - 4)
+    drawInkCentered(text, 2, 136, width - 4, INK_WHITE)
+  end
+
+  local SUMMARY_MOVES_FOOTER = {
+    "L/R PAGE  B BACK  SELECT MOVE STATS",
+    "L/R PAGE  B BACK  SEL MOVE STATS",
+    "L/R PAGE B BACK SEL MOVE STATS",
+    "B BACK  SEL MOVE STATS",
+    "SEL MOVE STATS",
+  }
+
+  local MOVE_DETAIL_FOOTER = {
+    "A MOVE  SEL SWAP  B BACK",
+    "A MOVE SEL SWAP B BACK",
+    "SEL SWAP  B BACK",
+  }
+
+  -- Scissors use render-target coordinates and ignore the current transform,
+  -- so map the logical box through it first (the wide presenter translates
+  -- and scales the whole panel). Intersect with the panel's own clip.
+  local function setLogicalScissor(x, y, width, height)
+    local G = love.graphics
+    local x1, y1, x2, y2 = x, y, x + width, y + height
+    if G.transformPoint then
+      x1, y1 = G.transformPoint(x1, y1)
+      x2, y2 = G.transformPoint(x2, y2)
+    end
+    local cx, cy = math.floor(math.min(x1, x2)), math.floor(math.min(y1, y2))
+    local cw = math.max(1, math.ceil(math.abs(x2 - x1)))
+    local ch = math.max(1, math.ceil(math.abs(y2 - y1)))
+    if G.intersectScissor then G.intersectScissor(cx, cy, cw, ch)
+    else G.setScissor(cx, cy, cw, ch) end
+  end
+
+  -- Gen 2 move descriptions are two cartridge lines joined by <NEXT> (or a
+  -- newline). Join them into one sentence for the single description row.
+  local function moveDescriptionText(def)
+    local text = tostring(def and def.description or "")
+    text = text:gsub("<%u+>", " "):gsub("[\r\n]", " "):gsub("%s+", " ")
+    return (text:gsub("^%s+", ""):gsub("%s+$", ""))
+  end
+
+  -- Same timing as the Bag's description marquee: hold at the start, glide
+  -- left at 36 px/s until the end is visible, hold, then restart.
+  local MARQUEE_HOLD_START, MARQUEE_HOLD_END, MARQUEE_SPEED = 1.0, 0.75, 36
+
+  local function drawScrollingInk(self, key, text, x, y, maxWidth, color)
+    local G = love.graphics
+    local textW = Font.width(text)
+    if textW <= maxWidth or not G.setScissor then
+      self.modernMoveDescScroll = nil
+      drawInk(text, x, y, maxWidth, color)
+      return
+    end
+    local state = self.modernMoveDescScroll
+    if not state or state.key ~= key then
+      state = { key = key, elapsed = 0 }
+      self.modernMoveDescScroll = state
+    end
+    local travel = textW - maxWidth
+    local moving = travel / MARQUEE_SPEED
+    local cycle = MARQUEE_HOLD_START + moving + MARQUEE_HOLD_END
+    local phase = (state.elapsed or 0) % cycle
+    local offset = 0
+    if phase >= MARQUEE_HOLD_START + moving then
+      offset = travel
+    elseif phase > MARQUEE_HOLD_START then
+      offset = math.min(travel, (phase - MARQUEE_HOLD_START) * MARQUEE_SPEED)
+    end
+    G.push("all")
+    setLogicalScissor(x, y, maxWidth, 8)
+    drawInk(text, x - math.floor(offset), y, nil, color)
+    G.pop()
   end
 
   local PIC_PAD = { [7] = { 0, 0 }, [6] = { 1, 1 }, [5] = { 1, 2 } }
@@ -952,10 +1035,12 @@ return function(mod)
       drawInk(("%s  POWER %s"):format(tostring(def.type or "---"):upper(),
         tostring((def.power or 0) >= 2 and def.power or "---")),
         11, 112, width - 22, INK_LIGHT)
-      local description = tostring(def.description or ""):gsub("<NEXT>.*", "")
-      drawInk(description, 11, 122, width - 22, INK_WHITE)
+      local description = moveDescriptionText(def)
+      drawScrollingInk(self, table.concat({ tostring(self.moveIndex or 1),
+        description, tostring(width) }, "\31"), description, 11, 122,
+        width - 22, INK_WHITE)
     end
-    drawSummaryFooter(self, "A MOVE  SEL SWAP  B")
+    drawSummaryFooter(self, MOVE_DETAIL_FOOTER)
   end
 
   local function modernSummaryPanel(self)
@@ -981,7 +1066,10 @@ return function(mod)
       end
       drawSummaryStats(self)
     end
-    drawSummaryFooter(self, "L/R PAGE  B BACK")
+    local onMoves = self.page == SummaryMenu.GREEN_PAGE
+      and not (self.mon and self.mon.isEgg)
+    drawSummaryFooter(self, onMoves and SUMMARY_MOVES_FOOTER
+      or "L/R PAGE  B BACK")
     Font.useBattleExtra(wasBattle)
     love.graphics.setColor(1, 1, 1, 1)
   end
@@ -1151,6 +1239,14 @@ return function(mod)
     local nativeSummaryUpdate = menu.update
     if type(nativeSummaryUpdate) == "function" then
       menu.update = function(self, dt)
+        local scroll = self.modernMoveDescScroll
+        if scroll then
+          if self.moveDetail then
+            scroll.elapsed = (scroll.elapsed or 0) + math.max(0, tonumber(dt) or 0)
+          else
+            self.modernMoveDescScroll = nil
+          end
+        end
         local before = self.page
         if self.page ~= SummaryMenu.GREEN_PAGE
             and self.page ~= SummaryMenu.BLUE_PAGE then

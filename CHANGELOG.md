@@ -1,3 +1,6 @@
+## [3.35.0]
+- Gen 2 Legendary Birds: talking to an ordinary bird the game draws with the Moltres sprite (or any NPC whose text mentions a bird's name) no longer starts a Moltres / Zapdos / Articuno battle. Only this mod's own static birds start those fights; catching, hiding after capture and everything else about the feature is unchanged.
+
 ## [3.34.0]
 - Modern Party, Gen 2 Move Stats: pressing SELECT on a move now shows "WHERE SHOULD IT MOVE?" in the description box, outlines the held move in blue, and changes the footer to "SEL DROP  B CANCEL" until you drop or cancel. (The page was checking the game's own swap flag, which Project Highlander's SELECT swap never sets.)
 

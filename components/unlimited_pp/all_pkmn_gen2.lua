@@ -2073,15 +2073,27 @@ return function(mod)
     -- never advance, having gotten an error instead of the normal return.
     if type(npc) ~= "table" then return false end
     local id = tostring(npc.id or npc.suiteBird or "")
-    local s = blob(npc)
     local mid = mapId(ow)
-    if id == "suite_moltres" or s:find("MOLTRES") then
+    -- Only this mod's own static birds. They are runtime objects created
+    -- by spawnStatic (scriptKey = suite id, pokemon = species) and tagged
+    -- suiteBird. Gold/Crystal draw many ordinary birds with SPRITE_MOLTRES,
+    -- so the sprite name (or any text containing a bird's name) must never
+    -- decide this: that turned every generic bird into a Moltres fight.
+    local d = type(npc.def) == "table" and npc.def or {}
+    local function ours(species, sid)
+      if id == sid or npc.suiteBird == sid or npc.scriptKey == sid
+          or d.scriptKey == sid then
+        return true
+      end
+      return tostring(d.pokemon or npc.pokemon or ""):upper() == species
+    end
+    if ours("MOLTRES", "suite_moltres") then
       startWild(game, ow, "MOLTRES", 50, "SUITE_MOLTRES") return true
     end
-    if id == "suite_zapdos" or s:find("ZAPDOS") then
+    if ours("ZAPDOS", "suite_zapdos") then
       startWild(game, ow, "ZAPDOS", 50, "SUITE_ZAPDOS") return true
     end
-    if id == "suite_articuno" or s:find("ARTICUNO") then
+    if ours("ARTICUNO", "suite_articuno") then
       startWild(game, ow, "ARTICUNO", 50, "SUITE_ARTICUNO") return true
     end
     if id == "suite_mew2" then

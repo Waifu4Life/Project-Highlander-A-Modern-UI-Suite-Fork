@@ -143,7 +143,7 @@ Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disab
 
 ## Shortcuts
 
-Allows PokéBall shortcuts in battle by pressing Select + one of the directions on the D-pad. Up to 4 can be configurated with the exeptions of the Master Ball, Safari Balls and Sport Ball. Cannot be used in the Safari Zone, National Park Bug-Catching Contest or against other trainers. Message in red will indicate when the feature is active.
+Allows PokéBall shortcuts in battle by pressing Select + one of the directions on the D-pad. Up to 4 can be configured with the exceptions of the Master Ball, Safari Balls and Sport Ball. Cannot be used in the Safari Zone, National Park Bug-Catching Contest or against other trainers. Message in red will indicate when the feature is active.
 
 Also, 3 Key Item shortcuts can be added to the Select menu in the overworld. These can only be the following: Old Rod, Good Rod, Super Rod, Item Finder, Bicycle and Map (even in Gen2, the map will be a choice even if it's not a key item).
 

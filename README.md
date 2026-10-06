@@ -3,9 +3,10 @@
 A Modern UI Suite fork for the [Pokémon Gen 1 Recompilation Project](https://github.com/pret).  
 Hub: **Options → Mods → PROJECT HIGHLANDER**.
 
-The goal of this suite of Mods if to keep the games looking and sounding 8-Bit, but with QoL additions to make them more playable nowadays.
-
 Do not install next to `modern_ui_suite`. This package conflicts with it.
+
+Current release: **2.88.0**  
+Repo: https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
 
 ---
 
@@ -139,6 +140,12 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 
 Rebinds Up, Down, Left, Right, B, A, Start, Select, Speed+, Speed−.  
 Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disabled. Stock Controls page is hidden while this is On.
+
+## Shortcuts
+
+Allows PokéBall shortcuts in battle by pressing Select + one of the directions on the D-pad. Up to 4 can be configured with the exceptions of the Master Ball, Safari Balls and Sport Ball. Cannot be used in the Safari Zone, National Park Bug-Catching Contest or against other trainers. Message in red will indicate when the feature is active.
+
+Also, 3 Key Item shortcuts can be added to the Select menu in the overworld. These can only be the following: Old Rod, Good Rod, Super Rod, Item Finder, Bicycle and Map (even in Gen2, the map will be a choice even if it's not a key item).
 
 ## Cont. Rumble
 

@@ -131,6 +131,10 @@ return {
     defaultEnabled = true,
     bulkUI = false,
     files = { "main.lua" },
+    rowOrder = {
+      "bind_up", "bind_down", "bind_left", "bind_right", "bind_a1", "bind_b1",
+      "bind_start", "bind_select", "bind_speedp", "bind_speedm",
+    },
   },
   {
     id = "steel_typing",
@@ -158,6 +162,25 @@ return {
     },
   },
   {
+    id = "pokeball_shortcuts",
+    key = "ballshort",
+    name = "Shortcuts",
+    short = "SHORTCUTS",
+    fullLabel = "SHORTCUTS",
+    -- The sub-menu's own ON/OFF row is the Ball Shortcuts switch; Item
+    -- Shortcuts has its own toggle row and works either way.
+    enabledLabel = "BALL SHORTCUTS",
+    version = "1.1.0",
+    installOrder = 15,
+    defaultEnabled = false,
+    bulkUI = false,
+    files = { "main.lua" },
+    rowOrder = {
+      "select_up", "select_down", "select_left", "select_right",
+      "item_shortcuts", "item_shortcut_1", "item_shortcut_2", "item_shortcut_3",
+    },
+  },
+  {
     id = "custom_letterbox",
     key = "letterbox",
     name = "Custom Borders",
@@ -169,8 +192,10 @@ return {
     bulkUI = false,
     files = { "main.lua" },
     assets = {
-      "assets/borders/red_modern.png", "assets/borders/red_classic.png",
-      "assets/borders/green_modern.png", "assets/borders/green_classic.png",
+      "assets/borders/red_modern.png", "assets/borders/red_modern2.png",
+      "assets/borders/red_classic.png",
+      "assets/borders/green_modern.png", "assets/borders/green_modern2.png",
+      "assets/borders/green_classic.png",
       "assets/borders/blue_modern.png", "assets/borders/blue_classic.png",
       "assets/borders/yellow.png",
       "assets/borders/gold.png", "assets/borders/silver.png",

@@ -145,6 +145,28 @@ return function(mod, settings, state, components)
               return stepOption(activeGame, component, source, direction)
             end,
           }
+        elseif source.type == "custom" then
+          -- Value and Left/Right handled by the component (e.g. Shortcuts'
+          -- ITEM SHORTCUT rows cycle the Key Items in the current bag).
+          body[#body + 1] = {
+            id = component.key .. "." .. source.key,
+            label = labelFor(source, component),
+            value = function()
+              local exports = component.exports or {}
+              if type(exports.customValue) == "function" then
+                return exports.customValue(settings.activeGame, source.key)
+              end
+              return "----"
+            end,
+            step = function(activeGame, direction)
+              local exports = component.exports or {}
+              if type(exports.customStep) == "function" then
+                return exports.customStep(activeGame or settings.activeGame,
+                  source.key, direction or 1)
+              end
+              return false
+            end,
+          }
         elseif source.type == "bind" or source.type == "action" then
           body[#body + 1] = {
             id = component.key .. "." .. source.key,
@@ -250,7 +272,17 @@ return function(mod, settings, state, components)
         }
       end
     end
+    -- Sub-menus are alphabetical unless the component declares its own
+    -- row order (Full Control's buttons, PokeBall Shortcuts' directions).
+    local rank = {}
+    for i, key in ipairs(component.rowOrder or {}) do rank[key] = i end
+    local function rowRank(row)
+      local key = tostring(row.id or ""):match("^[^.]+%.(.+)$")
+      return key and rank[key] or math.huge
+    end
     table.sort(body, function(a, b)
+      local ra, rb = rowRank(a), rowRank(b)
+      if ra ~= rb then return ra < rb end
       return tostring(a.label or "") < tostring(b.label or "")
     end)
     local rows = { enabledRow }

@@ -40,6 +40,16 @@ return function(parent, settings, state, component)
     shinyDex = state.shinyDex,
     pokeIcons = state.pokeIcons,
     drawMenuIcon = state.drawMenuIcon,
+    itemShortcuts = state.itemShortcuts,
+    openShortcutMenu = function(game, rows)
+      return state.itemShortcuts and state.itemShortcuts.open(game, rows)
+    end,
+    injectButton = function(game, button)
+      return state.itemShortcuts and state.itemShortcuts.inject(game, button)
+    end,
+    addFrameJob = function(fn)
+      return state.itemShortcuts and state.itemShortcuts.addJob(fn)
+    end,
     fixedUISize = function() return state.uiSurfaces.fixedSize(component) end,
     isNativeEvolution = state.uiSurfaces.isNativeEvolution,
     uiGeometry = function(screen, ...) return state.uiSurfaces.geometry(component, screen, ...) end,

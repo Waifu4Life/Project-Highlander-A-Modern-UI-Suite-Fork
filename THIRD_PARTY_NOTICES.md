@@ -59,3 +59,12 @@ from maintainer TRW (Discord, 2026-09-12). Original project:
 https://github.com/distilledorion-sketch/crystal_animated_sprites_with_shiny_visuals
 
 Copyright (c) TRW
+
+
+## masterwebx — Controller Rumble
+
+The Controller Rumble component (`controller_rumble`) is MIT-licensed:
+
+Copyright (c) 2026 masterwebx
+
+The license text is shipped next to it at `components/controller_rumble/LICENSE`.

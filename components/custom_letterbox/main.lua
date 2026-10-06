@@ -10,8 +10,10 @@
 return function(mod)
   local BORDERS = {
     { "AUTOMATIC", "auto" },
-    { "RED MODERN", "red_modern" }, { "RED CLASSIC", "red_classic" },
-    { "GREEN MODERN", "green_modern" }, { "GREEN CLASSIC", "green_classic" },
+    { "RED MODERN", "red_modern" }, { "RED MODERN 2", "red_modern2" },
+    { "RED CLASSIC", "red_classic" },
+    { "GREEN MODERN", "green_modern" }, { "GREEN MODERN 2", "green_modern2" },
+    { "GREEN CLASSIC", "green_classic" },
     { "BLUE MODERN", "blue_modern" }, { "BLUE CLASSIC", "blue_classic" },
     { "YELLOW", "yellow" }, { "GOLD", "gold" }, { "SILVER", "silver" },
     { "CRYSTAL", "crystal" },

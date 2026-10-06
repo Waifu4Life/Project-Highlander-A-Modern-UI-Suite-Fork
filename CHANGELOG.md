@@ -1,3 +1,45 @@
+## [3.44.0]
+- Item Shortcuts: the SELECT box uses the same 16 px row spacing as the TM/HM rows, with the divider centred between the shortcuts and the field moves (a very long field-move list falls back to tight rows so it still fits). The box is wide enough for ITEMFINDER, so shortcut names no longer scroll.
+- Ball Shortcuts: the battle note is now actually drawn in red in Gen 1 and Gen 2 (the font's black ink is recoloured, not just tinted).
+- Notices: Controller Rumble (masterwebx, MIT) added to THIRD_PARTY_NOTICES.md; mod.card credits now list everyone named in the notices.
+
+## [3.43.0]
+- Item Shortcuts: ITEM SHORTCUT 1-3 only offer the reusable field items the games let you register to SELECT: Old Rod, Good Rod, Super Rod, Itemfinder, Bicycle, and the map (Gen 1 Town Map, Gen 2 Pokégear MAP). Anything else set earlier is treated as NONE.
+- Item Shortcuts (Gen 2): no manual setup needed. The first time a shortcut is used, the mod registers that item with the Pack's own SEL behind the scenes, learns where the game keeps it, puts your own registered item back and uses the shortcut. This happens once; after that, shortcuts always go through the game's SELECT path.
+
+## [3.42.0]
+- Item Shortcuts (Gen 2): finding the game's registered (SELECT) item is now done by comparing the save before and after a Pack visit in which SEL was used, at any depth and whichever way the Pack handled it. The result is announced on screen when the Pack closes: "ITEM SHORTCUTS learned the SELECT item." or "...couldn't find the SELECT item.". Once learned, shortcuts use the game's own SELECT path, with no Pack and no flashing.
+
+## [3.41.0]
+- Item Shortcuts (Gen 2): the mod now learns where the game stores its registered (SELECT) item by watching the Pack's own SEL once. Register any item with SEL in the Pack one time; from then on shortcuts use the game's registered-item path straight from the overworld (no Pack, no flashing, rod messages on the overworld). What it learned is kept in project_highlander_registered_field.txt in the save folder, and the log shows "[ItemShortcuts] registered item field: ...".
+
+## [3.40.0]
+- Item Shortcuts (Gen 2): items are now used through the game's own registered-item SELECT, straight from the overworld, the same way the MAP shortcut skips the Pack. No Pack, no flashing, and an item that can't be used there (a Fishing Rod with no water) shows its message on the overworld. Your own registered item is left as it was. The Pack route remains only as a fallback.
+
+## [3.39.0]
+- Item Shortcuts (Gen 2): no more flashing when using a shortcut. While the Pack works behind the scenes it now shows the overworld instead of a blank frame.
+- Item Shortcuts (Gen 2): after an item that can't be used there (a Fishing Rod with no water, ...), its message is shown and the Pack then closes instead of staying open.
+- Item Shortcuts (Gen 2): new choice MAP opens the Pokégear straight on its map; B goes back to the overworld instead of the Pokégear.
+
+## [3.38.0]
+- Item Shortcuts (Gen 1): Gym Badges no longer appear among the Key Items offered for ITEM SHORTCUT 1-3.
+- Item Shortcuts (Gen 2): using an item from the SELECT menu no longer flashes the Pack while it is being set up. The Pack stays hidden and only appears if the item answers with a message inside it.
+- Ball Shortcuts (Gen 2): the battle note now shows in the command box, like Gen 1. Wild battles are also recognised more reliably.
+- Modern Start Menu: updated start_menu_icons.png.
+
+## [3.37.0]
+- The PokéBall Shortcuts sub-menu is now SHORTCUTS. Its top ON/OFF row is BALL SHORTCUTS, followed by SELECT W/ UP / DOWN / LEFT / RIGHT ("+" can't be shown by the game's font).
+- New in SHORTCUTS: ITEM SHORTCUTS (ON/OFF, on by default) and ITEM SHORTCUT 1 / 2 / 3. Left/Right cycles NONE and every Key Item in the bag; the choice is saved per save file. With ITEM SHORTCUTS off, SELECT goes back to PokéMoves' field-move menu (or the game's own SELECT).
+- Removed SHORT.1 / SHORT.2 / SHORT.3 from the Bag's item menu.
+- Using a shortcut item no longer leaves the original Bag on screen behind its result (Town Map, Itemfinder message...), and closes it afterwards. In Gen 2 the Pack also closes once the item is done.
+- Ball Shortcuts' battle note is drawn at full size again. Where the command box only fits six letters (160-pixel screen) it reads BALL / SHORT- / CUTS; with room it reads PokéBall / Shortcuts / Active.
+
+## [3.36.0]
+- Custom Borders: two new borders, RED MODERN 2 and GREEN MODERN 2 (17 choices).
+- Full Control: buttons are listed in controller order (Up, Down, Left, Right, A, B, Start, Select, Speed +, Speed -) instead of alphabetically, in Gen 1 and Gen 2. The analog toggles follow. Other sub-menus stay alphabetical.
+- New sub-menu POKéBALL SHORTCUTS (off by default): SELECT + Up / Down / Left / Right throws the assigned ball from a wild battle's command menu. Gen 1: Poké, Great, Ultra. Gen 2 adds Fast, Level, Lure, Heavy, Love, Friend, Moon. Never Safari, Sport or Master Ball; never in the Safari Zone, the Bug-Catching Contest, trainer/link battles or the Old Man's demo. A red "PokéBall Shortcuts Active" note shows in the command box while it can be used.
+- Item Shortcuts (always on): A on a Key Item adds SHORT.1 / SHORT.2 / SHORT.3 to its menu; choosing one puts the item on that shortcut, replacing the old one without asking. SELECT on the overworld lists the three shortcuts by item name (long names scroll), then a divider, then PokéMoves field moves (when Instant TMs/HMs is on), then CANCEL. Saved per save file. Gen 2: bag rows need the Modern Bag's modern look; with no shortcuts set, SELECT keeps the game's own registered item.
+
 ## [3.35.0]
 - Gen 2 Legendary Birds: talking to an ordinary bird the game draws with the Moltres sprite (or any NPC whose text mentions a bird's name) no longer starts a Moltres / Zapdos / Articuno battle. Only this mod's own static birds start those fights; catching, hiding after capture and everything else about the feature is unchanged.
 

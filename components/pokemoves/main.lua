@@ -296,6 +296,12 @@ return function(mod)
         }
       end
       if #items == 0 then return false end
+      -- Item Shortcuts (core) owns the SELECT box: shortcuts on top, then
+      -- these field moves under a divider, then CANCEL.
+      if mod.suite and type(mod.suite.openShortcutMenu) == "function"
+          and mod.suite.openShortcutMenu(game, items) then
+        return true
+      end
       items[#items + 1] = { label = "CANCEL" }
       game.stack:push(Menu.new(game, items, {
         tx = 6, ty = 1, tw = 8, th = #items * 2 + 2,

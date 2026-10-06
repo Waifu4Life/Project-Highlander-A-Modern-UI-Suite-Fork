@@ -205,6 +205,8 @@ end
     end
     items=uniq
     if #items==0 then return selectMenu(self,...) end
+    if mod.suite and type(mod.suite.openShortcutMenu)=="function"
+        and mod.suite.openShortcutMenu(self,items) then return end
     items[#items+1]={label="CANCEL"}
     local widest=6
     for _,row in ipairs(items) do

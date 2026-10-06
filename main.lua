@@ -22,6 +22,8 @@ return function(mod)
     shinyDex = loadLocal("core/shiny_dex.lua")(mod),
     pokeIcons = loadLocal("core/poke_icons.lua")(mod, settings),
   }
+  -- Always on: Key Item shortcuts (Bag SHORT.1-3 rows + the SELECT box).
+  state.itemShortcuts = loadLocal("core/item_shortcuts.lua")(mod, settings)
   state.drawMenuIcon = loadLocal("core/menu_icons.lua")(mod, state.pokeIcons)
 
   -- Validate the complete archive before any component gets a chance to

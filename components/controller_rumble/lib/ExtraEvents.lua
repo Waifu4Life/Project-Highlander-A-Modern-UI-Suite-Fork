@@ -192,8 +192,8 @@ function ExtraEvents.install(mod)
     local prevBoxNew = TextBox.new
     local fishListenUntil = 0
 
-    function TextBox.new(game, text, onDone, opts)
-      local box = prevBoxNew(game, text, onDone, opts)
+    function TextBox.new(game, text, onDone, opts, ...)
+      local box = prevBoxNew(game, text, onDone, opts, ...)
       if fishListenUntil > 0 and Extras.now() <= fishListenUntil then
         local s = tostring(text or "")
         local lower = s:lower()
@@ -270,10 +270,14 @@ function ExtraEvents.install(mod)
     if type(ItemEffects) ~= "table" or type(ItemEffects.use) ~= "function" then
     else
     local prev = ItemEffects.use
-    function ItemEffects.use(data, save, itemId, target, battle, moveIndex, ow)
-      local result, a, b = prev(data, save, itemId, target, battle, moveIndex, ow)
-      if not storyOn() then return result, a, b end
-      local itemDef = data.items and data.items[itemId]
+    function ItemEffects.use(data, save, itemId, ...)
+      -- Pass every argument and every return value straight through.
+      local out = (function(...) return { n = select("#", ...), ... } end)(
+        prev(data, save, itemId, ...))
+      local result = out[1]
+      local unpackValues = table.unpack or unpack
+      if not storyOn() then return unpackValues(out, 1, out.n) end
+      local itemDef = data and data.items and data.items[itemId]
       if result == "consumed" and ItemEffects.isStone(itemId) then
         Rumble.pulse("story", 0.35, 0.45, 10)
         Extras.enqueue(0.12, 0.25, 0.35, 8, "story")
@@ -283,7 +287,7 @@ function ExtraEvents.install(mod)
       elseif result == "consumed" and itemDef and itemDef.machine then
         Rumble.pulse("story", 0.3, 0.4, 9)
       end
-      return result, a, b
+      return unpackValues(out, 1, out.n)
     end
     end
   end

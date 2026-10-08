@@ -150,7 +150,7 @@ return function(mod)
     if TextBox.__highlanderRepelAgain then return end
     TextBox.__highlanderRepelAgain = true
     local orig = TextBox.new
-    function TextBox.new(game, text, done, opts)
+    function TextBox.new(game, text, done, opts, ...)
       local blob = tostring(text or ""):upper()
       local wear = blob:find("WORE OFF") and blob:find("REPEL")
       if wear and enabled() and game and not (opts and opts.choice) and not game._suiteRepelPrompt then
@@ -164,7 +164,7 @@ return function(mod)
           if prev then prev(...) end
         end
       end
-      return orig(game, text, done, opts)
+      return orig(game, text, done, opts, ...)
     end
   end)
 
@@ -176,10 +176,11 @@ return function(mod)
     Bag.__highlanderRepelRemember = true
     local orig = Bag.use
     function Bag.use(save, id, ...)
-      local result = orig(save, id, ...)
+      local out = (function(...) return { n = select("#", ...), ... } end)(
+        orig(save, id, ...))
       local key = tostring(id or ""):upper():gsub(" ", "_")
       if STEPS[key] then remember(save, key) end
-      return result
+      return (table.unpack or unpack)(out, 1, out.n)
     end
   end)
 end

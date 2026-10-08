@@ -115,34 +115,41 @@ function HpRumble.install(mod)
   if type(PartyMenu) ~= "table" or type(PartyMenu.update) ~= "function" then
     return
   end
+  local unpackValues = table.unpack or unpack
+  local function packValues(...) return { n = select("#", ...), ... } end
   local prevPartyUpdate = PartyMenu.update
-  function PartyMenu:update(dt)
+  function PartyMenu:update(...)
     local heal = self.heal
     local before = heal and heal.shown
-    prevPartyUpdate(self, dt)
+    -- Hand back everything the game's update returns (Gen 1 uses it to
+    -- leave the party screen after an Ether / Max Ether in battle).
+    local out = packValues(prevPartyUpdate(self, ...))
     heal = self.heal
-    if not battleFxOn() then return end
-    if heal and before ~= nil and heal.shown and heal.shown > before then
-      local max = heal.mon.stats and heal.mon.stats.hp or 1
-      local ratio = math.max(0, math.min(1, heal.shown / math.max(1, max)))
-      local amount = (heal.shown - before) / math.max(1, max)
-      pulseGain(ratio, amount)
-    elseif before ~= nil and not heal then
-      pulseHealFanfare()
+    if battleFxOn() then
+      if heal and before ~= nil and heal.shown and heal.shown > before then
+        local max = heal.mon.stats and heal.mon.stats.hp or 1
+        local ratio = math.max(0, math.min(1, heal.shown / math.max(1, max)))
+        local amount = (heal.shown - before) / math.max(1, max)
+        pulseGain(ratio, amount)
+      elseif before ~= nil and not heal then
+        pulseHealFanfare()
+      end
     end
+    return unpackValues(out, 1, out.n)
   end
 
   local prevHeal = Pokemon.heal
-  function Pokemon.heal(mon)
+  function Pokemon.heal(mon, ...)
     local before = mon and mon.hp
-    prevHeal(mon)
-    if not mon then return end
+    local out = packValues(prevHeal(mon, ...))
+    if not mon then return unpackValues(out, 1, out.n) end
     if before ~= nil and (mon.hp or 0) > before then
       pulseHealFanfare()
     elseif before ~= nil and (mon.hp or 0) >= (mon.stats and mon.stats.hp or 0) then
       -- already-full heal path still plays the machine fanfare once
       pulseHealFanfare()
     end
+    return unpackValues(out, 1, out.n)
   end
 
   mod.events:on("sound.played", function(payload)

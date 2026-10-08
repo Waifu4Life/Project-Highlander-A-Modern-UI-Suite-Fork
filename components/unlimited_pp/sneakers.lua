@@ -274,19 +274,19 @@ return function(mod)
     if type(TB) ~= "table" or type(TB.new) ~= "function" or TB._suiteElmPhone then return end
     TB._suiteElmPhone = true
     local orig = TB.new
-    function TB.new(game, text, done, opts)
+    function TB.new(game, text, done, opts, ...)
       local raw = tostring(text or "")
       local u = raw:upper()
       local elmPhone = u:find("PHONE NUMBER", 1, true)
         and (u:find("ELM", 1, true) or u:find("GOT", 1, true))
       if not elmPhone then
-        return orig(game, text, done, opts)
+        return orig(game, text, done, opts, ...)
       end
       local function after(...)
         if type(done) == "function" then pcall(done, ...) end
         oakPhone(game)
       end
-      return orig(game, text, after, opts)
+      return orig(game, text, after, opts, ...)
     end
   end)
 

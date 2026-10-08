@@ -119,12 +119,14 @@ return function(mod)
     if ItemEffects._suiteTmsForever then return end
     ItemEffects._suiteTmsForever = true
     local origUse = ItemEffects.use
-    function ItemEffects.use(data, save, itemId, target, battle, moveIndex, ow)
-      local result, payload, extra = origUse(data, save, itemId, target, battle, moveIndex, ow)
-      if tmsForeverOn() and result == "learn" and isTmItem(data, itemId) then
-        result = "learnkept"
+    function ItemEffects.use(data, save, itemId, ...)
+      -- Pass every argument and every return value straight through.
+      local out = (function(...) return { n = select("#", ...), ... } end)(
+        origUse(data, save, itemId, ...))
+      if tmsForeverOn() and out[1] == "learn" and isTmItem(data, itemId) then
+        out[1] = "learnkept"
       end
-      return result, payload, extra
+      return (table.unpack or unpack)(out, 1, out.n)
     end
   end
 
@@ -636,8 +638,17 @@ return function(mod)
           and not PartyMenu._suiteMoveRelearn then
         PartyMenu._suiteMoveRelearn = true
         local orig = PartyMenu.update
-        function PartyMenu:update(dt)
-          orig(self, dt)
+        local unpackValues = table.unpack or unpack
+        local addRelearn
+        local function packValues(...) return { n = select("#", ...), ... } end
+        function PartyMenu:update(...)
+          -- Hand back everything the game's update returns: Gen 1 uses it
+          -- to leave the party screen after an Ether / Max Ether in battle.
+          local out = packValues(orig(self, ...))
+          addRelearn(self)
+          return unpackValues(out, 1, out.n)
+        end
+        function addRelearn(self)
           if not relearnOn() or self.battle or not self.submenu
               or type(self.subItems) ~= "table" then
             return
@@ -760,15 +771,15 @@ return function(mod)
       end
       return false
     end
-    function TextBox.new(game, text, onDone, opts)
+    function TextBox.new(game, text, onDone, opts, ...)
       if not instantOn() or not isHmFlavor(text) then
-        return orig(game, text, onDone, opts)
+        return orig(game, text, onDone, opts, ...)
       end
       if game then game._suiteSkipNextFlash = true end
       local s = flatten(text):upper()
       if s:find("ROCK SMASH", 1, true) or s:find("ROCKSMASH", 1, true)
           or s:find("SMASH", 1, true) then
-        return orig(game, text, onDone, opts)
+        return orig(game, text, onDone, opts, ...)
       end
       local choice = type(opts) == "table" and opts.choice
       -- Dummy page: never mounts Yes/No. Pop first, then fire Yes/onDone
@@ -826,7 +837,7 @@ return function(mod)
       end
       Game._suiteSkipHmSay = true
       local say = Game.say
-      function Game:say(text, onDone, opts)
+      function Game:say(text, onDone, opts, ...)
         if instantOn() and isHmFlavor(text) then
           local s = flatten(text):upper()
           if not (s:find("ROCK SMASH", 1, true) or s:find("ROCKSMASH", 1, true)
@@ -837,7 +848,7 @@ return function(mod)
             return self
           end
         end
-        return say(self, text, onDone, opts)
+        return say(self, text, onDone, opts, ...)
       end
     end)
         pcall(function()

@@ -5,6 +5,10 @@ local V = ...
 
 local ShakeSync = {}
 
+-- Wrappers hand back everything the game's function returns.
+local unpackValues = table.unpack or unpack
+local function packValues(...) return { n = select("#", ...), ... } end
+
 local function syncBattleFx(fx)
   local Rumble = V.require("Rumble")
   local Settings = V.require("Settings")
@@ -58,8 +62,9 @@ function ShakeSync.install()
     BattleState._suiteRumbleFx = true
     local prevUpdateFx = BattleState.updateFx
     function BattleState:updateFx(...)
-      prevUpdateFx(self, ...)
+      local out = packValues(prevUpdateFx(self, ...))
       syncBattleFx(self.fx)
+      return unpackValues(out, 1, out.n)
     end
   end
   pcall(function() hookFx(require("src.battle.BattleState")) end)
@@ -73,11 +78,8 @@ function ShakeSync.install()
 
   local prevElevator = ElevatorShake.update
   function ElevatorShake:update(...)
-    prevElevator(self, ...)
-    if not (Settings.enabled() and Settings.battleFx()) then
-      return
-    end
-    if self.phase == "shake" then
+    local out = packValues(prevElevator(self, ...))
+    if Settings.enabled() and Settings.battleFx() and self.phase == "shake" then
       local side = (self.offset or 0) < 0
       if side then
         Rumble.setChannel("shake", 0.28, 0.18, 2)
@@ -85,6 +87,7 @@ function ShakeSync.install()
         Rumble.setChannel("shake", 0.18, 0.28, 2)
       end
     end
+    return unpackValues(out, 1, out.n)
   end
 end
 

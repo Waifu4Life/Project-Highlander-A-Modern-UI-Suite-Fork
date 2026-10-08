@@ -1923,9 +1923,11 @@ return function(mod, genderExports, compatibility)
       end
       return original(self, key)
     end
-    local ok, err = pcall(PartyMenu.update, menu, dt)
+    local out = (function(...) return { n = select("#", ...), ... } end)(
+      pcall(PartyMenu.update, menu, dt))
     input.wasPressed = original
-    if not ok then error(err, 0) end
+    if not out[1] then error(out[2], 0) end
+    return (table.unpack or unpack)(out, 2, out.n)
   end
 
   return {

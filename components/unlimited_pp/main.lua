@@ -1008,16 +1008,16 @@ return function(mod)
       return 0
     end
     local vanillaNew = ListMenu.new
-    function ListMenu.new(game, title, items, opts)
-      local list = vanillaNew(game, title, items, opts)
+    function ListMenu.new(game, title, items, opts, ...)
+      local list = vanillaNew(game, title, items, opts, ...)
       if list and isBuyList(title, items, opts) then
         list._suiteStoreBuy = true
       end
       return list
     end
     local vanillaDraw = ListMenu.draw
-    function ListMenu.draw(self)
-      vanillaDraw(self)
+    function ListMenu.draw(self, ...)
+      vanillaDraw(self, ...)
       if not storesOn() or not self._suiteStoreBuy then return end
       love.graphics.setColor(0, 0, 0, 1)
       local rows = self.rows or 4

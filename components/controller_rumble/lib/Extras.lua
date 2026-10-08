@@ -211,12 +211,13 @@ function Extras.install(mod)
   do
     local BattleState = require("src.battle.BattleState")
     local prev = BattleState.applyAnimEffect
-    function BattleState:applyAnimEffect(ev)
-      prev(self, ev)
-      if not battleFxOn() then return end
-      if not (ev and ev.effect == "SFX_TINK") then return end
-      Rumble.pulse("impact", 0.32, 0.42, 5)
-      enqueue(0.05, 0.18, 0.28, 4, "impact")
+    function BattleState:applyAnimEffect(ev, ...)
+      local out = (function(...) return { n = select("#", ...), ... } end)(prev(self, ev, ...))
+      if battleFxOn() and ev and ev.effect == "SFX_TINK" then
+        Rumble.pulse("impact", 0.32, 0.42, 5)
+        enqueue(0.05, 0.18, 0.28, 4, "impact")
+      end
+      return (table.unpack or unpack)(out, 1, out.n)
     end
   end
 

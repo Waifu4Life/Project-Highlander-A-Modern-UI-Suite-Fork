@@ -1,3 +1,9 @@
+## [3.45.0]
+- Gen 1 Ether / Max Ether (in and out of battle) staying on the party screen after picking the move: second pass. Every Project Highlander hook that replaces one of the game's own functions now passes all of the game's arguments and return values straight through. Several only forwarded the first few, which can silently drop instructions the game sends along (for example where to show "PP was restored." and what to close first). These hooks load even with their options off, which is why turning everything off didn't help:
+  - Text box hooks: PokéMoves (Instant TMs/HMs), Use Repel Again, Gen 2 Get All The Pokémon (two), Running Shoes, Controller Rumble fishing.
+  - PokéMoves' HM "say" hook, Force Crystal's screen-opening hook, Use Repel Again's item-use hook, Controller Rumble's heal hook.
+  - From the first pass: Controller Rumble's menu, move-list, battle-screen, party-screen and item-use hooks; PokéMoves' Relearn and item-use hooks; the Modern Store list hook; Modern Party's arrow-key path.
+
 ## [3.44.0]
 - Item Shortcuts: the SELECT box uses the same 16 px row spacing as the TM/HM rows, with the divider centred between the shortcuts and the field moves (a very long field-move list falls back to tight rows so it still fits). The box is wide enough for ITEMFINDER, so shortcut names no longer scroll.
 - Ball Shortcuts: the battle note is now actually drawn in red in Gen 1 and Gen 2 (the font's black ink is recoloured, not just tinted).

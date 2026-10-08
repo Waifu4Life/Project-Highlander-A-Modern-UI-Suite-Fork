@@ -358,20 +358,21 @@ return function(mod)
     if Screens._suiteGenderWrap then return end
     Screens._suiteGenderWrap = true
     local origPush = Screens.push
-    function Screens.push(game, name, a, b, c)
+    function Screens.push(game, name, ...)
       local clock = type(name) == "string"
         and (name == "Gen2InitClock" or name == "InitClock")
       if clock and not isCrystalCart() and not genderChosen(game) then
         if genderPromptOpen then return true end
         genderPromptOpen = true
+        local args = { n = select("#", ...), ... }
         game.stack:push(newGenderScreen(game, function()
           genderPromptOpen = false
           forceApply(game)
-          origPush(game, name, a, b, c)
+          origPush(game, name, (table.unpack or unpack)(args, 1, args.n))
         end))
         return true
       end
-      return origPush(game, name, a, b, c)
+      return origPush(game, name, ...)
     end
   end)
 

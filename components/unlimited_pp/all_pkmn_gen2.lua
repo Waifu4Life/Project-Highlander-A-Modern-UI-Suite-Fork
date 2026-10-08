@@ -2522,7 +2522,7 @@ return function(mod)
       if TextBox._suiteElmGate then return end
       TextBox._suiteElmGate = true
       local orig = TextBox.new
-      function TextBox.new(game, text, done, opts)
+      function TextBox.new(game, text, done, opts, ...)
         if game and isGen2(game) and feat("gen2_starters") then
           local raw = tostring(text or "")
           local up = raw:upper()
@@ -2547,7 +2547,7 @@ return function(mod)
             end
           end
         end
-        return orig(game, text, done, opts)
+        return orig(game, text, done, opts, ...)
       end
     end
     local okA, A = pcall(require, "src.render.TextBox")
@@ -2732,7 +2732,7 @@ return function(mod)
     if TextBox.__highlanderIlex then return end
     TextBox.__highlanderIlex = true
     local orig = TextBox.new
-    function TextBox.new(game, text, done, opts)
+    function TextBox.new(game, text, done, opts, ...)
       local s = tostring(text or ""):upper()
       local plaque = s:find("PROTECTOR") or s:find("IN HONOR")
         or (s:find("ILEX") and s:find("SHRINE") and s:find("FOREST") and not s:find("TAKE"))
@@ -2752,7 +2752,7 @@ return function(mod)
           })
         end
       end
-      return orig(game, text, done, opts)
+      return orig(game, text, done, opts, ...)
     end
   end)
 end

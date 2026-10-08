@@ -4,6 +4,11 @@ local V = ...
 
 local MenuRumble = {}
 
+-- Wrappers must hand back everything the game's update returns: Gen 1
+-- menus use it (e.g. the Ether move list closing the party screen).
+local unpackValues = table.unpack or unpack
+local function packValues(...) return { n = select("#", ...), ... } end
+
 -- debounce so a wrap + sound.played listener cannot double-fire one press
 local lastConfirmAt = 0
 local CONFIRM_GAP = 0.04
@@ -41,38 +46,41 @@ end
 local function wrapCursorMenu(cls, confirmButtons)
   if not cls or type(cls.update) ~= "function" then return end
   local prev = cls.update
-  function cls:update(dt)
+  function cls:update(...)
     local input = self.game and self.game.input
     local before = self.index
     local confirmed = input and anyPressed(input, confirmButtons)
-    prev(self, dt)
-    if not input then return end
-    if before ~= nil and self.index ~= nil and self.index ~= before then
-      pulseMove()
-    elseif confirmed then
-      pulseConfirm()
+    local out = packValues(prev(self, ...))
+    if input then
+      if before ~= nil and self.index ~= nil and self.index ~= before then
+        pulseMove()
+      elseif confirmed then
+        pulseConfirm()
+      end
     end
+    return unpackValues(out, 1, out.n)
   end
 end
 
 local function wrapBattleMenus()
   local BattleState = require("src.battle.BattleState")
   local prev = BattleState.update
-  function BattleState:update(dt)
+  function BattleState:update(...)
     local input = self.game and self.game.input
     local phase = self.phase
     local beforeMenu, beforeMove = self.menuIndex, self.moveIndex
     local confirmed = input and anyPressed(input, { "a", "b", "select" })
-    prev(self, dt)
-    if not input then return end
-    if phase ~= "menu" and phase ~= "moveSelect" then return end
-    if (beforeMenu and self.menuIndex ~= beforeMenu)
-        or (beforeMove and self.moveIndex ~= beforeMove) then
-      pulseMove()
+    local out = packValues(prev(self, ...))
+    if input and (phase == "menu" or phase == "moveSelect") then
+      if (beforeMenu and self.menuIndex ~= beforeMenu)
+          or (beforeMove and self.moveIndex ~= beforeMove) then
+        pulseMove()
+      end
+      if confirmed then
+        pulseConfirm()
+      end
     end
-    if confirmed then
-      pulseConfirm()
-    end
+    return unpackValues(out, 1, out.n)
   end
 end
 

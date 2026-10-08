@@ -56,10 +56,12 @@ return function(mod)
         and not Game._suiteRumbleStep then
       Game._suiteRumbleStep = true
       local prev = Game.step
-      function Game:step(dt)
-        prev(self, dt)
+      function Game:step(dt, ...)
+        local out = (function(...) return { n = select("#", ...), ... } end)(
+          prev(self, dt, ...))
         Extras.tick(dt)
         Rumble.tick()
+        return (table.unpack or unpack)(out, 1, out.n)
       end
     end
   end

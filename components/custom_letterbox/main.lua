@@ -15,8 +15,10 @@ return function(mod)
     { "GREEN MODERN", "green_modern" }, { "GREEN MODERN 2", "green_modern2" },
     { "GREEN CLASSIC", "green_classic" },
     { "BLUE MODERN", "blue_modern" }, { "BLUE CLASSIC", "blue_classic" },
-    { "YELLOW", "yellow" }, { "GOLD", "gold" }, { "SILVER", "silver" },
-    { "CRYSTAL", "crystal" },
+    { "YELLOW", "yellow" },
+    { "GOLD", "gold" }, { "GOLD CLASSIC", "gold_classic" },
+    { "SILVER", "silver" }, { "SILVER CLASSIC", "silver_classic" },
+    { "CRYSTAL", "crystal" }, { "CRYSTAL CLASSIC", "crystal_classic" },
     { "CUSTOM 1", "custom1" }, { "CUSTOM 2", "custom2" },
     { "CUSTOM 3", "custom3" }, { "CUSTOM 4", "custom4" },
   }

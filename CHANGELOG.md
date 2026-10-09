@@ -1,3 +1,7 @@
+## [3.46.0]
+- Custom Borders: three new borders, GOLD CLASSIC, SILVER CLASSIC and CRYSTAL CLASSIC, each listed right after its game's original border (20 choices). New art: gold_classic.png, silver_classic.png, crystal_classic.png.
+- Modern Start Menu: updated start_menu_icons.png.
+
 ## [3.45.0]
 - Gen 1 Ether / Max Ether (in and out of battle) staying on the party screen after picking the move: second pass. Every Project Highlander hook that replaces one of the game's own functions now passes all of the game's arguments and return values straight through. Several only forwarded the first few, which can silently drop instructions the game sends along (for example where to show "PP was restored." and what to close first). These hooks load even with their options off, which is why turning everything off didn't help:
   - Text box hooks: PokéMoves (Instant TMs/HMs), Use Repel Again, Gen 2 Get All The Pokémon (two), Running Shoes, Controller Rumble fishing.

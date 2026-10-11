@@ -1,3 +1,19 @@
+## [3.49.0]
+- Quality of Life: new BLUE INTO GREEN toggle (off by default). With the Blue cart loaded, the title screen shows Green and "Green Version" with a green logo colour, and the intro fight shows Nidorino instead of Jigglypuff. Custom Borders on AUTOMATIC picks the Green Modern border. Nothing is copied into the game's "blue" cache folder: mods can't write there, and a redump wipes it anyway. The Green art ships inside Highlander (components/unlimited_pp/assets/blue_into_green/) and is swapped in when the title or intro is built, so turning the toggle off brings back the stock Blue art and survives redumps and Recomp updates. Changes show the next time the title or intro plays. The launcher's cart (name, colour, letter, label) is outside what mods can reach.
+
+## [3.48.0]
+- Screen Ratio on phones: a second way to run. Some builds (the Android one) end each frame through their own copy of LÖVE's present call, which Screen Ratio never saw, so it stayed off. It now also follows the game's own render.present mod hook: once that hook has been seen closing 60 frames in a row, Screen Ratio uses it to copy the 16:9 picture to the screen. The Steam Deck/desktop path is unchanged and is always preferred when available.
+- Screen Ratio status on the menu: the SCREEN RATIO row now shows what is actually happening, because the log can't be opened on a phone. 16:9 = running. 16:9 WAITING = just switched on, checking (a few seconds). 16:9 NO FRAME = the game never showed Screen Ratio where its frames end, so it stays off. 16:9 PORTRAIT = the window reports as portrait, which Screen Ratio leaves alone. 16:9 FITS = the screen is already 16:9. 16:9 ERROR = it hit a problem and switched itself off until restart.
+
+## [3.47.2]
+- Screen Ratio: second fix for the start-up crash at 16:9 ("love.event.pump cannot be called while a Canvas is active"). The game reads input through its own copy of LÖVE's event function, so 3.47.1's guard never ran. Screen Ratio no longer leaves its 16:9 canvas active between frames at all: drawing is aimed at it when the frame starts drawing and released at present, before the game reads input again. It also stays off unless the game's frames end through love.graphics.present, so it can't hold the canvas on a game it can't composite for.
+
+## [3.47.1]
+- Screen Ratio: fixed a crash on start-up with SCREEN RATIO at 16:9 ("love.event.pump cannot be called while a Canvas is active"). LÖVE won't read input or change window modes while drawing is pointed at a canvas, so Screen Ratio now steps off its 16:9 canvas for event pumping and window mode changes (setMode, updateMode, setFullscreen) and back on afterwards.
+
+## [3.47.0]
+- Custom Borders: new SCREEN RATIO row (OFF / 16:9). At 16:9 the whole game runs in a 16:9 area on screens of any other shape (Steam Deck, phones, ultrawide monitors), centred with black bars. The game is told the window is 16:9, so every widescreen and Modern UI layout follows; the picture is copied 1:1 with no stretching or blur, and mouse and touch positions are shifted to match. Works whether the border art is on or off; portrait windows are left alone. If compositing ever fails it turns itself off for the session and the log says why ("Screen Ratio: ..."). New file: components/custom_letterbox/screen_ratio.lua.
+
 ## [3.46.0]
 - Custom Borders: three new borders, GOLD CLASSIC, SILVER CLASSIC and CRYSTAL CLASSIC, each listed right after its game's original border (20 choices). New art: gold_classic.png, silver_classic.png, crystal_classic.png.
 - Modern Start Menu: updated start_menu_icons.png.

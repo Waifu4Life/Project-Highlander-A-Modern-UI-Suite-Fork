@@ -19,6 +19,8 @@ return function(mod)
       choices = {
         { "OFF", "off" }, { "HOLD B", "hold" }, { "TOGGLE B", "toggle" },
       } },
+    { key = "blue_into_green", label = "BLUE INTO GREEN", type = "toggle",
+      default = false },
     { key = "decapitalize", label = "DECAP. WORDS", type = "toggle",
       default = false },
     { key = "display_area_names", label = "SHOW AREA NAMES", type = "toggle",
@@ -1826,6 +1828,7 @@ return function(mod)
   loadSibling("roaming_hunter.lua")
   loadSibling("repel_again.lua")
   loadSibling("legendary_persist.lua")
+  loadSibling("blue_into_green.lua")
 
   do
     local src = assert(mod:read("force_crystal.lua"), "force_crystal.lua missing")

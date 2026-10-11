@@ -67,7 +67,7 @@ return function(parent, components)
       story = "STORY", menus = "MENUS",
     },
     letterbox = {
-      border = "BORDER", border_scope = "SCOPE",
+      border = "BORDER", border_scope = "SCOPE", screen_ratio = "RATIO",
       border_by_game = "BORDER BY GAME",
     },
     pokemoves = {
@@ -82,6 +82,7 @@ return function(parent, components)
       always_boosted_exp = "BOOSTED EXP",
       modern_exp_share = "MODERN EXP",
       running_shoes = "SHOES",
+      blue_into_green = "BLUE > GREEN",
       decapitalize = "DECAPITALIZE",
       display_area_names = "AREA NAMES",
       modern_stores = "STORES",

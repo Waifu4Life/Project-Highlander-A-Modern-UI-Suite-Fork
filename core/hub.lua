@@ -145,6 +145,24 @@ return function(mod, settings, state, components)
               return stepOption(activeGame, component, source, direction)
             end,
           }
+        elseif component.id == "custom_letterbox" and source.key == "screen_ratio" then
+          -- Shows whether Screen Ratio is actually running (16:9) or why not
+          -- (WAITING, NO FRAME, PORTRAIT, FITS, ERROR); stepping is normal.
+          body[#body + 1] = {
+            id = component.key .. ".screen_ratio",
+            label = labelFor(source, component),
+            value = function()
+              local exports = component.exports or {}
+              if type(exports.screenRatioLabel) == "function" then
+                local ok, label = pcall(exports.screenRatioLabel)
+                if ok and label then return label end
+              end
+              return optionValue(component, source)
+            end,
+            step = function(activeGame, direction)
+              return stepOption(activeGame, component, source, direction)
+            end,
+          }
         elseif source.type == "custom" then
           -- Value and Left/Right handled by the component (e.g. Shortcuts'
           -- ITEM SHORTCUT rows cycle the Key Items in the current bag).

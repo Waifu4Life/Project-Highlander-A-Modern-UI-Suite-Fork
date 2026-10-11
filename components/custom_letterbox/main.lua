@@ -47,6 +47,12 @@ return function(mod)
       default = "game", choices = {
         { "BY SAVE", "save" }, { "BY GAME", "game" },
       } },
+    -- Whole-game 16:9 area (screen_ratio.lua). Works with the border art
+    -- on or off; OFF leaves the game filling the window as before.
+    { key = "screen_ratio", label = "SCREEN RATIO", type = "choice",
+      default = "off", choices = {
+        { "OFF", "off" }, { "16:9", "16:9" },
+      } },
     -- Hidden storage for the BY GAME choices ("red=gold;crystal=custom1").
     { key = "border_by_game", label = "BORDER BY GAME", type = "text",
       default = "" },
@@ -78,6 +84,18 @@ return function(mod)
         local name = tostring(GV.launcherName or GV.displayName or "")
         if id == "blue" and name:lower():find("green", 1, true) then
           return "green"
+        end
+        -- QoL "Blue into Green": the Blue cart dressed as Green gets the
+        -- Green Modern border on AUTOMATIC, like a patched Green launcher.
+        if id == "blue" and mod.suite and type(mod.suite.option) == "function" then
+          local okOpt, on = pcall(mod.suite.option, "unlimited_pp", "blue_into_green")
+          local okEn, qolOn = true, true
+          if type(mod.suite.enabled) == "function" then
+            okEn, qolOn = pcall(mod.suite.enabled, "unlimited_pp")
+          end
+          if okOpt and on == true and not (okEn and qolOn == false) then
+            return "green"
+          end
         end
         return id
       end
@@ -492,6 +510,13 @@ return function(mod)
         return a, b, c, d
       end)
     end)
+  end
+
+  -- Screen Ratio is installed outside the Enable switch on purpose: it reads
+  -- its own SCREEN RATIO row every few frames and does nothing while OFF.
+  local okRatio, ratioErr = pcall(function() mod:load("screen_ratio.lua")(mod) end)
+  if not okRatio then
+    mod.log:warn("Screen Ratio unavailable: %s", tostring(ratioErr))
   end
 
   mod.log:info("Custom Letterbox ready (default off)")

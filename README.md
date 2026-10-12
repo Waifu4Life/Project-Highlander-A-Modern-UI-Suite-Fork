@@ -193,7 +193,6 @@ Turning a row **Off** does not take away anything already unlocked.
 | More Eevees | Mr. Fuji after each bird; greed line if you grab extra balls. |
 | Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
 | Trade with Link C. | Celadon Department 3F Game Boy Kid. Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
-
 | Get ??? | Get the final Pokémon |
 
 ## Gen2 Get All the Pokémon

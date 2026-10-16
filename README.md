@@ -148,6 +148,12 @@ Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disab
 
 - Also, 3 Key Item shortcuts can be added to the Select menu in the overworld. These can only be the following: Old Rod, Good Rod, Super Rod, Item Finder, Bicycle and Map (even in Gen2, the map will be a choice even if it's not a key item).
 
+## Game Corner
+- 2X Coins for cash" moved there from QoL
+- Slot Odds: (Normal / Generous / Lucky)
+- Bigger Payouts (double wins)
+- All Lucky Slot M.
+
 ## Cont. Rumble
 
 - Full masterwebx option set. Credit line: `Copyright (c) 2026 masterwebx`.

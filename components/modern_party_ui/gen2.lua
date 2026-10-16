@@ -285,6 +285,86 @@ return function(mod)
     return short[value] or value:sub(1, 3)
   end
 
+  -- Field action order for the A-button menu, whatever order the engine
+  -- and other mods add rows in: STATS, SWITCH, RELEARN, DISMISS/FOLLOW,
+  -- TM field moves, HM field moves, anything else (Rename, Item, Softboiled,
+  -- mods we don't know yet), CANCEL. Battle menus keep the engine's order.
+  -- The same block lives in screen.lua for the Red/Blue/Yellow party.
+  local orderActions
+  do
+    -- Gen 2's MOVE (reorder moves) and ITEM (give/take) sit right under
+    -- STATS.
+    local ACTION_RANK = {
+      STATS = 1, MOVE = 1.1, ITEM = 1.2, SWITCH = 2, RELEARN = 3,
+      DISMISS = 4, FOLLOW = 4, RECALL = 4, WALK = 4,
+      CANCEL = 99, QUIT = 99,
+    }
+    -- Within a group, moves keep TM / HM number order.
+    local TM_MOVES = {
+      HEADBUTT = 2, ROCKSMASH = 8, SWEETSCENT = 12, DIG = 28, TELEPORT = 30,
+    }
+    local HM_MOVES = {
+      CUT = 1, FLY = 2, SURF = 3, STRENGTH = 4, FLASH = 5,
+      WHIRLPOOL = 6, WATERFALL = 7,
+    }
+    local function clean(value)
+      if type(value) ~= "string" then return nil end
+      local out = value:upper():gsub("%b<>", ""):gsub("%b{}", "")
+      out = out:gsub("[^A-Z]", "")
+      return out ~= "" and out or nil
+    end
+    local function rank(entry)
+      if type(entry) ~= "table" then return 50, 0 end
+      if entry.relearn then return 3, 0 end
+      for _, field in ipairs({ "action", "id", "label" }) do
+        local key = clean(entry[field])
+        if key then
+          if ACTION_RANK[key] then return ACTION_RANK[key], 0 end
+          if TM_MOVES[key] then return 5, TM_MOVES[key] end
+          if HM_MOVES[key] then return 6, HM_MOVES[key] end
+        end
+      end
+      return 50, 0
+    end
+    -- Sorts items in place. Returns the new cursor index: 1 the first time
+    -- a list is seen (a freshly opened menu), otherwise the row the cursor
+    -- was on. Returns nil when nothing needed doing.
+    function orderActions(items, cursor)
+      if type(items) ~= "table" or #items < 2 then return nil end
+      if items._hlOrderedCount == #items then return nil end
+      local fresh = items._hlOrderedCount == nil
+      local selected = items[cursor or 1]
+      local keyed = {}
+      for i, entry in ipairs(items) do
+        local r, sub = rank(entry)
+        keyed[i] = { entry = entry, rank = r, sub = sub, index = i }
+      end
+      table.sort(keyed, function(x, y)
+        if x.rank ~= y.rank then return x.rank < y.rank end
+        if x.sub ~= y.sub then return x.sub < y.sub end
+        return x.index < y.index
+      end)
+      -- A field move listed twice (taught, and again from No Learn HM or
+      -- another mod) keeps only its first row, which is the game's own.
+      local seen, out = {}, {}
+      for _, k in ipairs(keyed) do
+        local dupKey = (k.rank == 5 or k.rank == 6) and (k.rank .. ":" .. k.sub)
+        if not (dupKey and seen[dupKey]) then
+          if dupKey then seen[dupKey] = true end
+          out[#out + 1] = k.entry
+        end
+      end
+      for i = #items, 1, -1 do items[i] = nil end
+      for i, entry in ipairs(out) do items[i] = entry end
+      items._hlOrderedCount = #items
+      if fresh then return 1 end
+      for i, entry in ipairs(items) do
+        if entry == selected then return i end
+      end
+      return cursor
+    end
+  end
+
   local function drawPartySubmenu(self)
     local menu = self.submenu
     if not menu then return end
@@ -1227,6 +1307,23 @@ return function(mod)
           end
         end
         return nativeUpdate(self, dt)
+      end
+    end
+    do
+      local innerUpdate = menu.update
+      if type(innerUpdate) == "function" then
+        menu.update = function(self, dt)
+          local out = (function(...) return { n = select("#", ...), ... } end)(
+            innerUpdate(self, dt))
+          local sub = self.submenu
+          if type(sub) == "table" and not self.battle then
+            pcall(function()
+              local index = orderActions(sub.items, sub.index)
+              if index and sub.index then sub.index = index end
+            end)
+          end
+          return (table.unpack or unpack)(out, 1, out.n)
+        end
       end
     end
     installWideDraw(menu, menu.drawPanel, BACKDROP)

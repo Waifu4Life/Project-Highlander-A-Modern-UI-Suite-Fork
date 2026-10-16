@@ -112,6 +112,7 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 | --- | --- |
 | Unlimited PP | PP does not drop. |
 | Always Boosted EXP | Trade-boosted EXP for your own Pokémon, with the boosted line. |
+|Blue to Green | This is purely cosmetic, it will replace Jigglypuff by Nidorino the intro video, Red (protagonist) by Green (protagonist) and "Blue version" by "Green version" on the title screen. If you use "Auto" in the "Custom Borders" it will put the Modern Green border instead of Modern Blue. |
 | Modern EXP Sharing | Switch-style share. Off = use the Gen 1 EXP.ALL item. Bench mons get a grouped line. |
 | Running Shoes | Off / Hold B / Toggle B at 2×. Locked until getting starter then talking to Mom. |
 | Decapitalize Words | Sentence case on dialogue. |
@@ -159,15 +160,15 @@ Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disab
 
 - TRW Crystal Animated Sprites with Shiny Visuals (integrated with permission). Playable sheets: Red, Green, Gold, Kris only. Credit line: `Copyright (c) TRW`.
 
-## Custom Letterbox — New sub-menu of its own, separate from QoL, with its own ENABLED toggle (off by default).
+## Custom Borders — New sub-menu of its own, separate from QoL, with its own ENABLED toggle (off by default).
 
 - Custom Borders: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal), 3 classics for Red, Blue and Green, a fixed Automatic choice and 4 custom slots.
 
 - BORDER SCOPE: By Save or By Game, remembered the same way as the Start Menu colour.
 Shown on the Title screen, Options, Mods, Trainer ID and OG (non-widescreen) battles. Never drawn over the overworld in Gen 1 or Gen 2, and never over the Modern UI Suite screens (Party / Bag / PC / Pokédex / Start menu), since those are true 4:3 rather than the square Game Boy shape the border art is made for.
 
-- All 7 borders (Red, Green, Blue, Yellow, Gold, Silver, Crystal) are hand-retouched pixel art.
-Game Corner clerk dialogue (Gen 2, 2X Coins on) — The clerk now greets with the same line Gen 1 uses, states the doubled coin count on purchase, and skips the welcome / "no coins" lines instead of showing numbers that no longer match.
+- All borders are hand-retouched pixel art.
+- A 16:9 Ratio toggle in Custom Borders sub-menu to help out oddball ratio portable gaming PCs like the Steam Deck to be able to use the Custom Borders. This will not work on mobile phones (I tried to make it work).
 
 ## Poké Icons
 
@@ -192,7 +193,6 @@ Turning a row **Off** does not take away anything already unlocked.
 | More Eevees | Mr. Fuji after each bird; greed line if you grab extra balls. |
 | Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
 | Trade with Link C. | Celadon Department 3F Game Boy Kid. Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
-
 | Get ??? | Get the final Pokémon |
 
 ## Gen2 Get All the Pokémon

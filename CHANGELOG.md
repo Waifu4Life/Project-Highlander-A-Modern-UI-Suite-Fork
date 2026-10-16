@@ -1,3 +1,36 @@
+## [3.55.1]
+- Game Corner: "ALL LUCKY MACHINES" is renamed "ALL LUCKY SLOT M." (same option, your setting is kept).
+
+## [3.55.0]
+- Game Corner: SLOT ODDS, BIGGER PAYOUTS and ALL LUCKY MACHINES now work in Gen 2 (Gold/Silver/Crystal) too. Gen 2's machine picks a "target" symbol for some spins and nudges the reels toward it; all other spins are steered away from any match. GENEROUS: about 45% of spins get a target (game: about 19%), SEVEN about twice as often, and the reels can be nudged up to 8 slots instead of 4. LUCKY: about 80% of spins get a target, SEVEN about 5x as often, and the reels can be nudged a full turn. ALL LUCKY MACHINES gives every machine the lucky machine's table (about 31% of spins get a target), and BIGGER PAYOUTS doubles every win, including the "Won N coins!" text.
+
+## [3.54.0]
+- New GAME CORNER sub-menu on the Highlander hub. 2X COINS FOR CASH moved here from QoL (your setting is kept).
+- New: SLOT ODDS (NORMAL / GENEROUS / LUCKY). NORMAL is the game's own odds (about 18% of spins can win). GENEROUS: about 45% of spins can win, 7/BAR spins about 4x as often, and the third reel looks twice as far for a match. LUCKY: about 80% of spins can win, 7/BAR spins about 12x as often, and the third reel searches the whole reel.
+- New: BIGGER PAYOUTS (ON/OFF). Every slot win pays double (still capped at 9999 coins).
+- New: ALL LUCKY MACHINES (ON/OFF). Every machine gets the hidden lucky machine's better 7/BAR chance, so there's no need to hunt for it.
+- The slot options work in Gen 1 (Red/Blue/Yellow). Gen 2's slot machine is a different screen and isn't changed yet. New file: components/unlimited_pp/slots.lua.
+- GEN1 GET ALL THE POKEMON: GET ??? is now the last row (before CANCEL) instead of the first.
+
+## [3.53.0]
+- Modern Party UI (Gen 2): MOVE and ITEM now sit right under STATS. Full order: STATS, MOVE, ITEM, SWITCH, RELEARN, DISMISS/FOLLOW, TM field moves, HM field moves, anything else, CANCEL.
+- Fix (Gen 2): HMs the Pokémon already knows showed twice (CUT, CUT, SURF, SURF). No Learn HM only checked Gen 1's way of naming the row, so in Gen 2 it added a second copy. It now recognises Gen 2 rows too, and the party menu also drops any field move listed twice as a safety net.
+- Window focus on launch, second try: it now finds the game window through the game's own process instead of by its title, checks which window Windows really has in front (LÖVE's own focus flag could say yes when it wasn't), and uses a stronger method to bring the game forward. Each step is written to the log as "Window focus: ...".
+
+## [3.52.0]
+- Trainer Card (ID): the whole trainer picture is shown again. Newer Recomp builds draw the portrait through a smaller window, which cut off her hand, hair and feet. The card now trims the picture's empty edges and places all of it against the right side of the top frame, centred top to bottom.
+- Modern Party UI: the A-button ACTIONS list always uses the same order: STATS, SWITCH, RELEARN, DISMISS/FOLLOW, TM field moves (Headbutt, Rock Smash, Sweet Scent, Dig, Teleport), HM field moves (Cut, Fly, Surf, Strength, Flash, Whirlpool, Waterfall), anything else (Rename, Item, Softboiled...), then CANCEL. Works for Gen 1 and Gen 2; battle menus keep the game's own order.
+- New: window focus on launch. When the game is started from a frontend, Playnite or a -red / -blue shortcut, it now takes keyboard and gamepad focus by itself during the first seconds, so you no longer have to click the window first. New file: core/window_focus.lua.
+- DECAPITALIZE: "POKéMON" now becomes "Pokémon" instead of "PokéMon" (same for Pokédex).
+
+## [3.51.0]
+- Fix: with DECAPITALIZE on, the play time on the save screen and the ID / Trainer Card showed "18 Colon 04" instead of "18:04". Newer Recomp builds write that colon as a <COLON> text code, and decapitalizing turned it into "<Colon>", which the font no longer recognises. Decapitalizing now leaves every <...> and {...} text code untouched and only changes the words around them.
+- Modern Start Menu: updated start_menu_icons.png.
+
+## [3.50.0]
+- Modern Start Menu: bigger icons. start_menu_icons.png is now redrawn at 24x24 per icon (was 16x16), centred in each 30px tile. The icon offset now follows the size set in icons.lua, so the art and the code can't drift apart.
+- Start Menu icon picker (CHOOSE ICON): taller cells so the 24x24 icons fit; it now shows 12 icons per page (4 x 3) instead of 16.
+
 ## [3.49.0]
 - Quality of Life: new BLUE INTO GREEN toggle (off by default). With the Blue cart loaded, the title screen shows Green and "Green Version" with a green logo colour, and the intro fight shows Nidorino instead of Jigglypuff. Custom Borders on AUTOMATIC picks the Green Modern border. Nothing is copied into the game's "blue" cache folder: mods can't write there, and a redump wipes it anyway. The Green art ships inside Highlander (components/unlimited_pp/assets/blue_into_green/) and is swapped in when the title or intro is built, so turning the toggle off brings back the stock Blue art and survives redumps and Recomp updates. Changes show the next time the title or intro plays. The launcher's cart (name, colour, letter, label) is outside what mods can reach.
 

@@ -39,6 +39,16 @@ return function(mod)
       default = false },
     { key = "coins_2x", label = "2X COINS FOR CASH",
       type = "toggle", default = false },
+    -- Game Corner page (core/hub.lua) also shows these three.
+    { key = "slot_odds", label = "SLOT ODDS", type = "choice",
+      default = "normal",
+      choices = {
+        { "NORMAL", "normal" }, { "GENEROUS", "generous" }, { "LUCKY", "lucky" },
+      } },
+    { key = "slot_bigger_payouts", label = "BIGGER PAYOUTS",
+      type = "toggle", default = false },
+    { key = "slot_all_lucky", label = "ALL LUCKY SLOT M.",
+      type = "toggle", default = false },
     { key = "pikachu_sound", label = "PIKACHU SOUND", type = "choice",
       default = "yellow",
       choices = {
@@ -782,10 +792,11 @@ return function(mod)
     end)
     return str
   end
-  local function smartCasing(str)
-    if type(str) ~= "string" then return str end
-    str = str:gsub("POK[eéE]MON", "Pokémon")
-    str = str:gsub("POK[eéE]DEX", "Pokédex")
+  local function caseSegment(str)
+    -- "é" is two bytes in UTF-8, so it can't sit inside a [...] set; match
+    -- it as its own alternative (otherwise POKéMON came out as "PokéMon").
+    str = str:gsub("POK[eE]MON", "Pokémon"):gsub("POK\195\169MON", "Pokémon")
+    str = str:gsub("POK[eE]DEX", "Pokédex"):gsub("POK\195\169DEX", "Pokédex")
     str = str:gsub("EXP%.ALL", "Exp. All")
     str = str:gsub("TM POUCH", "TM Pouch")
     str = str:gsub("(%u[%u'-]*%u)", function(word)
@@ -793,6 +804,29 @@ return function(mod)
       return word:sub(1,1) .. word:sub(2):lower()
     end)
     return str
+  end
+  -- The game's text uses control tokens such as <COLON>, <PLAYER> or <NEXT>
+  -- (and {PROMPT} style ones in Gen 3). They must reach the font exactly as
+  -- written: "<COLON>" turned into "<Colon>" is no longer a token and gets
+  -- printed as letters (the play time showed "18 Colon 04"). Only the text
+  -- between tokens is re-cased.
+  local function smartCasing(str)
+    if type(str) ~= "string" then return str end
+    if not str:find("[<{]") then return caseSegment(str) end
+    local out, pos = {}, 1
+    while true do
+      local s, e = str:find("%b<>", pos)
+      local s2, e2 = str:find("%b{}", pos)
+      if s2 and (not s or s2 < s) then s, e = s2, e2 end
+      if not s then
+        out[#out + 1] = caseSegment(str:sub(pos))
+        break
+      end
+      out[#out + 1] = caseSegment(str:sub(pos, s - 1))
+      out[#out + 1] = str:sub(s, e)
+      pos = e + 1
+    end
+    return table.concat(out)
   end
   pcall(function()
     local Font = require("src.render.Font")
@@ -1823,6 +1857,7 @@ return function(mod)
   loadSibling("trainer_card.lua")
   loadSibling("sneakers.lua")
   loadSibling("game_corner.lua")
+  loadSibling("slots.lua")
   loadSibling("gen2_qol.lua")
   loadSibling("catch_rate.lua")
   loadSibling("roaming_hunter.lua")

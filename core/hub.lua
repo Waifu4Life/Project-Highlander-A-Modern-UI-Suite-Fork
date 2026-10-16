@@ -99,6 +99,9 @@ return function(mod, settings, state, components)
         gen2_celebi = true, gen2_linkc = true, gen2_kanto_starters = true,
         gen2_birds = true, gen2_mew = true, gen2_roaming_hunter = true,
         gen2_legendary_persist = true,
+        -- shown on the GAME CORNER page instead
+        coins_2x = true, slot_odds = true, slot_bigger_payouts = true,
+        slot_all_lucky = true,
       }
       if row.key ~= component.enabledOption and row.key ~= "enabled"
           and row.key ~= "theme_by_game" and row.key ~= "border_by_game"
@@ -436,13 +439,76 @@ return function(mod, settings, state, components)
         end,
       }
     end
+    -- Alphabetical, except GET ??? which always goes last (before CANCEL):
+    -- "?" sorts ahead of every letter and put it on top.
+    local LAST = { gen1_mystery = true }
     table.sort(pageRows, function(a, b)
+      local la = LAST[tostring(a.id or ""):match("^qol%.(.+)$") or ""] and 1 or 0
+      local lb = LAST[tostring(b.id or ""):match("^qol%.(.+)$") or ""] and 1 or 0
+      if la ~= lb then return la < lb end
       return tostring(a.label or "") < tostring(b.label or "")
     end)
     local page = OptionsMenu.new(game)
     page.rows, page.view = pageRows, pageRows
     page.index, page.scroll, page.sub = 1, 0, true
     page.modernUiSuiteComponent = "qol_features"
+    game.stack:push(page)
+    return true
+  end
+
+  -- GAME CORNER: the coin clerk's 2X COINS FOR CASH (moved here from QoL)
+  -- and the slot machine options. All four are stored on the QoL
+  -- component, as 2X COINS always was.
+  local function openGameCornerMenu(game)
+    local qol = qolComponent()
+    if not qol then return false end
+    local ODDS = { "normal", "generous", "lucky" }
+    local ODDS_LABEL = { normal = "NORMAL", generous = "GENEROUS", lucky = "LUCKY" }
+    local function toggleRow(key, label)
+      return {
+        id = "qol." .. key,
+        label = label,
+        value = function()
+          return settings:get(qol, key) == true and "ON" or "OFF"
+        end,
+        step = function(activeGame)
+          settings:set(activeGame, qol, key, settings:get(qol, key) ~= true)
+          settings:persist(activeGame)
+          return true
+        end,
+      }
+    end
+    local pageRows = {
+      toggleRow("coins_2x", "2X COINS FOR CASH"),
+      toggleRow("slot_all_lucky", "ALL LUCKY SLOT M."),
+      toggleRow("slot_bigger_payouts", "BIGGER PAYOUTS"),
+      {
+        id = "qol.slot_odds",
+        label = "SLOT ODDS",
+        value = function()
+          return ODDS_LABEL[settings:get(qol, "slot_odds")] or "NORMAL"
+        end,
+        step = function(activeGame, direction)
+          local current = settings:get(qol, "slot_odds") or "normal"
+          local index = 1
+          for i, v in ipairs(ODDS) do
+            if v == current then index = i break end
+          end
+          local delta = (tonumber(direction) or 1) < 0 and -1 or 1
+          index = (index - 1 + delta) % #ODDS + 1
+          settings:set(activeGame, qol, "slot_odds", ODDS[index])
+          settings:persist(activeGame)
+          return true
+        end,
+      },
+    }
+    table.sort(pageRows, function(a, b)
+      return tostring(a.label or "") < tostring(b.label or "")
+    end)
+    local page = OptionsMenu.new(game)
+    page.rows, page.view = pageRows, pageRows
+    page.index, page.scroll, page.sub = 1, 0, true
+    page.modernUiSuiteComponent = "qol_game_corner"
     game.stack:push(page)
     return true
   end
@@ -506,6 +572,10 @@ return function(mod, settings, state, components)
         action = "poke_icons",
       }
       items[#items + 1] = {
+        id = "game_corner_menu", label = "GAME CORNER",
+        action = "game_corner",
+      }
+      items[#items + 1] = {
         id = "gen1_all_menu", label = "GEN1 GET ALL THE POKEMON",
         fullLabel = "GEN1 GET ALL THE POKEMON",
         action = "gen1_all",
@@ -544,6 +614,8 @@ return function(mod, settings, state, components)
           stepAspect(game, 1); refresh(item.id)
         elseif item.action == "poke_icons" then
           openPokeIconsMenu(game)
+        elseif item.action == "game_corner" then
+          openGameCornerMenu(game)
         elseif item.action == "gen1_all" then
           openFeatureMenu(game, "GEN1 GET ALL PKMN", GEN1_FEATURE_ROWS)
         elseif item.action == "gen2_all" then

@@ -15,8 +15,12 @@ return function(mod, icons)
   local PAGE_SIZE, COLUMNS = 9, 3
   -- Tile captions duplicate the authoritative footer and made every icon
   -- fight for the top two-thirds of its cell. With captions removed, keep
-  -- the native 16x16 art optically centred in the full 30px button.
-  local ICON_OFFSET_X, ICON_OFFSET_Y = 7, 7
+  -- the native art centred in the full 30px button. The offset follows the
+  -- frame size in icons.lua (16 -> 7, 24 -> 3), capped so art never sits on
+  -- the 1px tile border.
+  local ICON_SIZE = math.max(1, math.min(28, math.floor(tonumber(icons.size) or 16)))
+  local ICON_OFFSET_X = math.floor((CELL_W - ICON_SIZE) / 2)
+  local ICON_OFFSET_Y = math.floor((CELL_H - ICON_SIZE) / 2)
   local iconAtlas, iconQuads, iconLoadFailed, hudShader
 
   local WHITE, LIGHT, DARK, INK = 1, 0.82, 0.34, 0
@@ -377,7 +381,7 @@ return function(mod, icons)
       return false
     end
 
-    local size = icons.size or 16
+    local size = ICON_SIZE
     local width, height = atlas:getDimensions()
     if height < size then
       iconLoadFailed = true
@@ -410,8 +414,8 @@ return function(mod, icons)
       -- A corrupt or missing atlas must never make the START menu unusable.
       -- This intentionally plain frame is a last-resort diagnostic, not the
       -- production art path.
-      fill(x + 1, y + 1, 14, 14, INK)
-      fill(x + 2, y + 2, 12, 12, WHITE)
+      fill(x + 1, y + 1, ICON_SIZE - 2, ICON_SIZE - 2, INK)
+      fill(x + 2, y + 2, ICON_SIZE - 4, ICON_SIZE - 4, WHITE)
     end
   end
 
@@ -1039,6 +1043,7 @@ return function(mod, icons)
   Presentation.PANEL_W = PANEL_W
   Presentation.PANEL_H = PANEL_H
   Presentation.iconOffsetY = ICON_OFFSET_Y
+  Presentation.iconSize = ICON_SIZE
   Presentation.iconFor = normalizedId
   Presentation.detectedIconFor = detectedId
   Presentation.entryKeyFor = entryKey

@@ -573,35 +573,90 @@ return function(mod)
     if not ok or type(Card) ~= "table" then return end
     if Card._suitePicShift then return end
     Card._suitePicShift = true
-    -- Stock card draws the pic at (120, 8). We previously pulled it 16px
-    -- left so the new Green/Red art sat inside the frame. Current ask:
-    -- 10px right and 2px up from that placed spot.
-    local SHIFT_X, SHIFT_Y = 6, 4
-    if type(Card.new) == "function" then
-      local origNew = Card.new
-      function Card.new(game, opts)
-        local self = origNew(game, opts)
-        if type(self) == "table" and self.pic and self.picQuad then
-          local okd, pw, ph = pcall(self.pic.getDimensions, self.pic)
-          if okd and pw and pw > (self.picW or 40) then
-            local ox = math.floor((pw - (self.picW or 40)) / 2)
-            self.picQuad = love.graphics.newQuad(
-              ox, 0, self.picW or 40, self.picH or 56, pw, ph)
+    -- The stock card draws the portrait at (120, 8) through a quad sized by
+    -- self.picW / self.picH. Newer Recomp builds made that window smaller
+    -- than our Green/Red art, so the hand, hair and feet were cut off.
+    -- Instead of the engine's window we now draw the whole picture: the
+    -- transparent margins are trimmed once per image, and what is left is
+    -- set against the right edge of the card's top frame and centred
+    -- vertically inside it. Art taller or wider than the frame is clipped
+    -- to it rather than drawn over the border.
+    local STOCK_X, STOCK_Y = 120, 8
+    local BOX_RIGHT, BOX_TOP, BOX_BOTTOM, BOX_LEFT = 155, 5, 59, 96
+    local bounds = setmetatable({}, { __mode = "k" })
+
+    local function contentBounds(img, rawDraw)
+      local hit = bounds[img]
+      if hit ~= nil then return hit or nil end
+      local result = false
+      pcall(function()
+        local w, h = img:getDimensions()
+        local canvas = love.graphics.newCanvas(w, h)
+        love.graphics.push("all")
+        love.graphics.setCanvas(canvas)
+        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.setShader()
+        love.graphics.setBlendMode("alpha")
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.origin()
+        rawDraw(img, 0, 0)
+        love.graphics.pop()
+        local data = canvas:newImageData()
+        local x1, y1, x2, y2 = w, h, -1, -1
+        for y = 0, h - 1 do
+          for x = 0, w - 1 do
+            local _, _, _, a = data:getPixel(x, y)
+            if a > 0.05 then
+              if x < x1 then x1 = x end
+              if x > x2 then x2 = x end
+              if y < y1 then y1 = y end
+              if y > y2 then y2 = y end
+            end
           end
-          self._suitePicX = 120 - SHIFT_X
-          self._suitePicY = 8 - SHIFT_Y
         end
-        return self
-      end
+        canvas:release()
+        if x2 >= x1 and y2 >= y1 then
+          result = { x = x1, y = y1, w = x2 - x1 + 1, h = y2 - y1 + 1,
+            iw = w, ih = h }
+        end
+      end)
+      bounds[img] = result
+      return result or nil
     end
+
+    local function placement(self, rawDraw)
+      local img = self and self.pic
+      if not img then return nil end
+      local cached = self._suitePicPlace
+      if cached and cached.img == img then return cached end
+      local b = contentBounds(img, rawDraw)
+      if not b then return nil end
+      local maxW, maxH = BOX_RIGHT - BOX_LEFT, BOX_BOTTOM - BOX_TOP
+      local w, h = math.min(b.w, maxW), math.min(b.h, maxH)
+      -- Clip evenly from both sides if the art is wider than the frame,
+      -- and from the bottom if it is taller.
+      local sx = b.x + math.floor((b.w - w) / 2)
+      local place = {
+        img = img,
+        quad = love.graphics.newQuad(sx, b.y, w, h, b.iw, b.ih),
+        x = BOX_RIGHT - w,
+        y = BOX_TOP + math.floor((maxH - h) / 2),
+        w = w, h = h,
+      }
+      self._suitePicPlace = place
+      return place
+    end
+
     if type(Card.draw) == "function" then
       local origDraw = Card.draw
-      function Card.draw(self)
+      function Card.draw(self, ...)
         local lg = love.graphics.draw
         love.graphics.draw = function(img, quad, x, y, ...)
-          if self and img == self.pic and x == 120 and y == 8 then
-            x = self._suitePicX or (120 - SHIFT_X)
-            y = self._suitePicY or (8 - SHIFT_Y)
+          if self and img == self.pic and x == STOCK_X and y == STOCK_Y then
+            local place = placement(self, lg)
+            if place then
+              return lg(img, place.quad, place.x, place.y)
+            end
           end
           return lg(img, quad, x, y, ...)
         end
@@ -609,17 +664,19 @@ return function(mod)
         local mark = okMark and PaletteFX and PaletteFX.markTrueColor
         if mark then
           PaletteFX.markTrueColor = function(x, y, w, h)
-            if x == 120 and y == 8 then
-              x = self._suitePicX or (120 - SHIFT_X)
-              y = self._suitePicY or (8 - SHIFT_Y)
+            if x == STOCK_X and y == STOCK_Y then
+              local place = placement(self, lg)
+              if place then
+                return mark(place.x, place.y, place.w, place.h)
+              end
             end
             return mark(x, y, w, h)
           end
         end
-        local okCall, err = pcall(origDraw, self)
+        local okCall, err = pcall(origDraw, self, ...)
         love.graphics.draw = lg
         if mark then PaletteFX.markTrueColor = mark end
-        if not okCall then error(err) end
+        if not okCall then error(err, 0) end
       end
     end
   end

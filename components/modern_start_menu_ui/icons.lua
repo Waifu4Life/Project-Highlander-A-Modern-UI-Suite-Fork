@@ -1,12 +1,13 @@
--- Native 16x16 one-bit frames from NikoIchu's CC0 Pixel Icons, plus a
--- matching custom Poké Ball for the party action. The source grid is copied
--- directly: no scaling, tracing, interpolation, or runtime conversion.
+-- Native 24x24 one-bit frames, redrawn from NikoIchu's CC0 Pixel Icons plus
+-- a matching custom Poké Ball for the party action. The source grid is
+-- copied directly: no scaling, tracing, interpolation, or runtime conversion.
+-- The strip is one row of 24x24 frames; `size` below must match the art.
 -- Keeping frame lookup separate from rendering lets third-party entries fall
 -- back to the generic frame without taking ownership of their callback or
 -- label.
 return {
   asset = "assets/start_menu_icons.png",
-  size = 16,
+  size = 24,
   paletteSize = 1,
   frames = {
     pokedex = 0,

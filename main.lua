@@ -25,6 +25,9 @@ return function(mod)
   -- Always on: Key Item shortcuts (Bag SHORT.1-3 rows + the SELECT box).
   state.itemShortcuts = loadLocal("core/item_shortcuts.lua")(mod, settings)
   state.drawMenuIcon = loadLocal("core/menu_icons.lua")(mod, state.pokeIcons)
+  -- Always on: take keyboard/gamepad focus when started from outside the
+  -- launcher (frontend, Playnite, -red / -blue shortcuts).
+  pcall(function() loadLocal("core/window_focus.lua")(mod) end)
 
   -- Validate the complete archive before any component gets a chance to
   -- register. This keeps a damaged all-in-one install atomic.

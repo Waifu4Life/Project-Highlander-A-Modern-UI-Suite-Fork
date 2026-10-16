@@ -18,9 +18,11 @@ return function(mod, presentation, config)
     choices = config.iconChoices,
   }
   local SCREEN_W, SCREEN_H = 160, 144
-  local COLUMNS, PAGE_SIZE = 4, 16
-  local GRID_X, GRID_Y, CELL_W, CELL_H = 4, 18, 36, 23
-  local COL_STEP, ROW_STEP = 38, 24
+  -- 4 x 3 per page: cells are 30px tall so 24x24 icons fit inside the 2px
+  -- frame with a pixel to spare (rows end at y=110, above the footer rule).
+  local COLUMNS, PAGE_SIZE = 4, 12
+  local GRID_X, GRID_Y, CELL_W, CELL_H = 4, 18, 36, 30
+  local COL_STEP, ROW_STEP = 38, 31
 
   local function beep(game)
     if game and game.data then
@@ -144,7 +146,10 @@ return function(mod, presentation, config)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", x + 2, y + 2, CELL_W - 4,
           CELL_H - 4)
-        presentation.drawIcon(choice[2], x + 10, y + 3)
+        local iconSize = presentation.iconSize or 16
+        presentation.drawIcon(choice[2],
+          x + math.floor((CELL_W - iconSize) / 2),
+          y + math.floor((CELL_H - iconSize) / 2))
       end
 
       love.graphics.setColor(0, 0, 0, 1)

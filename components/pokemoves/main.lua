@@ -481,12 +481,22 @@ return function(mod)
         if not noLearnOn() or not mon or (ctx and ctx.battle) then
           return items
         end
+        -- Gen 1 rows carry action = "cut"; Gen 2 rows carry id = "CUT" and
+        -- no action, so checking action alone added a second CUT/SURF in
+        -- Gen 2 whenever the Pokémon already knew the HM. Check all three.
         local known = {}
+        local function note(value)
+          if type(value) == "string" and value ~= "" then
+            known[value:upper():gsub("[^A-Z]", "")] = true
+          end
+        end
         for _, row in ipairs(items) do
-          if row.action then known[row.action] = true end
+          if type(row) == "table" then
+            note(row.action) note(row.id) note(row.label)
+          end
         end
         for _, field in ipairs(FIELD) do
-          if not known[field.action] and canLearn(g.data, mon, field.move)
+          if not known[field.move] and canLearn(g.data, mon, field.move)
               and firstLearner(g.data, g.save, field.move) then
             items[#items + 1] = gen2
               and { id = field.move, label = field.move, fieldMove = true }

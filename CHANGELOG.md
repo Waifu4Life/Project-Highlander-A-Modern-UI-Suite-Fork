@@ -1,4 +1,4 @@
-## [3.55.1]
+## [3.56.0]
 - Game Corner: "ALL LUCKY MACHINES" is renamed "ALL LUCKY SLOT M." (same option, your setting is kept).
 
 ## [3.55.0]

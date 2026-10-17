@@ -36,8 +36,6 @@ These run whenever the matching UI / event is in play. There is no extra toggle.
 
 | Row | Role |
 | --- | --- |
-| Enable All UI / Disable All UI | Bulk switch for the presentation components (not the independent QoL packs). |
-| Aspect Ratio | Fill / 16:9 / 4:3 |
 | Start Menu, Party, Bag, PC, Pokédex, Battle HUD, Move Colors | Presentation packs. Each opens with **Enabled**. |
 | QoL | Highlander gameplay toggles. |
 | Cont. Rumble | masterwebx rumble pack. |

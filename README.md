@@ -43,7 +43,10 @@ These run whenever the matching UI / event is in play. There is no extra toggle.
 | Full Control | Rebind overlay. Hides the stock Controls page while On. |
 | Steel / Fairy | zyrancz typing pack. |
 | Crystal | TRW animated sprites + shinies. |
+| Shortcuts | Select Menu Shortcuts and Pokeball usage shortcuts in battles |
+| Custom Borders | Different Modern and Vintage borders based on the Super Game Boy ones |
 | Poké Icons | Dex / Party / PC icon source. |
+| Game Corner | Different options to stack the odds in your favor |
 | Gen1 Get All the Pokémon | Split Gen 1 unlocks. |
 | Gen2 Get All the Pokémon | Split Gen 2 unlocks. |
 

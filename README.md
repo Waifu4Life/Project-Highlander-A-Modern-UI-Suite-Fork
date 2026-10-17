@@ -124,7 +124,6 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 | Use Repel Again? | One reuse prompt when a Repel expires. |
 | Rematch Anyone | Defeated trainers / Gym Leaders offer a rematch. Teams scale to your weakest mon. |
 | Gen3 Catch Rate | Gen 3 formula; Gen 1 ball order fixed. |
-| 2× Coins for Money | 100 coins / 1 000₽ and 1 000 coins / 10 000₽ in RBY and GSC. |
 | Pikachu Sound | Yellow cry or original (Yellow only). |
 | Force Crystal Settings | On by default when Crystal is installed. Locks Replace Sprites = All and the player sheet to Red / Green / Gold / Kris. Other Crystal options stay free. |
 

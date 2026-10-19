@@ -36,8 +36,6 @@ These run whenever the matching UI / event is in play. There is no extra toggle.
 
 | Row | Role |
 | --- | --- |
-| Enable All UI / Disable All UI | Bulk switch for the presentation components (not the independent QoL packs). |
-| Aspect Ratio | Fill / 16:9 / 4:3 |
 | Start Menu, Party, Bag, PC, Pokédex, Battle HUD, Move Colors | Presentation packs. Each opens with **Enabled**. |
 | QoL | Highlander gameplay toggles. |
 | Cont. Rumble | masterwebx rumble pack. |
@@ -45,7 +43,10 @@ These run whenever the matching UI / event is in play. There is no extra toggle.
 | Full Control | Rebind overlay. Hides the stock Controls page while On. |
 | Steel / Fairy | zyrancz typing pack. |
 | Crystal | TRW animated sprites + shinies. |
+| Shortcuts | Select Menu Shortcuts and Pokeball usage shortcuts in battles |
+| Custom Borders | Different Modern and Vintage borders based on the Super Game Boy ones |
 | Poké Icons | Dex / Party / PC icon source. |
+| Game Corner | Different options to stack the odds in your favor |
 | Gen1 Get All the Pokémon | Split Gen 1 unlocks. |
 | Gen2 Get All the Pokémon | Split Gen 2 unlocks. |
 
@@ -123,7 +124,6 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 | Use Repel Again? | One reuse prompt when a Repel expires. |
 | Rematch Anyone | Defeated trainers / Gym Leaders offer a rematch. Teams scale to your weakest mon. |
 | Gen3 Catch Rate | Gen 3 formula; Gen 1 ball order fixed. |
-| 2× Coins for Money | 100 coins / 1 000₽ and 1 000 coins / 10 000₽ in RBY and GSC. |
 | Pikachu Sound | Yellow cry or original (Yellow only). |
 | Force Crystal Settings | On by default when Crystal is installed. Locks Replace Sprites = All and the player sheet to Red / Green / Gold / Kris. Other Crystal options stay free. |
 

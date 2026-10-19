@@ -62,6 +62,7 @@ Sub-menus sort alphabetically except **Enabled** (always first) and copyright li
 - Clock on / off.
 - Icon Position.
 - PokéBox (always listed when the modern Start Menu is on).
+- Choose between a small Start Menu in the overworld or a fullscreen one.
 
 ## Party
 

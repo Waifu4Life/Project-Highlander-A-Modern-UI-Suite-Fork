@@ -7,6 +7,10 @@
 -- label.
 return {
   asset = "assets/start_menu_icons.png",
+  -- 16x16 strip for the FULL SCREEN style, same frame order as above. The
+  -- large frames (Pokedex, party, trainer, PokeBox) are redrawn at 16px;
+  -- the rest are the 24px frames' centres, copied pixel for pixel.
+  fullAsset = "assets/start_menu_icons_16.png",
   size = 24,
   paletteSize = 1,
   frames = {

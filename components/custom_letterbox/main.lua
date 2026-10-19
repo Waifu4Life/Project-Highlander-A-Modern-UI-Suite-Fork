@@ -5,8 +5,8 @@
 -- game screen always shows through no matter what a custom PNG holds there.
 --
 -- Where it appears (see classify below): Title screen, Options, Mods, Trainer
--- ID and OG (non-wide) battles. Never over the overworld (Gen 1 or Gen 2) and
--- never over the Modern UI Suite screens.
+-- ID, OG (non-wide) battles and the FULL SCREEN Start Menu. Never over the
+-- overworld (Gen 1 or Gen 2) and never over the other Modern UI Suite screens.
 return function(mod)
   local BORDERS = {
     { "AUTOMATIC", "auto" },
@@ -349,6 +349,8 @@ return function(mod)
       for i = #states, 1, -1 do
         local s = states[i]
         if type(s) == "table" then
+          -- Modern Start Menu's FULL SCREEN style is a 160x144 page.
+          if s.highlanderStartFull then return "screen" end
           if s.isOverworld then return "skip" end
           if isSkipScreen(s) then return "skip" end
           if isBattleScreen(s) then return "battle" end

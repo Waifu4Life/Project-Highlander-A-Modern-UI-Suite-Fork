@@ -765,10 +765,20 @@ return function(mod)
     local ok, value = pcall(mod.options.get, mod.options, "decapitalize")
     return ok and value == true
   end
+  -- Words Decapitalize leaves in capitals (Gen 1 and Gen 2). Abbreviations
+  -- and short game terms; KEEP_FORM below holds the mixed-case ones.
   local KEEP_CAPS = {
     SEEN=true, OWNED=true, HP=true, PP=true, PC=true,
     TM=true, HM=true, OK=true, TV=true, CD=true, ID=true,
     KO=true, EXP=true, SS=true, VIP=true, PK=true, MN=true,
+    PKMN=true, OT=true, LV=true, DV=true, EV=true, IV=true, NPC=true,
+    HUD=true, UI=true, AI=true, RNG=true, CPU=true, SFX=true, BGM=true,
+    GB=true, GBC=true, SGB=true, DMG=true, VS=true, UFO=true,
+    USA=true, SOS=true, DJ=true, MC=true,
+  }
+  local KEEP_FORM = {
+    TMS="TMs", HMS="HMs", QOL="QoL", DVS="DVs", EVS="EVs", IVS="IVs",
+    PCS="PCs", NPCS="NPCs", KOS="KOs",
   }
   local function rewriteGendered(str)
     if type(str) ~= "string" then return str end
@@ -801,6 +811,7 @@ return function(mod)
     str = str:gsub("TM POUCH", "TM Pouch")
     str = str:gsub("(%u[%u'-]*%u)", function(word)
       if KEEP_CAPS[word] then return word end
+      if KEEP_FORM[word] then return KEEP_FORM[word] end
       return word:sub(1,1) .. word:sub(2):lower()
     end)
     return str

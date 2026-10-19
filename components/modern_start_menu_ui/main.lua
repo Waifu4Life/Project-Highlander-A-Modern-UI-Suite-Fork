@@ -30,6 +30,12 @@ return function(mod)
       } },
     { key = "pokebox", label = "POKEBOX", type = "toggle",
       default = true },
+    -- FULL SCREEN: a whole 160x144 page that Custom Borders can frame.
+    -- PHONE: the original floating panel (uses POSITION).
+    { key = "style", label = "START MENU STYLE", type = "choice",
+      default = "full", choices = {
+        { "FULL SCREEN", "full" }, { "PHONE", "phone" },
+      } },
   }
   mod.options:define(optionSchema)
 
@@ -617,6 +623,8 @@ return function(mod)
         and type(viewport) == "table") then
       return result
     end
+    -- FULL SCREEN style draws on the ordinary 160x144 canvas only.
+    if menu.highlanderStartFull then return result end
     local requestedWidth = presentation.responsiveSize
       and select(1, presentation.responsiveSize(menu)) or 160
     if requestedWidth <= 160 then return result end

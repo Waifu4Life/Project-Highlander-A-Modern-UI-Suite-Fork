@@ -6,6 +6,7 @@
 -- that controller instead of duplicating it. Only the visible list, drawing,
 -- left/right pocket navigation and filtered-list reordering live here.
 return function(mod, compatibility)
+  local touch = mod.suite and mod.suite.touch
   compatibility = compatibility or {}
   local BagMenu = require("src.ui.BagMenu")
   local Bag = require("src.inventory.Bag")
@@ -17,6 +18,13 @@ return function(mod, compatibility)
   local Strings = require("src.core.Strings")
   local Theme = require("src.ui.Theme")
   local TouchControls = require("src.core.TouchControls")
+
+  -- Item-specific art v1; category symbols remain for tabs and unknown mod items.
+  local ItemIcons = assert(load(assert(mod:read("item_icons.lua")),
+    "@" .. mod.path .. "/item_icons.lua"))()(mod)
+
+  -- Category tab glyphs v1: separate from selected-item art and legacy rail art.
+  local TabIcons = assert(load(assert(mod:read("tab_icons.lua"))))()()
 
   local SCREEN_W = 160
   local SCREEN_H = 144
@@ -182,8 +190,6 @@ return function(mod, compatibility)
   }
 
   local inkShader -- false when shaders are unavailable
-  local classicLabelFont -- false when direct TTF labels are unavailable
-  local classicBagSprites -- false when the source sprite cannot be loaded
 
   local function gray(value)
     love.graphics.setColor(value, value, value, 1)
@@ -216,6 +222,16 @@ return function(mod, compatibility)
     return text:sub(1, spans[count].to) .. "."
   end
 
+  local classicBagSprites -- false when the source sprite cannot be loaded
+  local function textMetrics()
+    if mod.suite and mod.suite.textMetrics then return mod.suite.textMetrics() end
+    return 0, 8
+  end
+  local function lineStep()
+    local _, height = textMetrics()
+    return math.max(9, height + 1)
+  end
+
   local function drawTextRaw(text, x, y, shade)
     text = tostring(text or "")
     love.graphics.push("all")
@@ -226,7 +242,9 @@ return function(mod, compatibility)
     else
       gray(BLACK)
     end
-    Font.draw(text, math.floor(x), math.floor(y))
+    local offset, height = textMetrics()
+    offset = math.min(offset, 3)
+    Font.draw(text, math.floor(x), math.floor(y) + offset)
     love.graphics.pop()
     return Font.width(text)
   end
@@ -237,6 +255,7 @@ return function(mod, compatibility)
   end
 
   local function moneyText(menu)
+    if compatibility.moneyText then return compatibility.moneyText(menu) end
     local save = menu and menu.game and menu.game.save
     local n = 0
     if type(save) == "table" then
@@ -260,52 +279,11 @@ return function(mod, compatibility)
   end
 
   local function classicRailLabel(text, x, y, width, height)
-    text = tostring(text or "")
-    if classicLabelFont == nil then
-      if not love.graphics.newFont then
-        classicLabelFont = false
-      else
-        local ok, face = pcall(love.graphics.newFont,
-          Font.PLAINPIXEL, 10, "mono")
-        if ok and face then
-          if face.setFilter then
-            pcall(face.setFilter, face, "nearest", "nearest")
-          end
-          classicLabelFont = face
-        else
-          classicLabelFont = false
-        end
-      end
-    end
-
-    local face = classicLabelFont or nil
-    if not face or not love.graphics.print then
-      local fallback = fitText(text, width)
-      drawText(fallback, x + math.floor((width - Font.width(fallback)) / 2),
-        y + math.floor((height - 8) / 2), width, WHITE)
-      return fallback
-    end
-
-    local original = text
-    local spans = Font.split(original)
-    local count = #spans
-    while count > 1 and face:getWidth(text) > width do
-      count = count - 1
-      text = original:sub(1, spans[count].to) .. "."
-    end
-    love.graphics.push("all")
-    local shader = shaderForInk()
-    if shader then
-      love.graphics.setShader(shader)
-      gray(WHITE)
-    else
-      gray(BLACK)
-    end
-    love.graphics.setFont(face)
-    love.graphics.print(text,
-      math.floor(x + (width - face:getWidth(text)) / 2),
-      math.floor(y + (height - face:getHeight()) / 2))
-    love.graphics.pop()
+    -- Use the same pixel grid as the item list. Small rasterized TTF glyphs
+    -- lose strokes after the cartridge canvas is scaled (Meds read as Nede).
+    text = fitText(tostring(text or ""):upper(), width)
+    drawText(text, x + math.floor((width - Font.width(text)) / 2),
+      y + math.floor((height - 8) / 2), width, WHITE)
     return text
   end
 
@@ -382,7 +360,7 @@ return function(mod, compatibility)
       maxWidth, maxLines, shade)
     text = tostring(text or "")
     maxWidth = math.max(8, math.floor(maxWidth or 8))
-    maxLines = math.max(1, math.floor(maxLines or 1))
+    maxLines = math.max(1, math.floor((maxLines or 1) * 9 / lineStep()))
     local lines = allWrappedLines(text, maxWidth)
     local fits = #lines <= maxLines
     for _, line in ipairs(lines) do
@@ -397,7 +375,7 @@ return function(mod, compatibility)
     if fits then
       state.offset, state.travel = 0, 0
       for index, line in ipairs(lines) do
-        drawText(line, x, y + (index - 1) * 9, maxWidth, shade)
+        drawText(line, x, y + (index - 1) * lineStep(), maxWidth, shade)
       end
       return false
     end
@@ -411,7 +389,7 @@ return function(mod, compatibility)
       end
     end
     for index = 1, staticCount do
-      drawText(lines[index], x, y + (index - 1) * 9, maxWidth, shade)
+      drawText(lines[index], x, y + (index - 1) * lineStep(), maxWidth, shade)
     end
     local tail = {}
     for index = staticCount + 1, #lines do tail[#tail + 1] = lines[index] end
@@ -433,10 +411,12 @@ return function(mod, compatibility)
     state.offset, state.travel = offset, travel
     state.tailText, state.staticLines = tailText, staticCount
 
-    local lineY = y + staticCount * 9
+    local lineY = y + staticCount * lineStep()
     if love.graphics.setScissor then
       love.graphics.push("all")
-      love.graphics.setScissor(math.floor(x), math.floor(lineY), maxWidth, 9)
+      local fontOffset, inkHeight = textMetrics()
+      local inkTop = math.floor(lineY) + math.min(fontOffset, 3) - fontOffset
+      love.graphics.setScissor(math.floor(x), inkTop, maxWidth, math.max(9, inkHeight))
       drawTextRaw(tailText, x - offset, lineY, shade)
       love.graphics.pop()
     else
@@ -569,6 +549,7 @@ return function(mod, compatibility)
   end
 
   local function uiSize(menu)
+    if compatibility.presentationSize then return compatibility.presentationSize(menu) end
     if nativeViewportRequested(menu) then return SCREEN_W, SCREEN_H end
     return responsiveSize()
   end
@@ -580,7 +561,7 @@ return function(mod, compatibility)
     -- Renderer:uiSize still describes the previous frame while an option or
     -- state is changing. Never let that stale responsive size override the
     -- explicit faithful-ratio request.
-    if not nativeViewport and renderer and renderer.uiSize then
+    if not compatibility.presentationSize and not nativeViewport and renderer and renderer.uiSize then
       local rendererW, rendererH = renderer:uiSize()
       width, height = rendererW or width, rendererH or height
     end
@@ -649,7 +630,9 @@ return function(mod, compatibility)
     local tabsY = headerH
     local contentY = tabsY + TABS_H
     local expandedFooter = menu and (menu.modernPCUI or menu.modernBagPrompt)
-    local footerH = stacked and 20 or (expandedFooter and 16 or FOOTER_H)
+    local _, textHeight = textMetrics()
+    local footerH = math.max(stacked and 20 or (expandedFooter and 16 or FOOTER_H),
+      textHeight > 8 and textHeight + (stacked and textHeight + 2 or 2) or 0)
     local footerY = height - footerH
     local listY = contentY + 3
 
@@ -709,6 +692,7 @@ return function(mod, compatibility)
   end
 
   local function categoryFor(game, id)
+    if compatibility.categoryFor then return compatibility.categoryFor(game, id) end
     if not id then return "items" end
     local def = game.data.items[id] or {}
     local explicit = normalizedPocket(def.bagPocket or def.pocket)
@@ -1081,6 +1065,7 @@ return function(mod, compatibility)
         end,
       }
     end
+
     -- Menu's rows are bottom-anchored, so the slightly taller box leaves a
     -- dedicated heading band without introducing a second menu controller.
     local sortMenu = Menu.new(menu.game, rows, {
@@ -1114,7 +1099,7 @@ return function(mod, compatibility)
     return counts
   end
 
-  local function drawPocketSymbol(key, x, y, size, active)
+  local function drawPocketSymbol(key, x, y, size, active, onLight)
     x, y, size = math.floor(x), math.floor(y), math.max(8, math.floor(size))
     local unit = math.max(1, math.floor(size / 8))
     if key == "all" then
@@ -1188,12 +1173,23 @@ return function(mod, compatibility)
       gray(BLACK)
       love.graphics.circle("fill", x + size / 2, y + size / 2, unit)
     elseif key == "key" then
-      gray(LIGHT)
-      love.graphics.circle("line", x + 2 * unit, y + 2 * unit, 2 * unit)
-      love.graphics.rectangle("fill", x + 3 * unit, y + 3 * unit,
-        size - 3 * unit, 2 * unit)
-      love.graphics.rectangle("fill", x + 6 * unit, y + 5 * unit,
-        2 * unit, 2 * unit)
+      gray(onLight and DARK or LIGHT)
+      -- Keep the bow, shaft and teeth on the same pixel grid at tab and
+      -- detail-card sizes. A fixed-width circle outline became a hairline
+      -- next to the enlarged shaft, making the key look broken.
+      local pixels = {
+        ".###....", "##.##...", "#...#...", "##.#####",
+        ".#######", ".....#.#", ".....#.#", "........",
+      }
+      local inset = math.floor((size - 8 * unit) / 2)
+      for row, line in ipairs(pixels) do
+        for col = 1, #line do
+          if line:sub(col, col) == "#" then
+            love.graphics.rectangle("fill", x + inset + (col - 1) * unit,
+              y + inset + (row - 1) * unit, unit, unit)
+          end
+        end
+      end
     elseif key == "berries" then
       gray(LIGHT)
       love.graphics.circle("fill", x + size / 2, y + size / 2 + unit,
@@ -1206,6 +1202,14 @@ return function(mod, compatibility)
       gray(BLACK)
       love.graphics.rectangle("fill", x + 3 * unit, y + 4 * unit,
         unit, unit)
+    end
+  end
+
+  -- Cancel action presentation v1: actions never receive item or category artwork.
+  local function drawItemSymbol(menu, id, category, x, y, size, active, onLight)
+    if not id then return end
+    if not ItemIcons.draw(menu, id, x, y, size) then
+      drawPocketSymbol(category, x, y, size, active, onLight)
     end
   end
 
@@ -1238,6 +1242,7 @@ return function(mod, compatibility)
       end)
       capacity = ("%d/%d"):format(slots or 0, cap or 0)
     end
+    if compatibility.capacity then capacity = compatibility.capacity(menu) end
     local capacityW = math.min(math.floor(layout.width * 0.36),
       math.max(24, Font.width(capacity) + 2))
     local left = Strings(config and config.header or moneyText(menu))
@@ -1288,6 +1293,11 @@ return function(mod, compatibility)
 
     for index, pocket in ipairs(pockets) do
       local x = x0 + (index - 1) * (tabW + gap)
+      if touch and not compatibility.presentationSize then touch.add(menu,x,layout.tabsY,tabW,layout.tabsH,"pocket:"..pocket.key,
+        function()
+          if compatibility.switchPocket then return compatibility.switchPocket(menu,index-menu.modernBagPocket) end
+          switchPocket(menu,index-menu.modernBagPocket)
+        end) end
       local active = index == menu.modernBagPocket
       if active then
         gray(BLACK)
@@ -1300,14 +1310,14 @@ return function(mod, compatibility)
         chamfer("fill", x, layout.tabsY + 3,
           tabW, layout.tabsH - 5, 2)
       end
-      local iconSize = math.min(10, tabW - 4)
-      drawPocketSymbol(pocket.key,
-        x + math.floor((tabW - iconSize) / 2), layout.tabsY + 4, iconSize,
-        active)
-      gray(active and WHITE or DARK)
-      local markerW = math.min(tabW - 6, math.max(2, counts[pocket.key] or 0))
-      love.graphics.rectangle("fill", x + math.floor((tabW - markerW) / 2),
-        layout.tabsY + layout.tabsH - 3, markerW, 2)
+      local iconSize = TabIcons.size
+      -- Category tab placement v3: both frame interiors share this centre.
+      local iconX, iconY = TabIcons.position(pocket.key,
+        x + 1, layout.tabsY + 3, tabW - 2, layout.tabsH - 5)
+      if not TabIcons.draw(pocket.key, iconX, iconY) then
+        drawPocketSymbol(pocket.key, iconX, iconY, iconSize, active)
+      end
+      -- Category tab glyphs v2: no count marks below the icons.
     end
   end
 
@@ -1361,8 +1371,10 @@ return function(mod, compatibility)
       drawTextRight(quantity, layout.listX + layout.listW - 8, y + 1,
         qWidth + 8, shade)
       if selected then
-        drawCode(Theme.cursor, layout.listX + 7, y + 1, shade)
-      elseif item.value == swapId(menu) then
+        if layout.showDetails or not ItemIcons.draw(menu, item.value, layout.listX + 4, y - 1, 12) then
+          drawCode(Theme.cursor, layout.listX + 7, y + 1, shade)
+        end
+      elseif item.value and item.value == swapId(menu) then
         drawCode(Theme.cursorHollow, layout.listX + 7, y + 1, BLACK)
       end
     end
@@ -1394,6 +1406,7 @@ return function(mod, compatibility)
   end
 
   local function itemDescription(menu, id)
+    if compatibility.description then return compatibility.description(menu, id) end
     if not id then return Strings("Return to the previous screen.") end
     local def = menu.game.data.items[id] or {}
     if type(def.description) == "string" and def.description ~= ""
@@ -1449,7 +1462,7 @@ return function(mod, compatibility)
       local item = menu.items[menu.index]
       local config = listConfig(menu)
       local caption = config and config.direction
-        or (item and categoryFor(menu.game, item.value) or pocket.key)
+        or (item and (item.value and categoryFor(menu.game, item.value) or "ACTION") or pocket.key)
       drawText(caption:upper(), layout.detailX + 6, layout.detailY + 5,
         layout.detailW - 12, DARK)
       local status = config and type(config.detailStatus) == "function"
@@ -1460,16 +1473,16 @@ return function(mod, compatibility)
       end
 
       local category = item and categoryFor(menu.game, item.value) or pocket.key
-      local iconSize = math.min(28, math.max(20, layout.detailH - 56))
-      drawPocketSymbol(category, layout.detailX + 8, layout.detailY + 20,
-        iconSize)
-      local textX = layout.detailX + iconSize + 14
+      local iconSize = 24
+      drawItemSymbol(menu, item and item.value, category, layout.detailX + 8, layout.detailY + 20,
+        iconSize, false, true)
+      local textX = layout.detailX + (item and not item.value and 6 or iconSize + 14)
       local textW = layout.detailX + layout.detailW - 6 - textX
       local name = item and item.label
         or (config and config.emptyName) or pocket.label
       local nameLines = wrappedLines(name, textW, 2)
       for index, line in ipairs(nameLines) do
-        drawText(line, textX, layout.detailY + 24 + (index - 1) * 9,
+        drawText(line, textX, layout.detailY + 24 + (index - 1) * lineStep(),
           textW, BLACK)
       end
       local description = item and itemDescription(menu, item.value)
@@ -1479,7 +1492,7 @@ return function(mod, compatibility)
       local maxLines = math.max(2, math.floor(
         (layout.detailY + layout.detailH - 4 - descriptionY) / 9))
       if item and not config and not menu.modernBagPrompt
-          and not swapId(menu) then
+          and not swapId(menu) and not menu.modernBagDescriptionBlocked then
         drawReadableDescription(menu, item.value, description,
           layout.detailX + 6, descriptionY, descriptionW, maxLines, DARK)
       else
@@ -1487,7 +1500,7 @@ return function(mod, compatibility)
         for index, line in ipairs(wrappedLines(
             description, descriptionW, maxLines)) do
           drawText(line, layout.detailX + 6,
-            descriptionY + (index - 1) * 9, descriptionW, DARK)
+            descriptionY + (index - 1) * lineStep(), descriptionW, DARK)
         end
       end
       return
@@ -1506,26 +1519,27 @@ return function(mod, compatibility)
     local item = menu.items[menu.index]
     local config = listConfig(menu)
     local caption = config and config.direction
-      or (item and categoryFor(menu.game, item.value) or pocket.key)
+      or (item and (item.value and categoryFor(menu.game, item.value) or "ACTION") or pocket.key)
     caption = caption:upper()
     drawText(caption, layout.detailX + 6, layout.detailY + 5,
       layout.detailW - 12, LIGHT)
 
     if item then
+      local actionOffset = item.value and 0 or 24
       local category = categoryFor(menu.game, item.value)
       local iconSize = 24
-      drawPocketSymbol(category,
+      drawItemSymbol(menu, item.value, category,
         layout.detailX + math.floor((layout.detailW - iconSize) / 2),
         layout.detailY + 17, iconSize)
       local nameLines = wrappedLines(item.label, layout.detailW - 12, 2)
       for index, line in ipairs(nameLines) do
         drawText(line,
           layout.detailX + (layout.detailW - Font.width(line)) / 2,
-          layout.detailY + 45 + (index - 1) * 9,
+          layout.detailY + 45 - actionOffset + (index - 1) * lineStep(),
           layout.detailW - 12, WHITE)
       end
-      local descriptionY = layout.detailY + 58
-        + math.max(0, #nameLines - 1) * 9
+      local descriptionY = layout.detailY + 58 - actionOffset
+        + math.max(0, #nameLines - 1) * lineStep()
       local descriptionLines
       if config then
         descriptionLines = math.max(1, math.floor(
@@ -1535,7 +1549,7 @@ return function(mod, compatibility)
           (layout.detailY + layout.detailH - 4 - descriptionY) / 9))
       end
       local description = itemDescription(menu, item.value)
-      if not config and not menu.modernBagPrompt and not swapId(menu) then
+      if not config and not menu.modernBagPrompt and not swapId(menu) and not menu.modernBagDescriptionBlocked then
         drawReadableDescription(menu, item.value, description,
           layout.detailX + 6, descriptionY,
           layout.detailW - 12, descriptionLines, LIGHT)
@@ -1545,7 +1559,7 @@ return function(mod, compatibility)
           layout.detailW - 12, descriptionLines)
         for index, line in ipairs(lines) do
           drawText(line, layout.detailX + 6,
-            descriptionY + (index - 1) * 9,
+            descriptionY + (index - 1) * lineStep(),
             layout.detailW - 12, LIGHT)
         end
       end
@@ -1559,7 +1573,7 @@ return function(mod, compatibility)
       clearDescriptionScroll(menu)
       for index, line in ipairs(lines) do
         drawText(line, layout.detailX + 6,
-          layout.detailY + 58 + (index - 1) * 9,
+          layout.detailY + 58 + (index - 1) * lineStep(),
           layout.detailW - 12, LIGHT)
       end
     end
@@ -1583,7 +1597,7 @@ return function(mod, compatibility)
         lines = { Strings("L/R POCKET"), Strings("A SELECT  B BACK") }
       end
       if #lines == 0 then lines = { "" } end
-      local step = 8
+      local _, step = textMetrics()
       local y = layout.footerY
         + math.max(0, math.floor((layout.footerH - #lines * step) / 2))
       for index, line in ipairs(lines) do
@@ -1605,7 +1619,7 @@ return function(mod, compatibility)
       line1 = fitText(line1, layout.width - 8)
       line2 = fitText(line2, layout.width - 8)
       drawText(line1, (layout.width - Font.width(line1)) / 2,
-        layout.footerY + 1, layout.width - 8, WHITE)
+        layout.footerY, layout.width - 8, WHITE)
       drawText(line2, (layout.width - Font.width(line2)) / 2,
         layout.footerY + 11, layout.width - 8, WHITE)
       return
@@ -1879,7 +1893,7 @@ return function(mod, compatibility)
       local qWidth = Font.width(quantity)
       if selected then
         drawCode(Theme.cursor, layout.listX + 8, y, DARK)
-      elseif item.value == swapId(menu) then
+      elseif item.value and item.value == swapId(menu) then
         drawCode(Theme.cursorHollow, layout.listX + 8, y, BLACK)
       end
       drawText(item.label, layout.listX + 20, y,
@@ -1926,6 +1940,11 @@ return function(mod, compatibility)
     local textX = layout.detailX + 10
     local textY = layout.detailY + 10
     local textW = layout.detailW - 20
+    local selected = menu.items[menu.index]
+    if selected and selected.value and not status and not swapId(menu)
+        and ItemIcons.draw(menu, selected.value, layout.detailX + 9, layout.detailY + 8, 24) then
+      textX, textW = textX + 28, textW - 28
+    end
     local maxLines = math.max(2, math.floor((layout.detailH - 18) / 9))
     if config and config.direction then
       drawText(fitText(Strings(config.direction), textW),
@@ -1934,13 +1953,13 @@ return function(mod, compatibility)
       maxLines = math.max(1, maxLines - 1)
     end
     local item = menu.items[menu.index]
-    if item and not config and not status and not swapId(menu) then
+    if item and not config and not status and not swapId(menu) and not menu.modernBagDescriptionBlocked then
       drawReadableDescription(menu, item.value, text,
         textX, textY, textW, maxLines, BLACK)
     else
       clearDescriptionScroll(menu)
       for index, line in ipairs(wrappedLines(text, textW, maxLines)) do
-        drawText(line, textX, textY + (index - 1) * 9, textW, BLACK)
+        drawText(line, textX, textY + (index - 1) * lineStep(), textW, BLACK)
       end
     end
   end
@@ -1954,6 +1973,7 @@ return function(mod, compatibility)
   end
 
   local function draw(menu)
+    menu.modernBagItemIconZones, menu.modernBagItemIcon = {}, nil
     confineNativeViewport(menu)
     -- A world-background battle still draws below this opaque surface.
     -- Its RGB opt-out rectangles would otherwise re-blit pieces of the
@@ -1965,6 +1985,19 @@ return function(mod, compatibility)
     local layout = layoutFor(menu)
     menu.rows = layout.rows
     clampList(menu)
+    if touch then
+      touch.begin(menu,"canvas",function() return menu.modernBagPrompt end,
+        function(key,press) press(menu,key) end)
+      for row=1,layout.rows do
+        local index=menu.scroll+row
+        local item=menu.items[index]
+        if item then touch.add(menu,layout.listX,layout.listY
+          +(layout.skin=="classic_pocket" and 6 or 4)+(row-1)*ROW_H,
+          layout.listW,ROW_H,"item:"..tostring(item.value),function()
+            menu.index=index;clampList(menu)
+          end,function() return menu.index==index end,true) end
+      end
+    end
     if layout.skin == "classic_pocket" then
       drawClassic(menu, layout)
       gray(WHITE)
@@ -1981,6 +2014,7 @@ return function(mod, compatibility)
   end
 
   local function sgbPalettes(menu, game)
+    local pal = compatibility.palette or PaletteFX.pal
     local data = game and game.data
     local function fallbackRamp()
       return { {255,255,255},{170,170,170},{85,85,85},{0,0,0} }
@@ -1992,15 +2026,15 @@ return function(mod, compatibility)
     end
     local layout = layoutFor(menu)
     if layout.skin == "classic_pocket" then
-      local base = PaletteFX.pal(data, "MEWMON")
-        or PaletteFX.pal(data, "BLUEMON")
+      local base = pal(data, "MEWMON")
+        or pal(data, "BLUEMON")
       if not base then base = fallbackRamp() end
-      local blue = PaletteFX.pal(data, "BLUEMON") or base
-      local green = PaletteFX.pal(data, "GREENMON") or base
-      local red = PaletteFX.pal(data, "REDMON") or base
-      local purple = PaletteFX.pal(data, "PURPLEMON") or base
+      local blue = pal(data, "BLUEMON") or base
+      local green = pal(data, "GREENMON") or base
+      local red = pal(data, "REDMON") or base
+      local purple = pal(data, "PURPLEMON") or base
       local config = listConfig(menu)
-      local mode = config and PaletteFX.pal(data, config.modePalette) or nil
+      local mode = config and pal(data, config.modePalette) or nil
       local boxes = classicRailBoxes(layout)
       local zones = {
         { colors = base, x = 0, y = 0,
@@ -2029,14 +2063,14 @@ return function(mod, compatibility)
           w = 12, h = 11,
         }
       end
-      return zones
+      return ItemIcons.zones(menu, zones)
     end
     local pocket = pocketFor(menu)
     local config = listConfig(menu)
-    local base = PaletteFX.pal(data, "BLUEMON")
-      or PaletteFX.pal(data, "MEWMON")
-    local accent = PaletteFX.pal(data, pocket.palette) or base
-    local mode = config and PaletteFX.pal(data, config.modePalette) or nil
+    local base = pal(data, "BLUEMON")
+      or pal(data, "MEWMON")
+    local accent = pal(data, pocket.palette) or base
+    local mode = config and pal(data, config.modePalette) or nil
     if not base then base = fallbackRamp() end
     local zones = {
       { colors = base, x = 0, y = 0,
@@ -2059,7 +2093,7 @@ return function(mod, compatibility)
         w = layout.listW - 8, h = 13,
       }
     end
-    return zones
+    return ItemIcons.zones(menu, zones)
   end
 
   local function update(menu, dt)
@@ -2310,10 +2344,12 @@ return function(mod, compatibility)
   end
 
   return {
+    -- Shared presentation only; native Gen 2 still owns inventory and input.
     presentation = {
       pockets = POCKETS, layout = layoutFor, size = uiSize, zones = sgbPalettes,
       qol = bagQolInfo,
       draw = function(menu, counts)
+        menu.modernBagItemIconZones, menu.modernBagItemIcon = {}, nil
         local layout = layoutFor(menu)
         drawBackdrop(layout)
         drawHeader(menu, layout)

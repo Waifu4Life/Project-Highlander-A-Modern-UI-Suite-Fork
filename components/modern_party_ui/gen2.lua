@@ -285,6 +285,50 @@ return function(mod)
     return short[value] or value:sub(1, 3)
   end
 
+  -- Header type label: both types spelled out when they fit in `room`,
+  -- otherwise short names (GRS/PSN), otherwise just the first short name.
+  local function headerTypeLabel(menu, mon, room)
+    local def = menu.pokemon and mon and menu.pokemon[mon.species]
+    local types = (mon and mon.types) or (def and def.types) or {}
+    if not types[1] and def then types = { def.type1 or def.type, def.type2 } end
+    local okChart, TypeChart = pcall(require, "src.battle.TypeChart")
+    local function fullName(id)
+      if id == nil then return nil end
+      local name
+      if okChart and TypeChart and TypeChart.displayName then
+        local ok, value = pcall(TypeChart.displayName, id,
+          menu.game and menu.game.data)
+        if ok and type(value) == "string" then name = value end
+      end
+      name = tostring(name or id):upper():gsub("_TYPE$", ""):gsub("_", " ")
+      return name
+    end
+    local short = {
+      NORMAL = "NRM", FIGHTING = "FGT", FLYING = "FLY", POISON = "PSN",
+      GROUND = "GRD", ROCK = "RCK", BUG = "BUG", GHOST = "GHO",
+      FIRE = "FIR", WATER = "WTR", GRASS = "GRS", ELECTRIC = "ELC",
+      PSYCHIC = "PSY", ICE = "ICE", DRAGON = "DRG", DARK = "DRK",
+      STEEL = "STL", FAIRY = "FAI",
+    }
+    local function abbr(name) return short[name] or name:sub(1, 3) end
+    local first = fullName(types[1]) or shortType(menu, mon)
+    local second = fullName(types[2])
+    -- Single-type Pokemon are stored as the same type twice.
+    if second == first then second = nil end
+    local candidates = {}
+    if second then
+      candidates[#candidates + 1] = first .. "/" .. second
+      candidates[#candidates + 1] = abbr(first) .. "/" .. abbr(second)
+    else
+      candidates[#candidates + 1] = first
+    end
+    candidates[#candidates + 1] = abbr(first)
+    for _, text in ipairs(candidates) do
+      if Font.width(text) <= room then return text, room end
+    end
+    return candidates[#candidates], room
+  end
+
   -- Field action order for the A-button menu, whatever order the engine
   -- and other mods add rows in: STATS, SWITCH, RELEARN, DISMISS/FOLLOW,
   -- TM field moves, HM field moves, anything else (Rename, Item, Softboiled,
@@ -482,11 +526,17 @@ return function(mod)
     G.rectangle("fill", 0, 0, width, HEADER_H)
     setColor(HEADER_LIGHT)
     G.rectangle("fill", 0, HEADER_H - 2, width, 2)
-    drawInk(("%d/6"):format(#self.party), 4, 4, 32, INK_WHITE)
-    drawInkCentered("POKéMON", math.floor((width - 64) / 2), 3, 64, INK_WHITE)
+    -- "6/6 POKéMON" sits together on the left so both types fit spelled out
+    -- on the right (GRASS/POISON); narrow screens fall back to short names.
+    local countWidth = drawInk(("%d/6"):format(#self.party), 4, 4, 32,
+      INK_WHITE)
+    local titleX = 4 + countWidth + 4
+    local titleWidth = drawInk("POKéMON", titleX, 3, 64, INK_WHITE)
     local selectedMon = self.party[self.index]
     if selectedMon then
-      drawInkRight(shortType(self, selectedMon), width - 4, 4, 40, INK_WHITE)
+      local label, room = headerTypeLabel(self, selectedMon,
+        width - 4 - (titleX + titleWidth + 8))
+      drawInkRight(label, width - 4, 4, math.max(24, room), INK_WHITE)
     end
 
     local slots = option("empty_slots", true) and 6 or math.max(1, #self.party)

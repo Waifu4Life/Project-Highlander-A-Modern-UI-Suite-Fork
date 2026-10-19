@@ -506,25 +506,61 @@ return function(mod, genderExports, compatibility)
     gray(LIGHT)
     love.graphics.rectangle("fill", 0, HEADER_H - 2, layout.width, 2)
 
-    drawText(('%d/%d'):format(#party, capacityOf(menu)), 4, 4, 32, 1, WHITE)
-    drawText("POKéMON", (layout.width - 56) / 2, 3, 56, 1, WHITE)
+    -- "6/6 POKéMON" sits together on the left so the right side has room
+    -- for both types spelled out (GRASS/POISON). Long pairs that still don't
+    -- fit on a narrow (160 px) screen fall back to the short names.
+    local count = ('%d/%d'):format(#party, capacityOf(menu))
+    local countWidth = drawText(count, 4, 4, 32, 1, WHITE)
+    local titleX = 4 + countWidth + 4
+    local titleWidth = drawText("POKéMON", titleX, 3, 56, 1, WHITE)
 
     local mon = party[menu.index]
+    if not mon then return end
     local def = definition(menu, mon)
-    local types = def and def.types or {}
+    local types = (mon and mon.types) or (def and def.types) or {}
     local short = {
       NORMAL = "NRM", FIGHTING = "FGT", FLYING = "FLY",
       POISON = "PSN", GROUND = "GRD", ROCK = "RCK", BUG = "BUG",
       GHOST = "GHO", FIRE = "FIR", WATER = "WTR", GRASS = "GRS",
-      ELECTRIC = "ELC", PSYCHIC_TYPE = "PSY", PSYCHIC = "PSY",
-      ICE = "ICE", DRAGON = "DRG",
+      ELECTRIC = "ELC", PSYCHIC = "PSY",
+      ICE = "ICE", DRAGON = "DRG", DARK = "DRK", STEEL = "STL",
+      FAIRY = "FAI",
     }
-    local typeWidth = math.max(24, math.floor(layout.width / 2) - 36)
-    local first = short[tostring(types[1] or ""):upper()] or "---"
-    local second = short[tostring(types[2] or ""):upper()]
-    local label = second and typeWidth >= 56 and (first .. "/" .. second)
-      or first
-    drawTextRight(label, layout.width - 4, 4, typeWidth, 1, WHITE)
+    local okChart, TypeChart = pcall(require, "src.battle.TypeChart")
+    local function fullName(id)
+      if id == nil then return nil end
+      local name
+      if okChart and TypeChart and TypeChart.displayName then
+        local ok, value = pcall(TypeChart.displayName, id,
+          menu.game and menu.game.data)
+        if ok and type(value) == "string" then name = value end
+      end
+      name = tostring(name or id):upper():gsub("_TYPE$", ""):gsub("_", " ")
+      return name
+    end
+    local first = fullName(types[1]) or "---"
+    local second = fullName(types[2])
+    -- Gen 1 stores single-type Pokemon as the same type twice.
+    if second == first then second = nil end
+    local function abbr(name)
+      return short[name] or name:sub(1, 3)
+    end
+
+    local right = layout.width - 4
+    local room = right - (titleX + titleWidth + 8)
+    local candidates = {}
+    if second then
+      candidates[#candidates + 1] = first .. "/" .. second
+      candidates[#candidates + 1] = abbr(first) .. "/" .. abbr(second)
+    else
+      candidates[#candidates + 1] = first
+    end
+    candidates[#candidates + 1] = abbr(first)
+    local label = candidates[#candidates]
+    for _, text in ipairs(candidates) do
+      if Font.width(text) <= room then label = text break end
+    end
+    drawTextRight(label, right, 4, math.max(24, room), 1, WHITE)
   end
 
   local function drawCardFrame(x, y, width, height, selected, seamless)

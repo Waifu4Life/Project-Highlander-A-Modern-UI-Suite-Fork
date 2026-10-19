@@ -68,3 +68,14 @@ The Controller Rumble component (`controller_rumble`) is MIT-licensed:
 Copyright (c) 2026 masterwebx
 
 The license text is shipped next to it at `components/controller_rumble/LICENSE`.
+
+## Ish / Modern UI Suite 0.1.43 — Bag item artwork (2026-10-18)
+
+The Modern Bag's item illustrations and category tab glyphs come from Modern UI
+Suite 0.1.43. Item artwork combines selected CC0 Openmon sprites published by
+Screen Smith, new ImageGen source artwork and original symbolic pixel templates.
+The complete source, license, authorship and modification record is in
+`components/modern_bag_ui/assets/item_icons/CREDITS.md` (CC0 text alongside it),
+and the tab glyphs are described in
+`components/modern_bag_ui/assets/tab_icons/CREDITS.md`. No clearance of
+underlying Pokémon design rights is claimed.

@@ -1,3 +1,28 @@
+## [3.61.0] — Milestone build
+- Milestone covering 3.45.0 to 3.60.0: FULL SCREEN Start Menu with Custom Borders support, Party header with full type names, Modern Bag 0.1.43 item artwork, Gold/Silver/Crystal Classic borders, Screen Ratio 16:9, Game Corner options and the Decapitalize fixes.
+- RELEASE_NOTES.md rewritten for Project Highlander 3.61.0 (it still showed the old Modern UI Suite 0.1.23 notes).
+- Notices: mod.card credits now include Screen Smith (CC0 Openmon item icons) and Ish's 0.1.43 Bag artwork, matching THIRD_PARTY_NOTICES.md.
+
+## [3.60.0]
+- Modern Bag UI updated to Modern UI Suite 0.1.43's makeover (Gen 1 and Gen 2): every named Red/Blue/Yellow/Gold/Silver/Crystal item now has its own colour illustration in the detail card and next to the selected row (round capture balls, TM/HM discs coloured by the move's type), and the category tabs use the new pouch / medicine / ball / disc / key glyphs without the count marks underneath. Pocket tab names use the game's own font (small TTF labels lost strokes). The new key symbol, text spacing that follows the active font, and description handling also come from 0.1.43. Items from other mods keep the category symbol.
+- Kept from Project Highlander: the pocket-switch sound in Gen 1, the classic backpack picture, Key Items without counts, the larger pockets (255), the TM/HM and GS Ball descriptions, OPEN ON always choosing the opening tab, no CANCEL row in Gen 2 (B leaves the bag, like Gen 1) and the "L/R POCKET" button hints.
+- New files: components/modern_bag_ui/item_icons.lua, item_icon_map.lua, item_icon_spans.lua, tab_icons.lua, assets/item_icons/ (items-24.png, items-12.png, CREDITS.md, CC0-1.0.txt) and assets/tab_icons/CREDITS.md. Credits added to THIRD_PARTY_NOTICES.md.
+
+## [3.59.0]
+- FULL SCREEN Start Menu: QUIT always takes the bottom-right tile of the last page; everything else fills the tiles in order before it. Navigation skips the empty tiles in between.
+- FULL SCREEN Start Menu: names too wide for a tile use short forms: PK DEX, PKMN and PK BOX (shown as "PK Dex", "PKMN", "PK Box" with Decapitalize on). A translated name that fits is kept as is.
+- FULL SCREEN Start Menu: with the CLOCK set to DEVICE the bar shows the full date and time, e.g. "SUN 2026-10-18 23:50" ("Sun ..." with Decapitalize). The page number moves to the footer when there is more than one page. PLAY still shows "PLAY 12:34" and the page on the right.
+- Decapitalize Words (Gen 1 and Gen 2): more words stay in capitals: PKMN, OT, LV, DV, EV, IV, NPC, HUD, UI, AI, RNG, CPU, SFX, BGM, GB, GBC, SGB, DMG, VS, UFO, USA, SOS, DJ, MC (on top of HP, PP, PC, TM, HM, OK, TV, CD, ID, KO, EXP, SS, VIP, PK, MN, SEEN, OWNED). Plurals and mixed case keep their shape: TMs, HMs, QoL, DVs, EVs, IVs, PCs, NPCs, KOs.
+
+## [3.58.0]
+- Modern Start Menu: new FULL SCREEN style (now the default). START opens a whole 160x144 page in the cart's own 8x8 font and four shades: a clock bar on top (your chosen clock on the left, page on the right), 2 columns x 5 rows of tiles with a 16px icon and the full name, and an "A OK  B BACK" footer (Safari Zone: steps and balls). The selected tile is drawn dark with white text. Your START MENU COLOUR theme colours the whole page. Left/Right switch column, Up/Down move a row and wrap, more than 10 entries go onto further pages. Gen 2's "Return to title?" gets a matching YES/NO box.
+- The FULL SCREEN Start Menu is a proper full screen like the Trainer ID and Options screens: the overworld stops drawing behind it, and Custom Borders now frames it. In Gen 2, SAVE opens on top of the menu.
+- New setting: Modern Start Menu > STYLE (FULL SCREEN / PHONE). PHONE is the previous floating panel and still uses POSITION.
+- New art: components/modern_start_menu_ui/assets/start_menu_icons_16.png (16px icons: Pokedex, Poke Ball, Trainer card and PokeBox redrawn at 16px, the rest are the centres of the 24px icons). Icon Overrides use it too.
+
+## [3.57.0]
+- Modern Party UI header: "6/6" and "POKéMON" now sit together on the left, which frees the right side to spell out both types in full (GRASS/POISON instead of GRS/PSN). Works in Gen 1 and Gen 2; Gen 2 used to show only the first type and now shows both. Single-type Pokémon show one name. On a narrow 160-pixel screen the short names come back when the full ones don't fit.
+
 ## [3.56.0]
 - Game Corner: "ALL LUCKY MACHINES" is renamed "ALL LUCKY SLOT M." (same option, your setting is kept).
 

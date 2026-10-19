@@ -6,6 +6,7 @@ return function(mod, shared)
   local Bag = require("src.inventory.Bag")
   local Chrome = require("src.ui.gen2.Chrome")
   local Font = require("src.render.Font")
+  local Strings = require("src.core.Strings")
   local PackMenu = require("src.ui.gen2.PackMenu")
   pcall(function()
     local Bag = require("src.inventory.Bag")
@@ -28,6 +29,9 @@ return function(mod, shared)
   end)
 
   local ItemPcMenu = require("src.ui.gen2.ItemPcMenu")
+
+  -- Item-specific art v1; classic Pack draws directly in full colour.
+  local ItemIcons = assert(load(assert(mod:read("item_icons.lua"))))()(mod)
 
   local INK_BLACK = { 0, 0, 0 }
   local INK_WHITE = { 1, 1, 1 }
@@ -658,14 +662,14 @@ return function(mod, shared)
       setColor(BLUE_DARK)
       G.setLineWidth(2)
       chamfer("line", x + 1, y + 1, w - 2, h - 2, 3)
-      drawInk("SORT BY", x + 9, y + 6, w - 18, INK_BLACK)
+      drawInk(Strings("SORT BY"), x + 9, y + 6, w - 18, INK_BLACK)
       for i, choice in ipairs(sort.rows or SORT_CHOICES) do
         local rowY = y + 17 + (i - 1) * 14
         if i == sort.index then
           setColor(BLUE_DARK)
           G.rectangle("fill", x + 5, rowY, w - 10, 13)
         end
-        drawInk(choice.label, x + 14, rowY + 3, w - 21,
+        drawInk(Strings(choice.label), x + 14, rowY + 3, w - 21,
           i == sort.index and INK_WHITE or INK_BLACK)
         if i == sort.index then
           setColor(INK_WHITE)
@@ -727,6 +731,7 @@ return function(mod, shared)
     presentation = assert(load(assert(mod:read("gen2_presentation.lua")),
       "@" .. mod.path .. "/gen2_presentation.lua"))()(mod, {
       category = categoryFor, order = orderedBagIds, labels = SUBMENU_LABEL,
+      moneyText = moneyText,
     })
   end
 
@@ -735,20 +740,27 @@ return function(mod, shared)
   end
 
   local function drawClassicPackEnhancements(self)
+    self.modernBagItemIconZones, self.modernBagItemIcon = {}, nil
     local blocked = self.message or self.confirm or self.qtyState
       or self.submenu or self.modernBagSortMenu or self.switching
     local current = self.rows and self.rows[self.index]
     local description = current and self:description()
     if not blocked and description then
       Chrome.box(0, 12, 20, 6)
+      local inset = ItemIcons.draw(self, current.id, 8, 104, 24) and 28 or 0
       drawReadableDescription(self, current.id, description,
+        8 + inset, 104, 144 - inset, 2, INK_BLACK)
+    elseif not blocked and not current and self:isCancel() then
+      -- Cancel help without artwork v1.
+      Chrome.box(0, 12, 20, 6)
+      drawReadableDescription(self, "__cancel", Strings("Return to the previous screen."),
         8, 104, 144, 2, INK_BLACK)
     else
       clearDescriptionScroll(self)
     end
 
     local cash = moneyText(self)
-    local cashW = Font.width(cash) + 8
+    local cashW = math.min(64, math.max(32, Font.width(cash) + 8))
     setColor(BLUE_DARK)
     love.graphics.rectangle("fill", 0, 0, cashW, 16)
     drawInk(cash, 4, 4, cashW - 8, INK_WHITE)
@@ -805,7 +817,7 @@ return function(mod, shared)
     local initialId = nativePocket and nativePocket.id or "ITEM"
     if initialId == "ITEM" then initialId = "ITEMS" end
     local specialPack = type(opts) == "table"
-      and (opts.pocket or opts.give or opts.tutorial)
+      and (opts.pocket or opts.give or opts.battle or opts.tutorial)
     if not specialPack and persistent and persistent.pocket
         and pocketIndex[persistent.pocket] then
       initialId = persistent.pocket
@@ -984,6 +996,8 @@ return function(mod, shared)
         love.graphics.translate(panelX, 0)
         love.graphics.push("all")
         if love.graphics.setScissor then
+          -- Keep stock content inside its cartridge-sized panel. In
+          -- particular, the native one-line description is unbounded.
           setLogicalScissor(0, 0, 160, 144)
         end
         local ok, result = pcall(nativePanel, self)
@@ -1066,7 +1080,7 @@ return function(mod, shared)
     G.rectangle("fill", x, y, w, h)
     setColor({ 0.52, 0.88, 0.64 })
     G.rectangle("line", x + 1.5, y + 1.5, w - 3, h - 3)
-    if title then drawInk(title, x + 6, y + 5, w - 12,
+    if title then drawInk(Strings(title), x + 6, y + 5, w - 12,
       { 0.55, 0.95, 0.68 }) end
     local lineHeight = h <= 32 and 8 or 10
     local maxLines = math.max(1, math.floor((h - 14) / lineHeight))
@@ -1122,7 +1136,7 @@ return function(mod, shared)
     G.rectangle("fill", 0, 0, width, 16)
     setColor({ 0.52, 0.88, 0.64 })
     G.rectangle("fill", 0, 14, width, 2)
-    drawInk("ITEM PC", 5, 4, 80, INK_WHITE)
+    drawInk(Strings("ITEM PC"), 5, 4, 80, INK_WHITE)
     drawInkRight(tostring(self.phase or "menu"):upper(), width - 5, 4, 64,
       INK_WHITE)
 
@@ -1143,7 +1157,7 @@ return function(mod, shared)
               color)
           end
         elseif i == self:listTotal() then
-          drawInk("CANCEL", 12, y + 5, 100, color)
+          drawInk(Strings("CANCEL"), 12, y + 5, 100, color)
         end
       end
       local row = self.rows and self.rows[self.listIndex]

@@ -532,6 +532,27 @@ return function(mod, icons)
     return selectedOption("clock", VALID_CLOCKS, "play")
   end
 
+  -- STYLE: FULL SCREEN is a 160x144 page of its own (2 x 5 tiles, icon and
+  -- name, clock bar on top), drawn like the Title, Trainer ID and Options
+  -- screens so Custom Borders frame it. PHONE is the original floating panel.
+  local VALID_STYLES = { full = true, phone = true }
+  local function selectedStyle()
+    return selectedOption("style", VALID_STYLES, "full")
+  end
+
+  local function fullActive(menu)
+    return selectedStyle() == "full"
+  end
+
+  -- Keep the stack's view of this menu in step with the STYLE row, which can
+  -- change while START is open underneath the Options screen.
+  local function syncStyle(menu)
+    local full = fullActive(menu)
+    menu.highlanderStartFull = full or nil
+    menu.isOpaque = full and true or menu.classicStartMenuOpaque
+    return full
+  end
+
   local function layoutFor(menu)
     local width, height = SCREEN_W, SCREEN_H
     -- The optional final HUD pass is already outside the stack renderer; it
@@ -599,6 +620,12 @@ return function(mod, icons)
   -- map palette and extend its full-screen base zone; otherwise the renderer's
   -- palette scissors would clip the lower rows at native y=144.
   local function sgbPalettes(menu, game)
+    if menu and menu.highlanderStartFull then
+      local colors = THEME_PALETTES[selectedTheme()]
+      if colors then
+        return { { colors = colors, x = 0, y = 0, w = SCREEN_W, h = SCREEN_H } }
+      end
+    end
     local layout = layoutFor(menu)
     local states = game and game.stack and game.stack.states or {}
     local menuIndex
@@ -898,6 +925,393 @@ return function(mod, icons)
     menu.scroll = math.floor((index - 1) / PAGE_SIZE) * PAGE_SIZE
   end
 
+  ---------------------------------------------------------------------------
+  -- FULL SCREEN style
+  --
+  -- A whole 160x144 page, in the game's own 8x8 font and four shades:
+  --   rows 0-15    clock bar (selected clock on the left, page on the right)
+  --   rows 17-134  2 columns x 5 rows of 77x22 tiles: 16px icon + name
+  --   rows 136-143 button hints (Safari Zone: steps and balls)
+  -- Gen 1 draws plain grays and hands the theme to the SGB palette pass
+  -- (sgbPalettes above); Gen 2 has no such pass, so the theme colours are
+  -- drawn directly.
+  ---------------------------------------------------------------------------
+  local FULL_COLUMNS, FULL_PAGE = 2, 10
+  local FULL_TILE_W, FULL_TILE_H = 77, 22
+  local FULL_TILE_X = { 2, 81 }
+  local FULL_TILE_Y, FULL_ROW_STEP = 17, 24
+  local FULL_BAR_H, FULL_FOOTER_Y = 16, 136
+  local FULL_ICON = 16
+  local FULL_LABEL_X = 20
+  local fullAtlas, fullQuads, fullAtlasFailed
+  local fullPalette -- set per frame: nil = grays (Gen 1), else theme colours
+  local maskShader, alphaShader
+
+  local function shadeRGB(shade)
+    if fullPalette then
+      local c = (shade >= 0.9 and fullPalette[1])
+        or (shade >= 0.6 and fullPalette[2])
+        or (shade >= 0.2 and fullPalette[3])
+        or fullPalette[4]
+      return c[1] / 255, c[2] / 255, c[3] / 255
+    end
+    return shade, shade, shade
+  end
+
+  local function ffill(x, y, w, h, shade)
+    local r, g, b = shadeRGB(shade)
+    love.graphics.setColor(r, g, b, 1)
+    love.graphics.rectangle("fill", math.floor(x), math.floor(y),
+      math.floor(w), math.floor(h))
+  end
+
+  -- Font tiles and the icon strip are black on transparent. Draw them as a
+  -- mask in any shade, so white text sits on dark tiles. The tile mask also
+  -- ignores light pixels, which keeps a 2bpp sheet's paper out of the way.
+  -- A TTF translation font is white coverage, so it takes the alpha path.
+  local function inkShader()
+    local ttf = Font.ttfActive and Font.ttfActive()
+    if not (love.graphics and love.graphics.newShader) then return nil end
+    if ttf then
+      if alphaShader == nil then
+        local ok, shader = pcall(love.graphics.newShader, [[
+          vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+            vec4 p = Texel(tex, tc);
+            return vec4(color.rgb, p.a * color.a);
+          }
+        ]])
+        alphaShader = ok and shader or false
+      end
+      return alphaShader or nil
+    end
+    if maskShader == nil then
+      local ok, shader = pcall(love.graphics.newShader, [[
+        vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+          vec4 p = Texel(tex, tc);
+          float m = p.r < 0.5 ? p.a : 0.0;
+          return vec4(color.rgb, m * color.a);
+        }
+      ]])
+      maskShader = ok and shader or false
+    end
+    return maskShader or nil
+  end
+
+  local function withInk(shade, fn)
+    local shader = inkShader()
+    love.graphics.push("all")
+    if shader then
+      love.graphics.setShader(shader)
+      local r, g, b = shadeRGB(shade)
+      love.graphics.setColor(r, g, b, 1)
+    else
+      love.graphics.setColor(0, 0, 0, 1)
+    end
+    local ok, result = pcall(fn)
+    love.graphics.pop()
+    return ok and result or 0
+  end
+
+  local function fitFont(text, width)
+    text = tostring(text or "")
+    if Font.width(text) <= width then return text end
+    if Font.split and Font.spansFitting then
+      local spans = Font.split(text)
+      local count = Font.spansFitting(spans, width - Font.width("."))
+      if count < 1 then return "" end
+      return text:sub(1, spans[count].to) .. "."
+    end
+    while #text > 1 and Font.width(text .. ".") > width do
+      text = text:sub(1, -2)
+    end
+    return text .. "."
+  end
+
+  local function fullText(text, x, y, shade, maxWidth)
+    if maxWidth then text = fitFont(text, maxWidth) end
+    return withInk(shade, function()
+      return Font.draw(text, math.floor(x), math.floor(y))
+    end)
+  end
+
+  -- Clock text such as "SUN 23:11". The colon is drawn as two pixel dots:
+  -- Gen 1 and Gen 2 spell it differently in their charmaps.
+  local function drawClock(text, x, y, shade)
+    local pen = math.floor(x)
+    for part, colon in tostring(text):gmatch("([^:]*)(:?)") do
+      if part ~= "" then pen = pen + fullText(part, pen, y, shade) end
+      if colon ~= "" then
+        ffill(pen + 1, y + 2, 2, 2, shade)
+        ffill(pen + 1, y + 5, 2, 2, shade)
+        pen = pen + 4
+      end
+      if part == "" and colon == "" then break end
+    end
+    return pen - math.floor(x)
+  end
+
+  local function loadFullAtlas()
+    if fullAtlas and fullQuads then return true end
+    if fullAtlasFailed then return false end
+    local asset = icons.fullAsset or "assets/start_menu_icons_16.png"
+    local ok, atlas = pcall(function() return mod.assets:image(asset) end)
+    if not ok or not atlas then
+      fullAtlasFailed = true
+      if mod.log and mod.log.error then
+        mod.log:error("could not load %s: %s", asset, tostring(atlas))
+      end
+      return false
+    end
+    if atlas.setFilter then atlas:setFilter("nearest", "nearest") end
+    local width, height = atlas:getDimensions()
+    local quads = {}
+    for id, frame in pairs(icons.frames or {}) do
+      local sx = frame * FULL_ICON
+      if sx + FULL_ICON <= width and height >= FULL_ICON then
+        quads[id] = love.graphics.newQuad(sx, 0, FULL_ICON, FULL_ICON,
+          width, height)
+      end
+    end
+    fullAtlas, fullQuads = atlas, quads
+    return true
+  end
+
+  local function drawFullIcon(id, x, y, shade)
+    if loadFullAtlas() then
+      local quad = fullQuads[id] or fullQuads.generic
+      if quad then
+        withInk(shade, function()
+          love.graphics.draw(fullAtlas, quad, math.floor(x), math.floor(y))
+        end)
+        return
+      end
+    end
+    ffill(x + 2, y + 2, FULL_ICON - 4, FULL_ICON - 4, shade)
+  end
+
+  -- Short names for the built-ins that don't fit beside the icon. Only used
+  -- when the full name is too wide, so a translation that fits is kept.
+  local FULL_SHORT = { pokedex = "PK DEX", party = "PKMN", pokebox = "PK BOX" }
+
+  local function fullLabel(item, game, width)
+    local label = type(item) == "table" and item.label or nil
+    local id = detectedId(item, game)
+    if (label == nil or label == "" or tostring(label):upper() == "STATUS")
+        and id == "trainer" then
+      local player = game and game.save and game.save.player
+      if player and player.name and player.name ~= "" then
+        return tostring(player.name)
+      end
+    end
+    label = itemLabel(item)
+    if width and FULL_SHORT[id] and Font.width(label) > width then
+      return FULL_SHORT[id]
+    end
+    return label
+  end
+
+  -- Slot layout: entries fill the tiles in order, except QUIT, which always
+  -- takes the bottom-right tile of the last page.
+  local function fullSlots(menu)
+    local count = #menu.items
+    local quitIndex
+    for i = count, 1, -1 do
+      if detectedId(menu.items[i], menu.game) == "quit" then
+        quitIndex = i
+        break
+      end
+    end
+    local others = {}
+    for i = 1, count do
+      if i ~= quitIndex then others[#others + 1] = i end
+    end
+    local used = #others + (quitIndex and 1 or 0)
+    local total = math.max(1, math.ceil(used / FULL_PAGE)) * FULL_PAGE
+    local slots, at = {}, {}
+    for slot = 1, total do slots[slot] = false end
+    for slot, index in ipairs(others) do
+      slots[slot], at[index] = index, slot
+    end
+    if quitIndex then slots[total], at[quitIndex] = quitIndex, total end
+    return slots, at, total
+  end
+
+  local function fullTileRect(slot)
+    local col = (slot - 1) % FULL_COLUMNS
+    local row = math.floor((slot - 1) / FULL_COLUMNS)
+    return FULL_TILE_X[col + 1], FULL_TILE_Y + row * FULL_ROW_STEP,
+      FULL_TILE_W, FULL_TILE_H
+  end
+
+  local function drawFullTile(menu, item, slot, selected)
+    local x, y, w, h = fullTileRect(slot)
+    -- 1px frame with clipped corners, like the cartridge's own boxes
+    ffill(x + 1, y, w - 2, 1, selected and INK or DARK)
+    ffill(x + 1, y + h - 1, w - 2, 1, selected and INK or DARK)
+    ffill(x, y + 1, 1, h - 2, selected and INK or DARK)
+    ffill(x + w - 1, y + 1, 1, h - 2, selected and INK or DARK)
+    ffill(x + 1, y + 1, w - 2, h - 2, selected and DARK or WHITE)
+    if selected then
+      -- raised face: a lighter line under the top edge
+      ffill(x + 2, y + 1, w - 4, 1, LIGHT)
+    end
+    local ink = selected and WHITE or INK
+    drawFullIcon(normalizedId(item, menu.game), x + 2, y + 3, ink)
+    local room = w - FULL_LABEL_X - 2
+    local label = fullLabel(item, menu.game, room)
+    fullText(label, x + FULL_LABEL_X, y + 7, ink, room)
+  end
+
+  local function fullSafariText(menu)
+    local game = menu.game
+    local ow = game and game.overworld
+    if not (game and game.save and game.save.safari and ow and ow.map
+        and ow.inSafariStepZone and ow:inSafariStepZone()) then
+      return nil
+    end
+    local steps = math.max(0, math.floor(game.save.safari.steps or 0))
+    local balls = math.max(0, math.floor(game.save.safari.balls or 0))
+    local long = ("STEP %d/500 BALL %d"):format(steps, balls)
+    if Font.width(long) <= SCREEN_W - 4 then return long end
+    return ("%d/500  %d"):format(steps, balls)
+  end
+
+  local function drawFullConfirm(menu)
+    if not (menu.modernStartGen2 and menu.phase == "confirm") then return end
+    local x, y, w, h = 16, 44, 128, 56
+    ffill(x, y, w, h, INK)
+    ffill(x + 1, y + 1, w - 2, h - 2, WHITE)
+    ffill(x + 2, y + 2, w - 4, 1, DARK)
+    ffill(x + 2, y + h - 3, w - 4, 1, DARK)
+    local line1, line2 = Strings("RETURN TO"), Strings("TITLE?")
+    fullText(line1, x + math.floor((w - Font.width(line1)) / 2), y + 8, INK)
+    fullText(line2, x + math.floor((w - Font.width(line2)) / 2), y + 18, INK)
+    local yes = menu.confirmChoice == 1
+    local function button(label, bx, on)
+      ffill(bx, y + 32, 40, 14, INK)
+      ffill(bx + 1, y + 33, 38, 12, on and DARK or WHITE)
+      label = Strings(label)
+      fullText(label, bx + math.floor((40 - Font.width(label)) / 2), y + 35,
+        on and WHITE or INK)
+    end
+    button("YES", x + 16, yes)
+    button("NO", x + w - 56, not yes)
+  end
+
+  -- Header clock. DEVICE: "SUN 2026-10-18 23:50" (Decapitalize shows "Sun").
+  -- PLAY: "PLAY 12:34".
+  local function fullClockText(menu, deviceTime)
+    if selectedClock() == "device" then
+      local now = resolvedDeviceTime(deviceTime)
+      if type(now) == "table" and now.year and now.month and now.day then
+        return ("%s %04d-%02d-%02d %02d:%02d"):format(
+          WEEKDAY_LABELS[tonumber(now.wday)] or "NOW",
+          tonumber(now.year) or 0, tonumber(now.month) or 0,
+          tonumber(now.day) or 0, (tonumber(now.hour) or 0) % 24,
+          (tonumber(now.min) or 0) % 60)
+      end
+    end
+    return clockLabelFor(menu, deviceTime)
+  end
+
+  local function drawFull(menu)
+    fullPalette = menu.modernStartGen2 and THEME_PALETTES[selectedTheme()]
+      or nil
+    love.graphics.push("all")
+    love.graphics.setShader()
+    -- paper with a faint 8px dot grid
+    ffill(0, 0, SCREEN_W, SCREEN_H, WHITE)
+    for y = FULL_BAR_H + 4, FULL_FOOTER_Y - 4, 8 do
+      for x = 4, SCREEN_W - 1, 8 do ffill(x, y, 1, 1, LIGHT) end
+    end
+
+    -- clock bar
+    ffill(0, 0, SCREEN_W, FULL_BAR_H - 2, DARK)
+    ffill(0, FULL_BAR_H - 2, SCREEN_W, 2, LIGHT)
+    local count = #menu.items
+    local index = currentIndex(menu)
+    local slots, at, total = fullSlots(menu)
+    local pages = math.max(1, math.floor(total / FULL_PAGE))
+    local current = at[index] or 1
+    local page = math.floor((current - 1) / FULL_PAGE) + 1
+    local device = selectedClock() == "device"
+    drawClock(fullClockText(menu), device and 2 or 4, 4, WHITE)
+    if not device then
+      -- the full date fills the bar, so with it the page moves to the footer
+      local pageText = ("%d/%d"):format(page, pages)
+      fullText(pageText, SCREEN_W - 4 - Font.width(pageText), 4, WHITE)
+    end
+
+    -- tiles
+    if count == 0 then
+      local empty = Strings("NO MENU ITEMS")
+      fullText(empty, math.floor((SCREEN_W - Font.width(empty)) / 2), 68, INK)
+    else
+      local first = (page - 1) * FULL_PAGE
+      for slot = 1, FULL_PAGE do
+        local itemIndex = slots[first + slot]
+        local item = itemIndex and menu.items[itemIndex]
+        if item then drawFullTile(menu, item, slot, itemIndex == index) end
+      end
+    end
+
+    -- footer
+    ffill(0, FULL_FOOTER_Y, SCREEN_W, SCREEN_H - FULL_FOOTER_Y, DARK)
+    local hint = fullSafariText(menu) or Strings("A OK  B BACK")
+    if pages > 1 and not fullSafariText(menu) then
+      hint = Strings("A OK B BACK") .. " " .. page .. "/" .. pages
+    end
+    hint = fitFont(hint, SCREEN_W - 4)
+    fullText(hint, math.floor((SCREEN_W - Font.width(hint)) / 2),
+      FULL_FOOTER_Y, WHITE)
+
+    drawFullConfirm(menu)
+    love.graphics.pop()
+    fullPalette = nil
+  end
+
+  -- Two columns: Left/Right switch column on the same row (or the nearest
+  -- filled row on that page), Up/Down move a row in the same column and wrap
+  -- round all pages, skipping empty tiles.
+  local function moveFull(menu, dx, dy)
+    if #menu.items == 0 then return end
+    local index = currentIndex(menu)
+    local slots, at, total = fullSlots(menu)
+    local slot = at[index] or 1
+    local rows = math.floor(total / FULL_COLUMNS)
+    local col = (slot - 1) % FULL_COLUMNS
+    local row = math.floor((slot - 1) / FULL_COLUMNS)
+    local target
+    if dy ~= 0 then
+      for step = 1, rows - 1 do
+        local r = ((row + dy * step) % rows + rows) % rows
+        local hit = slots[r * FULL_COLUMNS + col + 1]
+        if hit then target = hit break end
+      end
+    elseif dx ~= 0 then
+      local other = 1 - col
+      local direct = slots[row * FULL_COLUMNS + other + 1]
+      if direct then
+        target = direct
+      else
+        local perPage = FULL_PAGE / FULL_COLUMNS
+        local top = math.floor(row / perPage) * perPage
+        for dist = 1, perPage - 1 do
+          for _, r in ipairs({ row - dist, row + dist }) do
+            if not target and r >= top and r < top + perPage then
+              target = slots[r * FULL_COLUMNS + other + 1] or nil
+            end
+          end
+          if target then break end
+        end
+      end
+    end
+    if target and target ~= index then
+      setIndex(menu, target)
+      menu.modernStartElapsed = 0
+    end
+  end
+
   local function update(menu, dt)
     menu.modernStartElapsed = (menu.modernStartElapsed or 0) + (dt or 0)
     if menu.modernStartGen2 and menu.phase == "confirm" then
@@ -906,7 +1320,16 @@ return function(mod, icons)
       return
     end
     local input = menu.game.input
-    if input:wasPressed("left") then
+    local full = syncStyle(menu)
+    if full and input:wasPressed("left") then
+      moveFull(menu, -1, 0)
+    elseif full and input:wasPressed("right") then
+      moveFull(menu, 1, 0)
+    elseif full and input:wasPressed("up") then
+      moveFull(menu, 0, -1)
+    elseif full and input:wasPressed("down") then
+      moveFull(menu, 0, 1)
+    elseif input:wasPressed("left") then
       move(menu, -1)
     elseif input:wasPressed("right") then
       move(menu, 1)
@@ -962,6 +1385,14 @@ return function(mod, icons)
   end
 
   local function draw(menu)
+    if syncStyle(menu) then
+      -- Never from the wide HUD pass: the full page lives on the ordinary
+      -- 160x144 canvas, where Custom Borders can frame it.
+      if menu.modernStartHudPass then return end
+      menu.modernStartLastWideWidth = SCREEN_W
+      drawFull(menu)
+      return
+    end
     local renderer = menu.game and menu.game.renderer
     -- Do not call setUIAnchor here. The renderer owns screen-position modes;
     -- retaining its existing centred/top/high placement prevents START from
@@ -1021,6 +1452,19 @@ return function(mod, icons)
       and type(menu.choose) == "function" and type(menu.close) == "function"
     menu.modernStartMenuUI = true
     menu.modernStartElapsed = 0
+    menu.classicStartMenuOpaque = menu.isOpaque
+    -- Gen 2 asks an opaque base screen to paint the window around the
+    -- 160x144 page; keep that surround black like the other bordered screens.
+    if menu.drawWidescreen == nil then
+      menu.drawWidescreen = function(_, w, h)
+        love.graphics.push("all")
+        love.graphics.setShader()
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.rectangle("fill", 0, 0, w or love.graphics.getWidth(),
+          h or love.graphics.getHeight())
+        love.graphics.pop()
+      end
+    end
     menu.update = update
     menu.draw = draw
     menu.uiSize = uiSize
@@ -1035,6 +1479,7 @@ return function(mod, icons)
     else
       menu.index, menu.scroll = 0, 0
     end
+    syncStyle(menu)
     return menu
   end
 
@@ -1060,6 +1505,10 @@ return function(mod, icons)
   Presentation.themeFor = selectedTheme
   Presentation.positionFor = selectedPosition
   Presentation.clockFor = selectedClock
+  Presentation.styleFor = selectedStyle
+  Presentation.isFull = function(menu)
+    return type(menu) == "table" and menu.highlanderStartFull == true
+  end
   Presentation.clockTextFor = clockTextFor
   Presentation.clockLabelFor = clockLabelFor
   Presentation.themePalettes = THEME_PALETTES

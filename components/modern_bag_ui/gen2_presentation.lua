@@ -17,6 +17,7 @@ return function(mod, source)
   local owner
   local loaded=assert(load(assert(mod:read('screen.lua')),'@'..mod.path..'/screen.lua'))()(mod,{
     presentationSize=function(state) return state.width,state.height end,
+    moneyText=function(state) return (source.moneyText and source.moneyText(state.nativeBag)) or '¥0' end,
     categoryFor=function(_,id) return category[source.category(owner,id)] or 'items' end,
     capacity=function(state)
       local used=#source.order(state.nativeBag)
@@ -148,7 +149,8 @@ return function(mod, source)
     local canvas=menu.modernGen2BagCanvas
     if not canvas or canvas:getWidth()~=l.width or canvas:getHeight()~=l.canvasHeight then
       if canvas and canvas.release then canvas:release() end
-      canvas=G.newCanvas(l.width,l.canvasHeight);canvas:setFilter('nearest','nearest')
+      -- Cartridge pixels must stay 1:1 on fractional-DPI mobile displays.
+      canvas=G.newCanvas(l.width,l.canvasHeight,{dpiscale=1});canvas:setFilter('nearest','nearest')
       menu.modernGen2BagCanvas=canvas
     end
     local previous=G.getCanvas()
@@ -194,11 +196,14 @@ return function(mod, source)
       zone.colors=zone.colors or paper
       zones[#zones+1]=zone
     end
+    -- Item art is drawn in full colour: its rows opt out of the palette pass.
+    for _,zone in ipairs(state.modernBagItemIconZones or {}) do zones[#zones+1]=zone end
     G.setCanvas(previous);G.pop()
     G.push('all');G.setColor(1,1,1,1)
     local shader=Palette.shader();G.setShader(shader)
     for _,zone in ipairs(zones) do
-      if shader then Palette.sendColors(shader,zone.colors) end
+      G.setShader(zone.colors ~= false and shader or nil)
+      if shader and zone.colors ~= false then Palette.sendColors(shader,zone.colors) end
       G.draw(canvas,G.newQuad(zone.x,zone.y,zone.w,zone.h,l.width,l.canvasHeight),zone.x,zone.y)
     end
     G.pop()

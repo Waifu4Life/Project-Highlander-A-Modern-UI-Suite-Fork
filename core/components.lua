@@ -1,3 +1,5 @@
+-- Every component's folder under components/ is `folder` (or its id).
+-- Ids stay as they were: saved settings, screen ids and other mods use them.
 return {
   {
     id = "modern_start_menu_ui",
@@ -59,10 +61,13 @@ return {
   },
   {
     id = "battle_info_hud",
+    folder = "battle_screen",
+    -- No ON/OFF of its own: every option on its page stands alone.
+    alwaysOn = true,
     key = "battle_hud",
     aspectRatio = true,
-    name = "Battle Info HUD",
-    short = "BATTLE HUD",
+    name = "Battle Screen",
+    short = "BATTLE SCREEN",
     version = "0.10.2.5",
     installOrder = 2,
     enabledOption = "enabled",
@@ -70,9 +75,12 @@ return {
   },
   {
     id = "typed_move_colors",
+    folder = "move_colors",
+    -- No ON/OFF of its own: every option on its page stands alone.
+    alwaysOn = true,
     key = "move_colors",
-    name = "Typed Move Colors",
-    short = "MOVE COLORS",
+    name = "Move Colours (Battle Screen)",
+    short = "MOVE COLOURS",
     version = "0.5.2.1",
     installOrder = 4,
     files = { "main.lua", "ui.lua", "gen2.lua", "colored_pokeballs.lua",
@@ -80,9 +88,12 @@ return {
   },
   {
     id = "unlimited_pp",
+    folder = "other_settings",
+    -- No ON/OFF of its own: every option on its page stands alone.
+    alwaysOn = true,
     key = "qol",
-    name = "Quality of Life",
-    short = "QOL",
+    name = "Other Settings",
+    short = "OTHER SETTINGS",
     version = "0.2.0",
     installOrder = 8,
     defaultEnabled = true,
@@ -99,27 +110,22 @@ return {
   },
   {
     id = "controller_rumble",
+    folder = "rumble",
+    -- No ON/OFF of its own: every option on its page stands alone.
+    alwaysOn = true,
     key = "rumble",
-    name = "Controller Rumble",
+    name = "Rumble",
     short = "CONT.RUMBLE",
-    version = "1.0.3",
+    version = "2.0.0",
     installOrder = 9,
     defaultEnabled = true,
     bulkUI = false,
-    files = {
-      "main.lua",
-      "lib/Settings.lua",
-      "lib/Rumble.lua",
-      "lib/ShakeSync.lua",
-      "lib/Extras.lua",
-      "lib/MenuRumble.lua",
-      "lib/HpRumble.lua",
-      "lib/ExtraEvents.lua",
-      "lib/OptionsScreen.lua",
-    },
+    files = { "main.lua" },
   },
   {
     id = "pokemoves",
+    -- No ON/OFF of its own: every option on its page stands alone.
+    alwaysOn = true,
     key = "pokemoves",
     name = "PokeMoves",
     short = "POKEMOVES",
@@ -171,6 +177,7 @@ return {
   },
   {
     id = "pokeball_shortcuts",
+    folder = "shortcuts",
     key = "ballshort",
     name = "Shortcuts",
     short = "SHORTCUTS",
@@ -180,7 +187,7 @@ return {
     enabledLabel = "BALL SHORTCUTS",
     version = "1.1.0",
     installOrder = 15,
-    defaultEnabled = false,
+    defaultEnabled = true,
     bulkUI = false,
     files = { "main.lua" },
     rowOrder = {
@@ -190,13 +197,14 @@ return {
   },
   {
     id = "custom_letterbox",
+    folder = "custom_borders",
     key = "letterbox",
     name = "Custom Borders",
     short = "CUSTOM BORDERS",
     fullLabel = "CUSTOM BORDERS",
     version = "0.3.0",
     installOrder = 14,
-    defaultEnabled = false,
+    defaultEnabled = true,
     bulkUI = false,
     files = { "main.lua", "screen_ratio.lua" },
     assets = {

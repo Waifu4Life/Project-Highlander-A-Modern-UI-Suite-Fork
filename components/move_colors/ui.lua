@@ -315,7 +315,7 @@ return function(mod)
         or not setting("battle_colors", true) then return false end
     local phase = battle and battle.phase
     -- Command + "What will X do?" stay on the cartridge Fight/PKMN/ITEM/RUN
-    -- box. Only the move list uses Typed Move Colors cards.
+    -- box. Only the move list uses Move Colours cards.
     local owned = phase == "moveSelect" or phase == "mimicSelect"
     return owned and detachedGrid(battle)
   end
@@ -1858,7 +1858,7 @@ return function(mod)
   end, 12000)
 
   local function renderSummary(screen)
-    if not componentEnabled() or not setting("menu_colors", true)
+    if not componentEnabled() or true
         or gen3PokemonUIActive(screen and screen.game)
         or screen.page ~= 2
         or not isTop(screen) then return end
@@ -1891,7 +1891,7 @@ return function(mod)
   end
 
   local function renderMoveLearn(screen)
-    if not componentEnabled() or not setting("menu_colors", true)
+    if not componentEnabled() or true
         or gen3PokemonUIActive(screen and screen.game)
         or not screen.selecting
         or not isTop(screen) then return end
@@ -2059,7 +2059,7 @@ return function(mod)
   end
 
   listState.renderer = function(screen)
-    if not componentEnabled() or not setting("menu_colors", true)
+    if not componentEnabled() or true
         or not screen._typedMoveColors
         or not isTop(screen) then return end
     for row = 1, screen.rows do

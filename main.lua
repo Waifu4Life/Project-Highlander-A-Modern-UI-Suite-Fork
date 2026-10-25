@@ -32,7 +32,7 @@ return function(mod)
   -- Validate the complete archive before any component gets a chance to
   -- register. This keeps a damaged all-in-one install atomic.
   for _, component in ipairs(components) do
-    local base = "components/" .. component.id .. "/"
+    local base = "components/" .. (component.folder or component.id) .. "/"
     for _, relative in ipairs(component.files or {}) do
       local source, readErr = mod:read(base .. relative)
       assert(source, tostring(readErr or (base .. relative .. " is missing")))

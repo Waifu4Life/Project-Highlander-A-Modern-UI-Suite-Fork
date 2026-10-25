@@ -3,7 +3,7 @@
 return function(mod)
   mod.options:define({
     { key = "box_exclusive", label = "BOX EXCLUSIVE",
-      type = "toggle", default = false },
+      type = "toggle", default = true },
   })
   local GameVersion = require("src.core.GameVersion")
   if type(GameVersion.generation) == "function"

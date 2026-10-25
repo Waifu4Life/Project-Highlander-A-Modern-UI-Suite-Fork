@@ -607,7 +607,13 @@ return function(mod)
           ix + iw - 7, iy + 23, ink)
         screen.typedMoveColorsInfoMode = "full"
       else
+        -- Widest spacing that fits: a double-digit PP (19/20) used to be cut
+        -- to "19/." at the right edge.
         local line = ("POWER %s  PP %s"):format(power, ppText)
+        for _, form in ipairs({ "POWER %s PP %s", "POWER %s PP%s" }) do
+          if Font.width(line) <= iw - 14 then break end
+          line = form:format(power, ppText)
+        end
         local lineWidth
         if ppText == "∞" then
           local prefix = line:sub(1,-4)
@@ -905,7 +911,7 @@ return function(mod)
     menu.typedMoveColorsGeneration = 2
     menu.drawPanel = function(self)
       nativePanel(self)
-      if not componentEnabled() or option("menu_colors", true) == false
+      if not componentEnabled() or true
           or not self.moveDetail then return end
       local G = love.graphics
       local width = self.modernPartyWideWidth or 160

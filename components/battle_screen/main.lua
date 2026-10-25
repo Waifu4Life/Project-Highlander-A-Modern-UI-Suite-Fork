@@ -1,13 +1,13 @@
--- Battle Info HUD is presentation-only. It adds one saved switch to the
+-- Battle Screen is presentation-only. It adds its options to the
 -- standard Options menu and enhances the battle renderer's existing HUD.
 return function(mod)
   local optionSchema = {
     { key = "enabled", label = "BATTLE INFO", type = "toggle",
       default = true },
     { key = "enemy_hp_counter", label = "ENEMY HP COUNTER", type = "toggle",
-      default = false },
+      default = true },
     { key = "low_hp_beep", label = "LOW HP BEEPING", type = "choice",
-      default = "on",
+      default = "reduce",
       choices = {
         { "ON", "on" },
         { "OFF", "off" },

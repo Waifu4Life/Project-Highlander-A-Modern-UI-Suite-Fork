@@ -5,8 +5,8 @@ return function(mod, setOption)
   P.defaults = {
     { key = "all", label = "ALL ITEMS" },
     { key = "items", label = "ITEMS" },
-    { key = "medicine", label = "MEDICINE" },
     { key = "balls", label = "BALLS" },
+    { key = "medicine", label = "MEDICINE" },
     { key = "machines", label = "TMs/HMs" },
     { key = "key", label = "KEY ITEMS" },
   }
@@ -28,13 +28,17 @@ return function(mod, setOption)
       end
     end
     local saved = mod.options:get("pocket_order")
+    -- Until the player reorders them: Items, Balls, Medicine, TMs/HMs, Key.
+    if type(saved) ~= "table" or #saved == 0 then
+      saved = { "all", "items", "balls", "medicine", "machines", "key" }
+    end
     if type(saved) == "table" then for _, key in ipairs(saved) do add(key) end end
     for _, pocket in ipairs(source) do add(pocket.key) end
     return out
   end
 
   function P.opening(pockets)
-    local wanted = mod.options:get("open_on") or "all"
+    local wanted = mod.options:get("open_on") or "medicine"
     local items
     for index, pocket in ipairs(pockets) do
       if pocket.key == wanted then return index end
@@ -48,7 +52,7 @@ return function(mod, setOption)
     local version = require("src.core.GameVersion")
     if version.generation and version.generation() == 2
         and mod.options:get("skin") == "classic_pocket" then
-      source = { P.defaults[2], P.defaults[4], P.defaults[6], P.defaults[5] }
+      source = { P.defaults[2], P.defaults[3], P.defaults[6], P.defaults[5] }
     end
     local pockets = P.ordered(source)
     local menu

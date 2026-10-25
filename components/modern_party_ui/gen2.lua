@@ -22,7 +22,7 @@ return function(mod)
   local MODAL = { 0.53, 0.62, 0.88 }
   local MODAL_DARK = { 0.16, 0.19, 0.38 }
 
-  -- Exact Gen 1 card faces, shared with Typed Move Colors and Modern Pokedex.
+  -- Exact Gen 1 card faces, shared with Move Colours and Modern Pokedex.
   local TYPE_COLORS = {
     normal = { 144 / 255, 152 / 255, 162 / 255 },
     fighting = { 206 / 255, 63 / 255, 107 / 255 },

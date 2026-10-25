@@ -42,6 +42,13 @@ return function(mod)
     key = "analog_right", label = "RIGHT ANALOG FOR D-PAD", type = "toggle",
     default = false,
   }
+  -- On: SELECT + A / B / X / Y / LB run the game's display shortcuts
+  -- (COLORS, TILT, ...) like they do without Full Control. Off: those
+  -- buttons act normally while SELECT is held.
+  schema[#schema + 1] = {
+    key = "select_combos", label = "SELECT VISUAL COMBOS", type = "toggle",
+    default = true,
+  }
 
   mod.options:define(schema)
 
@@ -340,6 +347,20 @@ return function(mod)
       self._suiteLastDevice = "pad"
       if self.captureArmed and type(origPad) == "function" then
         pcall(origPad, self, joystick, button)
+      end
+      if mod.options:get("select_combos") ~= false then
+        local handled = false
+        pcall(function()
+          local Input = require("src.core.Input")
+          local GM = require("src.core.GamepadMap")
+          local held = Input.isDown and Input.isDown(game.input or Input, "select")
+          local digit = held and GM.displayChordDigit and GM.displayChordDigit(button)
+          if digit and type(game.keypressed) == "function" then
+            game:keypressed(digit)
+            handled = true
+          end
+        end)
+        if handled then return end
       end
       local extra = extras.pad[button]
       if extra and extra:sub(1, 4) == "item" then

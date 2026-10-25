@@ -2,6 +2,16 @@
 -- caught markers, so the useful addition here is the one its cartridge HUD
 -- omits: keep the level visible beside a three-letter status condition.
 return function(mod)
+  -- Gen 2 blanks the attacker's HUD while its move animation plays
+  -- (BattleAnimClearHud), so the foe's HP box vanished on every enemy
+  -- attack. Keep both HUDs on screen the whole time.
+  pcall(function()
+    local BS = require("src.ui.gen2.BattleState")
+    if type(BS) == "table" and type(BS.hudCleared) == "function" and not BS._phKeepHud then
+      BS._phKeepHud = true
+      BS.hudCleared = function() return false end
+    end
+  end)
   local Chrome = require("src.ui.gen2.Chrome")
   local Font = require("src.render.Font")
   if not mod._suiteExpGainHook then
@@ -171,7 +181,7 @@ return function(mod)
     screen.modernBattleChoiceBounds = nil
     local y, h = 104, 40
     if screen.phase == "moves" or screen.phase == "moveSelect" then
-      -- Typed Move Colors replaces this bed with four colour cards.  Keeping
+      -- Move Colours replaces this bed with four colour cards.  Keeping
       -- it dark also gives a legible neutral surface when that companion mod
       -- is disabled or a move slot is empty.
       G.setColor(0.08, 0.09, 0.12, 1)
@@ -412,7 +422,7 @@ return function(mod)
     local wasBattle = Font.useBattleExtra(true)
 
     -- The native status tags occupy the level cells. These two free cells are
-    -- the same side-by-side treatment Battle Info HUD uses on Gen 1.
+    -- the same side-by-side treatment the Battle Screen uses on Gen 1.
     local wideOffset = math.max(0, (screen.modernBattleWideWidth or 160) - 160)
     local sceneOffset = math.max(0, screen.modernBattleSceneOffset or 0)
     local enemyOffset = math.floor((sceneOffset + 4) / 8)

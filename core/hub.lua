@@ -71,23 +71,11 @@ return function(mod, settings, state, components)
     return opened
   end
 
-  local openHub
-  local function openComponent(game, component)
-    local enabledRow = {
-      id = component.key .. ".enabled",
-      label = component.enabledLabel or "ENABLED",
-      value = function()
-        return settings:isEnabled(component) and "ON" or "OFF"
-      end,
-      step = function(activeGame)
-        local changed = settings:setEnabled(activeGame, component,
-          not settings:isEnabled(component))
-        settings:persist(activeGame)
-        return changed
-      end,
-    }
-    local body = {}
-    for _, row in ipairs(component.schema or {}) do
+  -- Adds one component's option rows to a page body. Pages can mix rows
+  -- from several components (Battle Screen, Overworld Screen); each row
+  -- still reads and writes its own component's setting.
+  local function addRows(body, component, schemaRows, skip)
+    for _, row in ipairs(schemaRows or {}) do
       local hideQol = {
         gen1_all_pkmn = true, gen2_all_pkmn = true,
         gen1_features_migrated = true,
@@ -103,9 +91,20 @@ return function(mod, settings, state, components)
         coins_2x = true, slot_odds = true, slot_bigger_payouts = true,
         slot_all_lucky = true,
       }
-      if row.key ~= component.enabledOption and row.key ~= "enabled"
+      if not (skip and skip[row.key])
+          and row.key ~= component.enabledOption and row.key ~= "enabled"
           and row.key ~= "theme_by_game" and row.key ~= "border_by_game"
           and not (component.key == "qol" and hideQol[row.key])
+          -- BLUE INTO GREEN only means something in Blue, PIKACHU SOUND
+          -- only in Yellow.
+          and not (row.key == "blue_into_green" and not (function()
+            local ok, GV = pcall(require, "src.core.GameVersion")
+            return ok and type(GV.get) == "function" and GV.get() == "blue"
+          end)())
+          and not (row.key == "pikachu_sound" and not (function()
+            local ok, GV = pcall(require, "src.core.GameVersion")
+            return ok and type(GV.get) == "function" and GV.get() == "yellow"
+          end)())
           and not (row.key == "force_crystal_settings"
             and not (mod.find("crystal_animated_sprites_with_shiny_visuals")
               or (settings.byId and settings.byId["crystal_animated_sprites_with_shiny_visuals"]))) then
@@ -253,6 +252,59 @@ return function(mod, settings, state, components)
         end
       end
     end
+  end
+
+  -- Rows that live on another component's page, and rows a page leaves out.
+  local MOVED_QOL_BATTLE = {
+    gen3_catch_rate = true, always_boosted_exp = true,
+    modern_exp_share = true, unlimited_pp = true,
+  }
+  local MOVED_QOL_OVERWORLD = {
+    infinite_safari = true, modern_stores = true, rematch_anyone = true,
+    running_shoes = true, display_area_names = true, sparkling_hidden = true,
+    use_repel_again = true,
+  }
+  local PAGE_SKIP = { unlimited_pp = {} }
+  for key in pairs(MOVED_QOL_BATTLE) do PAGE_SKIP.unlimited_pp[key] = true end
+  for key in pairs(MOVED_QOL_OVERWORLD) do PAGE_SKIP.unlimited_pp[key] = true end
+
+  local function pick(component, keys)
+    local out = {}
+    for _, row in ipairs(component and component.schema or {}) do
+      if keys == nil or keys[row.key] then out[#out + 1] = row end
+    end
+    return out
+  end
+
+  local function addPageExtras(body, pageId)
+    if pageId == "battle_info_hud" then
+      local colors = settings.byId.typed_move_colors
+      if colors then
+        addRows(body, colors, pick(colors), { menu_colors = true })
+      end
+      local qol = settings.byId.unlimited_pp
+      if qol then addRows(body, qol, pick(qol, MOVED_QOL_BATTLE)) end
+    end
+  end
+
+  local openHub
+  local function openComponent(game, component)
+    local enabledRow = {
+      id = component.key .. ".enabled",
+      label = component.enabledLabel or "ENABLED",
+      value = function()
+        return settings:isEnabled(component) and "ON" or "OFF"
+      end,
+      step = function(activeGame)
+        local changed = settings:setEnabled(activeGame, component,
+          not settings:isEnabled(component))
+        settings:persist(activeGame)
+        return changed
+      end,
+    }
+    local body = {}
+    addRows(body, component, component.schema, PAGE_SKIP[component.id])
+    addPageExtras(body, component.id)
     if component.id == "modern_start_menu_ui" then
       body[#body + 1] = {
         id = "start_menu.icon_overrides",
@@ -306,15 +358,9 @@ return function(mod, settings, state, components)
       if ra ~= rb then return ra < rb end
       return tostring(a.label or "") < tostring(b.label or "")
     end)
-    local rows = { enabledRow }
+    local rows = {}
+    if not component.alwaysOn then rows[1] = enabledRow end
     for _, row in ipairs(body) do rows[#rows + 1] = row end
-    if component.key == "rumble" then
-      rows[#rows + 1] = {
-        id = "rumble.copyright",
-        label = "Copyright (c) 2026 masterwebx",
-        value = function() return "" end,
-      }
-    end
     if component.key == "steel" then
       rows[#rows + 1] = {
         id = "steel.copyright",
@@ -333,6 +379,38 @@ return function(mod, settings, state, components)
     page.rows, page.view = rows, rows
     page.index, page.scroll, page.sub = 1, 0, true
     page.modernUiSuiteComponent = component.id
+    if component.key == "rumble" then
+      -- PRESS SELECT TO TEST: SELECT on that row plays the chosen hit.
+      local baseUpdate = page.update
+      page.update = function(self, dt, ...)
+        local input = self.game and self.game.input
+        local row = self.rows and self.rows[self.index]
+        if input and row and row.id == "rumble.test" and input:wasPressed("select") then
+          local exports = component.exports or {}
+          if type(exports.test) == "function" then pcall(exports.test) end
+          return
+        end
+        return baseUpdate(self, dt, ...)
+      end
+    end
+    game.stack:push(page)
+    return true
+  end
+
+  -- A page made only of rows from other components (OVERWORLD SCREEN).
+  local function openRowsPage(game, pageId, sources)
+    local body = {}
+    for _, src in ipairs(sources) do
+      local component = settings.byId[src.id]
+      if component then addRows(body, component, pick(component, src.keys)) end
+    end
+    table.sort(body, function(a, b)
+      return tostring(a.label or "") < tostring(b.label or "")
+    end)
+    local page = OptionsMenu.new(game)
+    page.rows, page.view = body, body
+    page.index, page.scroll, page.sub = 1, 0, true
+    page.modernUiSuiteComponent = pageId
     game.stack:push(page)
     return true
   end
@@ -456,8 +534,8 @@ return function(mod, settings, state, components)
     return true
   end
 
-  -- GAME CORNER: the coin clerk's 2X COINS FOR CASH (moved here from QoL)
-  -- and the slot machine options. All four are stored on the QoL
+  -- GAME CORNER: the coin clerk's 2X COINS FOR CASH (moved here from Other Settings)
+  -- and the slot machine options. All four are stored on the Other Settings
   -- component, as 2X COINS always was.
   local function openGameCornerMenu(game)
     local qol = qolComponent()
@@ -559,13 +637,22 @@ return function(mod, settings, state, components)
     local function buildItems()
       local items = {}
       for _, component in ipairs(components) do
-        items[#items + 1] = {
-          id = component.id,
-          label = component.short,
-          fullLabel = component.fullLabel,
-          component = component,
-          openOnly = true,
-        }
+        -- Move Colors' rows live on the BATTLE SCREEN page now.
+        if component.id ~= "typed_move_colors" then
+          items[#items + 1] = {
+            id = component.id,
+            label = component.short,
+            fullLabel = component.fullLabel,
+            component = component,
+            openOnly = true,
+          }
+        end
+        if component.id == "battle_info_hud" then
+          items[#items + 1] = {
+            id = "overworld_menu", label = "OVERWORLD SCREEN",
+            fullLabel = "OVERWORLD SCREEN", action = "overworld",
+          }
+        end
       end
       items[#items + 1] = {
         id = "poke_icons_menu", label = "POKE ICONS",
@@ -575,16 +662,21 @@ return function(mod, settings, state, components)
         id = "game_corner_menu", label = "GAME CORNER",
         action = "game_corner",
       }
-      items[#items + 1] = {
-        id = "gen1_all_menu", label = "GEN1 GET ALL THE POKEMON",
-        fullLabel = "GEN1 GET ALL THE POKEMON",
-        action = "gen1_all",
-      }
-      items[#items + 1] = {
-        id = "gen2_all_menu", label = "GEN2 GET ALL THE POKEMON",
-        fullLabel = "GEN2 GET ALL THE POKEMON",
-        action = "gen2_all",
-      }
+      -- Only the running generation's page: Gen 1 carts get the Gen 1 one.
+      local generation = 1
+      pcall(function()
+        local GV = require("src.core.GameVersion")
+        if type(GV.generation) == "function" then generation = GV.generation() end
+      end)
+      if generation == 2 then
+        items[#items + 1] = {
+          id = "gen2_all_menu", label = "GET ALL POKEMON", action = "gen2_all",
+        }
+      else
+        items[#items + 1] = {
+          id = "gen1_all_menu", label = "GET ALL POKEMON", action = "gen1_all",
+        }
+      end
       items[#items + 1] = { id = "back", label = "BACK", cancel = true }
       return items
     end
@@ -614,6 +706,10 @@ return function(mod, settings, state, components)
           stepAspect(game, 1); refresh(item.id)
         elseif item.action == "poke_icons" then
           openPokeIconsMenu(game)
+        elseif item.action == "overworld" then
+          openRowsPage(game, "overworld_screen", {
+            { id = "unlimited_pp", keys = MOVED_QOL_OVERWORLD },
+          })
         elseif item.action == "game_corner" then
           openGameCornerMenu(game)
         elseif item.action == "gen1_all" then

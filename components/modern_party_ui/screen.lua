@@ -571,7 +571,7 @@ return function(mod, genderExports, compatibility)
       gray(DARK)
       love.graphics.rectangle("fill", x, y, width, height)
     end
-    -- Match Typed Move Colors' focus hierarchy. The selected card grows by a
+    -- Match Move Colours' focus hierarchy. The selected card grows by a
     -- pixel on each side, uses a black outer frame, and raises its lighter
     -- face inside that frame. Its contents keep their original grid anchors,
     -- so the emphasis cannot crowd the icon or meter labels.

@@ -40,10 +40,10 @@ return function(mod)
       } },
   }
   optionSchema[#optionSchema + 1] = {
-    key = "hide_all", label = "HIDE ALL ITEMS", type = "toggle", default = false,
+    key = "hide_all", label = "HIDE ALL ITEMS", type = "toggle", default = true,
   }
   optionSchema[#optionSchema + 1] = {
-    key = "open_on", label = "OPEN ON", type = "choice", default = "all",
+    key = "open_on", label = "OPEN ON", type = "choice", default = "medicine",
     choices = { { "ALL", "all" }, { "ITEMS", "items" },
       { "MEDICINE", "medicine" }, { "BALLS", "balls" },
       { "TMs", "machines" }, { "KEY", "key" } },

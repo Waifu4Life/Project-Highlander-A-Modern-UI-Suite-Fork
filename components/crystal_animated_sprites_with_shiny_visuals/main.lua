@@ -26,7 +26,7 @@ return function(mod)
       default = "front",
       choices = { { "FRONT", "front" }, { "BACK", "back" } } },
     { key = "crystalFront", label = "FRONT SPRITES", type = "toggle",
-      default = false },
+      default = true },
     { key = "crystalPlayerSprite", label = "PLAYER SPRITE", type = "choice",
       default = "red.png", choices = spriteChoices },
     { key = "crystalTrainers", label = "REPLACE SPRITES", type = "choice",

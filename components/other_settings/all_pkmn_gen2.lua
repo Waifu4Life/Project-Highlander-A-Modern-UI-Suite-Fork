@@ -2171,75 +2171,136 @@ return function(mod)
     end
   end
 
-  -- Exclusives: 10-slot mixed maps + 50% pair swap (same lesson as Gen1)
-  local PAIR = {
-    GROWLITHE = "VULPIX", VULPIX = "GROWLITHE",
-    ARCANINE = "NINETALES", NINETALES = "ARCANINE",
-    MANKEY = "MEOWTH", MEOWTH = "MANKEY",
-    PRIMEAPE = "PERSIAN", PERSIAN = "PRIMEAPE",
-    SPINARAK = "LEDYBA", LEDYBA = "SPINARAK",
-    ARIADOS = "LEDIAN", LEDIAN = "ARIADOS",
-    TEDDIURSA = "PHANPY", PHANPY = "TEDDIURSA",
-    URSARING = "DONPHAN", DONPHAN = "URSARING",
-    GLIGAR = "SKARMORY", SKARMORY = "GLIGAR",
-    MANTINE = "DELIBIRD", DELIBIRD = "MANTINE",
-  }
-  local function slot(lv, sp) return { level = lv, species = sp } end
-  local GRASS = {
-    ROUTE_29 = { slot(2,"PIDGEY"), slot(2,"RATTATA"), slot(3,"PIDGEY"),
-      slot(3,"HOPPIP"), slot(4,"RATTATA"), slot(4,"SPINARAK"),
-      slot(4,"LEDYBA"), slot(5,"PIDGEY"), slot(2,"SPINARAK"), slot(2,"LEDYBA") },
-    ROUTE_30 = { slot(3,"PIDGEY"), slot(3,"CATERPIE"), slot(4,"WEEDLE"),
-      slot(3,"SPINARAK"), slot(3,"LEDYBA"), slot(5,"HOOTHOOT"),
-      slot(4,"SPINARAK"), slot(4,"LEDYBA"), slot(5,"PIDGEY"), slot(6,"HOOTHOOT") },
-    ROUTE_31 = { slot(4,"PIDGEY"), slot(4,"BELLSPROUT"), slot(5,"SPINARAK"),
-      slot(5,"LEDYBA"), slot(5,"BELLSPROUT"), slot(6,"HOOTHOOT"),
-      slot(6,"SPINARAK"), slot(6,"LEDYBA"), slot(5,"WEEDLE"), slot(5,"CATERPIE") },
-    ROUTE_32 = { slot(6,"RATTATA"), slot(6,"MAREEP"), slot(7,"BELLSPROUT"),
-      slot(7,"HOPPIP"), slot(8,"MAREEP"), slot(8,"WOOPER"),
-      slot(6,"ZUBAT"), slot(8,"EKANS"), slot(7,"MAREEP"), slot(9,"FLAAFFY") },
-    ROUTE_34 = { slot(10,"DITTO"), slot(10,"ABRA"), slot(11,"DROWZEE"),
-      slot(10,"GRANBULL"), slot(12,"DITTO"), slot(10,"SNUBBULL"),
-      slot(11,"JIGGLYPUFF"), slot(10,"DROWZEE"), slot(12,"ABRA"), slot(10,"DITTO") },
-    ROUTE_35 = { slot(12,"NIDORAN_F"), slot(12,"NIDORAN_M"), slot(14,"GROWLITHE"),
-      slot(14,"VULPIX"), slot(12,"ABRA"), slot(14,"DITTO"),
-      slot(12,"YANMA"), slot(14,"GROWLITHE"), slot(14,"VULPIX"), slot(15,"DITTO") },
-    ROUTE_36 = { slot(13,"NIDORAN_F"), slot(13,"NIDORAN_M"), slot(13,"GROWLITHE"),
-      slot(13,"VULPIX"), slot(15,"GROWLITHE"), slot(15,"VULPIX"),
-      slot(13,"STANTLER"), slot(15,"PIDGEY"), slot(13,"HOPPIP"), slot(16,"GROWLITHE") },
-    ROUTE_37 = { slot(15,"STANTLER"), slot(15,"GROWLITHE"), slot(15,"VULPIX"),
-      slot(15,"SPINARAK"), slot(15,"LEDYBA"), slot(16,"PIDGEY"),
-      slot(15,"STANTLER"), slot(17,"GROWLITHE"), slot(17,"VULPIX"), slot(15,"HOOTHOOT") },
-    ROUTE_38 = { slot(16,"MEOWTH"), slot(16,"MANKEY"), slot(16,"MAGNEMITE"),
-      slot(16,"FARFETCHD"), slot(16,"TAUROS"), slot(16,"SNUBBULL"),
-      slot(16,"MILTANK"), slot(16,"MEOWTH"), slot(16,"MANKEY"), slot(13,"MAGNEMITE") },
-    ROUTE_39 = { slot(16,"MEOWTH"), slot(16,"MANKEY"), slot(16,"MAGNEMITE"),
-      slot(16,"FARFETCHD"), slot(16,"TAUROS"), slot(16,"MILTANK"),
-      slot(16,"MEOWTH"), slot(16,"MANKEY"), slot(15,"MAGNEMITE"), slot(16,"TAUROS") },
-    ROUTE_42 = { slot(15,"MANKEY"), slot(15,"MAREEP"), slot(13,"SPEAROW"),
-      slot(15,"FLAAFFY"), slot(15,"MARILL"), slot(15,"MANKEY"),
-      slot(13,"ZUBAT"), slot(17,"FLAAFFY"), slot(15,"MAREEP"), slot(15,"MARILL") },
-    ROUTE_43 = { slot(15,"GIRAFARIG"), slot(15,"FLAAFFY"), slot(15,"MAREEP"),
-      slot(16,"VENONAT"), slot(17,"GIRAFARIG"), slot(15,"FARFETCHD"),
-      slot(16,"PIDGEOTTO"), slot(15,"MAREEP"), slot(17,"FLAAFFY"), slot(15,"GIRAFARIG") },
-    ROUTE_44 = { slot(23,"LICKITUNG"), slot(22,"WEEPINBELL"), slot(22,"BELLSPROUT"),
-      slot(24,"LICKITUNG"), slot(22,"TANGELA"), slot(24,"POLIWAG"),
-      slot(22,"POLIWHIRL"), slot(26,"LICKITUNG"), slot(24,"WEEPINBELL"), slot(22,"TANGELA") },
-    ROUTE_45 = { slot(23,"GEODUDE"), slot(23,"GRAVELER"), slot(24,"GLIGAR"),
-      slot(24,"SKARMORY"), slot(20,"TEDDIURSA"), slot(20,"PHANPY"),
-      slot(23,"GRAVELER"), slot(25,"GLIGAR"), slot(25,"SKARMORY"), slot(22,"TEDDIURSA") },
-    ICE_PATH_1F = { slot(21,"SWINUB"), slot(21,"ZUBAT"), slot(22,"GOLBAT"),
-      slot(22,"DELIBIRD"), slot(22,"MANTINE"), slot(21,"SWINUB"),
-      slot(22,"JYNX"), slot(22,"DELIBIRD"), slot(21,"ZUBAT"), slot(22,"GOLBAT") },
+  -- Exclusives.  The old version patched mod.content.encounters with
+  -- per-map ids ("ROUTE_29"), which Gen2 rejects (its encounter ids are the
+  -- closed set grass/water/...; see Schemas.lua #2369) -- and pcall hid the
+  -- error, so none of those tables ever loaded in Gold, Silver or Crystal.
+  -- What was left was a 50% Growlithe<->Vulpix style swap, which put the
+  -- counterpart wherever the cart's own mon lives (wrong routes, wrong time
+  -- of day) and gave Crystal nothing for Mareep/Flaaffy/Girafarig/Remoraid.
+  --
+  -- Now the roll hook adds the missing species at the maps, times and rates
+  -- the Pokedex shows (with this option on it lists the other cart's spots),
+  -- so the Pokedex and the grass agree.
+  -- Generated from modern_pokedex_ui/locations.lua: for each cart, every
+  -- species it has no wild slot for, at the map / time / % the Pokedex
+  -- lists for the other Gen2 cart(s).  { species, pct, levels }
+  local EXCLUSIVES = {
+    gold = {
+      ["ICE_PATH_1F|grass"] = { MORN = { { "DELIBIRD", 20, { 22 } } }, DAY = { { "DELIBIRD", 20, { 22 } } }, NITE = { { "DELIBIRD", 20, { 22 } } } },
+      ["ICE_PATH_B1F|grass"] = { MORN = { { "DELIBIRD", 20, { 22 } } }, DAY = { { "DELIBIRD", 20, { 22 } } }, NITE = { { "DELIBIRD", 20, { 22 } } } },
+      ["ICE_PATH_B2F_BLACKTHORN_SIDE|grass"] = { MORN = { { "DELIBIRD", 20, { 23 } } }, DAY = { { "DELIBIRD", 20, { 23 } } }, NITE = { { "DELIBIRD", 20, { 23 } } } },
+      ["ICE_PATH_B2F_MAHOGANY_SIDE|grass"] = { MORN = { { "DELIBIRD", 20, { 23 } } }, DAY = { { "DELIBIRD", 20, { 23 } } }, NITE = { { "DELIBIRD", 20, { 23 } } } },
+      ["ICE_PATH_B3F|grass"] = { MORN = { { "DELIBIRD", 20, { 24 } } }, DAY = { { "DELIBIRD", 20, { 24 } } }, NITE = { { "DELIBIRD", 20, { 24 } } } },
+      ["ROUTE_2|grass"] = { MORN = { { "LEDIAN", 5, { 7 } }, { "LEDYBA", 30, { 3 } } } },
+      ["ROUTE_26|grass"] = { MORN = { { "ARBOK", 5, { 30 } } }, DAY = { { "ARBOK", 5, { 30 } } }, NITE = { { "ARBOK", 5, { 30 } } } },
+      ["ROUTE_27|grass"] = { MORN = { { "ARBOK", 30, { 28 } } }, DAY = { { "ARBOK", 30, { 28 } } }, NITE = { { "ARBOK", 30, { 28 } } } },
+      ["ROUTE_28|grass"] = { MORN = { { "DONPHAN", 20, { 40 } } }, DAY = { { "DONPHAN", 20, { 40 } } }, NITE = { { "DONPHAN", 20, { 40 } } } },
+      ["ROUTE_3|grass"] = { MORN = { { "ARBOK", 5, { 10 } } }, DAY = { { "ARBOK", 5, { 10 } } }, NITE = { { "ARBOK", 5, { 10 } } } },
+      ["ROUTE_30|grass"] = { MORN = { { "LEDYBA", 30, { 3 } } } },
+      ["ROUTE_31|grass"] = { MORN = { { "LEDYBA", 30, { 4 } } } },
+      ["ROUTE_36|grass"] = { MORN = { { "VULPIX", 10, { 13 } } }, DAY = { { "VULPIX", 15, { 13, 15 } } }, NITE = { { "VULPIX", 10, { 13 } } } },
+      ["ROUTE_37|grass"] = { MORN = { { "LEDYBA", 40, { 13, 15 } }, { "VULPIX", 10, { 14 } } }, DAY = { { "VULPIX", 15, { 14, 16 } } }, NITE = { { "VULPIX", 10, { 14 } } } },
+      ["ROUTE_38|grass"] = { MORN = { { "MEOWTH", 30, { 16 } } }, DAY = { { "MEOWTH", 30, { 16 } } }, NITE = { { "MEOWTH", 40, { 16 } } } },
+      ["ROUTE_39|grass"] = { MORN = { { "MEOWTH", 30, { 16 } } }, DAY = { { "MEOWTH", 30, { 16 } } }, NITE = { { "MEOWTH", 40, { 16 } } } },
+      ["ROUTE_4|grass"] = { MORN = { { "ARBOK", 5, { 10 } } }, DAY = { { "ARBOK", 5, { 10 } } }, NITE = { { "ARBOK", 5, { 10 } } } },
+      ["ROUTE_45|grass"] = { MORN = { { "PHANPY", 10, { 20 } }, { "SKARMORY", 5, { 27 } } }, DAY = { { "PHANPY", 10, { 20 } }, { "SKARMORY", 5, { 27 } } }, NITE = { { "PHANPY", 10, { 20 } }, { "SKARMORY", 5, { 27 } } } },
+      ["ROUTE_5|grass"] = { MORN = { { "MEOWTH", 20, { 14 } } }, DAY = { { "MEOWTH", 20, { 14 } } }, NITE = { { "MEOWTH", 30, { 14 } } } },
+      ["ROUTE_6|grass"] = { MORN = { { "MEOWTH", 20, { 14 } } }, DAY = { { "MEOWTH", 20, { 14 } } }, NITE = { { "MEOWTH", 30, { 14 } } } },
+      ["ROUTE_7|grass"] = { MORN = { { "MEOWTH", 30, { 17 } }, { "PERSIAN", 5, { 19 } }, { "VULPIX", 20, { 18 } } }, DAY = { { "MEOWTH", 30, { 17 } }, { "PERSIAN", 5, { 19 } }, { "VULPIX", 25, { 15, 18 } } }, NITE = { { "MEOWTH", 30, { 17 } }, { "PERSIAN", 5, { 19 } }, { "VULPIX", 20, { 18 } } } },
+      ["ROUTE_8|grass"] = { MORN = { { "MEOWTH", 30, { 17 } }, { "VULPIX", 10, { 18 } } }, DAY = { { "MEOWTH", 30, { 17 } }, { "VULPIX", 10, { 18 } } }, NITE = { { "MEOWTH", 30, { 17 } }, { "VULPIX", 5, { 18 } } } },
+      ["SILVER_CAVE_ITEM_ROOMS|grass"] = { MORN = { { "DONPHAN", 20, { 47 } } }, DAY = { { "DONPHAN", 20, { 47 } } }, NITE = { { "DONPHAN", 20, { 47 } } } },
+      ["SILVER_CAVE_OUTSIDE|grass"] = { MORN = { { "DONPHAN", 20, { 42 } } }, DAY = { { "DONPHAN", 20, { 42 } } }, NITE = { { "DONPHAN", 20, { 42 } } } },
+      ["SILVER_CAVE_ROOM_1|grass"] = { MORN = { { "DONPHAN", 30, { 44 } } }, DAY = { { "DONPHAN", 30, { 44 } } }, NITE = { { "DONPHAN", 30, { 44 } } } },
+      ["SILVER_CAVE_ROOM_2|grass"] = { MORN = { { "DONPHAN", 20, { 47 } } }, DAY = { { "DONPHAN", 20, { 47 } } }, NITE = { { "DONPHAN", 20, { 47 } } } },
+      ["SILVER_CAVE_ROOM_3|grass"] = { MORN = { { "DONPHAN", 10, { 50 } } }, DAY = { { "DONPHAN", 10, { 50 } } }, NITE = { { "DONPHAN", 10, { 50 } } } },
+      ["VICTORY_ROAD|grass"] = { MORN = { { "DONPHAN", 20, { 33 } } }, DAY = { { "DONPHAN", 20, { 33 } } }, NITE = { { "DONPHAN", 20, { 33 } } } },
+    },
+    silver = {
+      ["MOUNT_MOON|grass"] = { MORN = { { "SANDSLASH", 5, { 10 } } }, DAY = { { "SANDSLASH", 5, { 10 } } }, NITE = { { "SANDSLASH", 5, { 10 } } } },
+      ["ROUTE_2|grass"] = { NITE = { { "ARIADOS", 5, { 7 } }, { "SPINARAK", 30, { 3 } } } },
+      ["ROUTE_26|grass"] = { MORN = { { "SANDSLASH", 30, { 28 } } }, DAY = { { "SANDSLASH", 30, { 28 } } }, NITE = { { "SANDSLASH", 30, { 28 } } } },
+      ["ROUTE_27|grass"] = { MORN = { { "SANDSLASH", 5, { 30 } } }, DAY = { { "SANDSLASH", 5, { 30 } } }, NITE = { { "SANDSLASH", 5, { 30 } } } },
+      ["ROUTE_28|grass"] = { MORN = { { "URSARING", 20, { 40 } } }, DAY = { { "URSARING", 20, { 40 } } }, NITE = { { "URSARING", 20, { 40 } } } },
+      ["ROUTE_30|grass"] = { NITE = { { "SPINARAK", 30, { 3 } } } },
+      ["ROUTE_31|grass"] = { NITE = { { "SPINARAK", 30, { 4 } } } },
+      ["ROUTE_36|grass"] = { MORN = { { "GROWLITHE", 10, { 13 } } }, DAY = { { "GROWLITHE", 15, { 13, 15 } } }, NITE = { { "GROWLITHE", 10, { 13 } } } },
+      ["ROUTE_37|grass"] = { MORN = { { "GROWLITHE", 10, { 14 } } }, DAY = { { "GROWLITHE", 15, { 14, 16 } } }, NITE = { { "GROWLITHE", 10, { 14 } }, { "SPINARAK", 40, { 13, 15 } } } },
+      ["ROUTE_41|water"] = { ANY = { { "MANTINE", 10, { 20 } } } },
+      ["ROUTE_42|grass"] = { MORN = { { "MANKEY", 30, { 15 } } }, DAY = { { "MANKEY", 30, { 15 } } }, NITE = { { "MANKEY", 30, { 15 } } } },
+      ["ROUTE_45|grass"] = { MORN = { { "GLIGAR", 20, { 24 } }, { "TEDDIURSA", 10, { 20 } } }, DAY = { { "GLIGAR", 20, { 24 } }, { "TEDDIURSA", 10, { 20 } } }, NITE = { { "GLIGAR", 20, { 24 } }, { "TEDDIURSA", 10, { 20 } } } },
+      ["ROUTE_7|grass"] = { MORN = { { "GROWLITHE", 20, { 18 } } }, DAY = { { "GROWLITHE", 25, { 15, 18 } } }, NITE = { { "GROWLITHE", 20, { 18 } } } },
+      ["ROUTE_8|grass"] = { MORN = { { "GROWLITHE", 10, { 18 } } }, DAY = { { "GROWLITHE", 10, { 18 } } }, NITE = { { "GROWLITHE", 5, { 18 } } } },
+      ["ROUTE_9|grass"] = { MORN = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } }, DAY = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } }, NITE = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } } },
+      ["SILVER_CAVE_ITEM_ROOMS|grass"] = { MORN = { { "URSARING", 20, { 47 } } }, DAY = { { "URSARING", 20, { 47 } } }, NITE = { { "URSARING", 20, { 47 } } } },
+      ["SILVER_CAVE_OUTSIDE|grass"] = { MORN = { { "URSARING", 20, { 42 } } }, DAY = { { "URSARING", 20, { 42 } } }, NITE = { { "URSARING", 20, { 42 } } } },
+      ["SILVER_CAVE_ROOM_1|grass"] = { MORN = { { "URSARING", 30, { 44 } } }, DAY = { { "URSARING", 30, { 44 } } }, NITE = { { "URSARING", 30, { 44 } } } },
+      ["SILVER_CAVE_ROOM_2|grass"] = { MORN = { { "URSARING", 20, { 47 } } }, DAY = { { "URSARING", 20, { 47 } } }, NITE = { { "URSARING", 20, { 47 } } } },
+      ["SILVER_CAVE_ROOM_3|grass"] = { MORN = { { "URSARING", 10, { 50 } } }, DAY = { { "URSARING", 10, { 50 } } }, NITE = { { "URSARING", 10, { 50 } } } },
+      ["VICTORY_ROAD|grass"] = { MORN = { { "URSARING", 20, { 33 } } }, DAY = { { "URSARING", 20, { 33 } } }, NITE = { { "URSARING", 20, { 33 } } } },
+    },
+    crystal = {
+      ["ROUTE_32|grass"] = { MORN = { { "MAREEP", 20, { 6 } } }, DAY = { { "MAREEP", 20, { 6 } } }, NITE = { { "MAREEP", 10, { 6 } } } },
+      ["ROUTE_36|grass"] = { MORN = { { "VULPIX", 10, { 13 } } }, DAY = { { "VULPIX", 15, { 13, 15 } } }, NITE = { { "VULPIX", 10, { 13 } } } },
+      ["ROUTE_37|grass"] = { MORN = { { "VULPIX", 10, { 14 } } }, DAY = { { "VULPIX", 15, { 14, 16 } } }, NITE = { { "VULPIX", 10, { 14 } } } },
+      ["ROUTE_42|grass"] = { MORN = { { "FLAAFFY", 10, { 15, 17 } }, { "MANKEY", 30, { 15 } }, { "MAREEP", 50, { 13, 15 } } }, DAY = { { "FLAAFFY", 10, { 15, 17 } }, { "MANKEY", 30, { 15 } }, { "MAREEP", 50, { 13, 15 } } }, NITE = { { "FLAAFFY", 10, { 15, 17 } }, { "MANKEY", 30, { 15 } }, { "MAREEP", 50, { 13, 15 } } } },
+      ["ROUTE_43|grass"] = { MORN = { { "FLAAFFY", 30, { 15 } }, { "GIRAFARIG", 30, { 15 } }, { "MAREEP", 10, { 15 } } }, DAY = { { "FLAAFFY", 40, { 15, 17 } }, { "GIRAFARIG", 30, { 15 } }, { "MAREEP", 10, { 15 } } }, NITE = { { "FLAAFFY", 30, { 15 } }, { "GIRAFARIG", 30, { 15 } }, { "MAREEP", 5, { 15 } } } },
+      ["ROUTE_7|grass"] = { MORN = { { "VULPIX", 20, { 18 } } }, DAY = { { "VULPIX", 25, { 15, 18 } } }, NITE = { { "VULPIX", 20, { 18 } } } },
+      ["ROUTE_8|grass"] = { MORN = { { "VULPIX", 10, { 18 } } }, DAY = { { "VULPIX", 10, { 18 } } }, NITE = { { "VULPIX", 5, { 18 } } } },
+      ["ROUTE_9|grass"] = { MORN = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } }, DAY = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } }, NITE = { { "MANKEY", 30, { 13 } }, { "PRIMEAPE", 5, { 15 } } } },
+    },
   }
 
-  local function applyExclusives()
-    if not feat("gen2_exclusive") then return end
-    local enc = mod.content and mod.content.encounters
-    if not (enc and enc.patch) then return end
-    for mapName, slots in pairs(GRASS) do
-      pcall(enc.patch, enc, mapName, { grass = { slots = slots } })
+  -- Fraction of the other cart's slot rate actually used, so the cart's own
+  -- mons still turn up on shared routes.
+  local EXCL_SCALE = 0.5
+  -- Remoraid has no wild slot in Crystal (Gold/Silver: Route 44 fishing).
+  local EXCL_FISH = {
+    crystal = { ROUTE_44 = { { "REMORAID", 25 } } },
+  }
+
+  local function cartKey()
+    local v
+    pcall(function()
+      local GameVersion = require("src.core.GameVersion")
+      v = GameVersion.get and GameVersion.get()
+    end)
+    v = tostring(v or ""):lower()
+    if v == "gold" or v == "silver" or v == "crystal" then return v end
+    return nil
+  end
+  local function rand01(ctx)
+    local r = (ctx and ctx.rng) or (love and love.math and love.math.random) or math.random
+    local ok, x = pcall(r)
+    if ok and type(x) == "number" then return x end
+    return math.random()
+  end
+  local function pickLevel(levels, fallback, ctx)
+    if type(levels) ~= "table" or #levels == 0 then return fallback end
+    local i = math.floor(rand01(ctx) * #levels) + 1
+    return levels[math.min(i, #levels)] or fallback
+  end
+  local function exclusiveRoll(result, ctx)
+    local cart = cartKey()
+    local byMap = cart and EXCLUSIVES[cart]
+    if not byMap then return result end
+    local mapName = tostring(ctx.mapId or ""):upper()
+    local terrain = tostring(ctx.terrain or "grass"):lower()
+    local row = byMap[mapName .. "|" .. terrain]
+    if not row then return result end
+    local tod = tostring(ctx.daytime or "DAY"):upper()
+    local list = row.ANY or row[tod]
+    if not list then return result end
+    for _, e in ipairs(list) do
+      if rand01(ctx) < (e[2] / 100) * EXCL_SCALE then
+        result.species = e[1]
+        result.id = e[1]
+        result.level = pickLevel(e[3], result.level, ctx)
+        result.slot = nil
+        return result
+      end
     end
+    return result
   end
 
   local function interceptTalk(self, npc, textConst)
@@ -2556,7 +2617,6 @@ return function(mod)
     if okB then gateBox(B) end
   end)
 
-  applyExclusives()
   pcall(function()
     local function onGotMon(ev)
       ev = ev or {}
@@ -2671,7 +2731,6 @@ return function(mod)
           f.SUITE_GS_READY = true
         end
       end
-      pcall(applyExclusives)
       return result
     end)
   end)
@@ -2714,13 +2773,33 @@ return function(mod)
       local result = next(encDef, ctx)
       if type(result) ~= "table" then return result end
       if not feat("gen2_exclusive") then return result end
-      local sp = tostring(result.species or result.id or ""):upper()
-      local alt = PAIR[sp]
-      if not alt then return result end
-      local roll = (love and love.math and love.math.random and love.math.random()) or math.random()
-      if roll < 0.5 then
-        result.species = alt
-        result.id = alt
+      ctx = ctx or {}
+      -- ordinary wild steps and Sweet Scent only: not the Bug-Catching
+      -- Contest pool and not scripted encounters
+      if ctx.kind ~= nil and ctx.kind ~= "wild" and ctx.kind ~= "sweet_scent" then
+        return result
+      end
+      return exclusiveRoll(result, ctx)
+    end)
+  end)
+  pcall(function()
+    mod.hooks:wrap("encounter.fishing", function(next, rod, mapId, candidates, ctx)
+      local result = next(rod, mapId, candidates, ctx)
+      if type(result) ~= "table" or not result.species or result.species == 0 then
+        return result
+      end
+      if not feat("gen2_exclusive") then return result end
+      local r = tostring(rod or ""):upper()
+      if not (r:find("GOOD") or r:find("SUPER")) then return result end
+      local cart = cartKey()
+      local list = cart and EXCL_FISH[cart] and EXCL_FISH[cart][tostring(mapId or ""):upper()]
+      if not list then return result end
+      for _, e in ipairs(list) do
+        if rand01(ctx) < e[2] / 100 then
+          result.species = e[1]
+          result.id = e[1]
+          return result
+        end
       end
       return result
     end)

@@ -319,7 +319,14 @@ return function(mod, icons)
   -- this game's menu are simply skipped; entries the saved order does not
   -- mention (for example the Gen 2-only POKeGEAR) follow, in their native
   -- order, so they fall onto the end of the list.
+  -- Order used until the player arranges the icons themselves.
+  Presentation.DEFAULT_ORDER = {
+    "builtin:pokedex", "builtin:party", "builtin:bag", "builtin:pokebox",
+    "builtin:trainer", "builtin:save", "builtin:options", "builtin:mods",
+    "builtin:quit",
+  }
   local function arrange(items, saved, game)
+    if type(saved) ~= "table" or #saved == 0 then saved = Presentation.DEFAULT_ORDER end
     local entries, byKey, occurrences = {}, {}, {}
     for _, item in ipairs(items) do
       local base = orderKey(item, game)
@@ -419,9 +426,12 @@ return function(mod, icons)
     end
   end
 
+  -- The carts say ITEM and OPTION; the menu says ITEMS and OPTIONS.
+  Presentation.PLURAL_LABELS = { ITEM = "ITEMS" }
   local function itemLabel(item)
     if type(item) ~= "table" then return "UNKNOWN" end
-    return tostring(item.label or item.id or "UNKNOWN")
+    local label = tostring(item.label or item.id or "UNKNOWN")
+    return Presentation.PLURAL_LABELS[label:upper()] or label
   end
 
   local function tileLabel(item, id)
@@ -529,7 +539,7 @@ return function(mod, icons)
   end
 
   local function selectedClock()
-    return selectedOption("clock", VALID_CLOCKS, "play")
+    return selectedOption("clock", VALID_CLOCKS, "device")
   end
 
   -- STYLE: FULL SCREEN is a 160x144 page of its own (2 x 5 tiles, icon and
@@ -1177,7 +1187,8 @@ return function(mod, icons)
   end
 
   local function drawFullConfirm(menu)
-    if not (menu.modernStartGen2 and menu.phase == "confirm") then return end
+    if not ((menu.modernStartGen2 and menu.phase == "confirm")
+        or menu.phQuitConfirm) then return end
     local x, y, w, h = 16, 44, 128, 56
     ffill(x, y, w, h, INK)
     ffill(x + 1, y + 1, w - 2, h - 2, WHITE)
@@ -1320,6 +1331,25 @@ return function(mod, icons)
       return
     end
     local input = menu.game.input
+    -- Gen 1 QUIT: the same RETURN TO TITLE? YES/NO box Gen 2 gets, inside
+    -- the START menu, instead of closing it and asking over the overworld.
+    if menu.phQuitConfirm then
+      if input:wasPressed("left") or input:wasPressed("right")
+          or input:wasPressed("up") or input:wasPressed("down") then
+        menu.confirmChoice = menu.confirmChoice == 1 and 2 or 1
+      elseif input:wasPressed("a") then
+        if not menu.noSound then Sound.play(menu.game.data, "Press_AB") end
+        menu.phQuitConfirm = nil
+        if menu.confirmChoice == 1 then
+          local game = menu.game
+          game.stack:pop()
+          if type(game.returnToTitle) == "function" then game:returnToTitle() end
+        end
+      elseif input:wasPressed("b") or input:wasPressed("start") then
+        menu.phQuitConfirm = nil
+      end
+      return
+    end
     local full = syncStyle(menu)
     if full and input:wasPressed("left") then
       moveFull(menu, -1, 0)
@@ -1342,6 +1372,9 @@ return function(mod, icons)
       local item = menu.items[index]
       if menu.modernStartGen2 then
         menu:choose(item and item.value, index)
+      elseif detectedId(item, menu.game) == "quit" then
+        if not menu.noSound then Sound.play(menu.game.data, "Press_AB") end
+        menu.phQuitConfirm, menu.confirmChoice = true, 2
       else
         if not menu.noSound then Sound.play(menu.game.data, "Press_AB") end
         if not item.keepOpen then menu.game.stack:pop() end
@@ -1368,7 +1401,8 @@ return function(mod, icons)
   end
 
   local function drawConfirm(menu, layout)
-    if not (menu.modernStartGen2 and menu.phase == "confirm") then return end
+    if not ((menu.modernStartGen2 and menu.phase == "confirm")
+        or menu.phQuitConfirm) then return end
     local x, y, width = layout.panelX + 8, layout.panelY + 45,
       layout.panelW - 16
     fill(x, y, width, 47, INK)

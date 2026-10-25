@@ -279,7 +279,7 @@ return function(mod)
     end
     G.push("all")
     -- The font's glyphs are black ink, which setColor alone can't turn red;
-    -- recolour the ink itself (as Typed Move Colors does), then protect it
+    -- recolour the ink itself (as Move Colours does), then protect it
     -- from the four-shade palette pass below.
     local shader = inkShader()
     if shader then G.setShader(shader) end

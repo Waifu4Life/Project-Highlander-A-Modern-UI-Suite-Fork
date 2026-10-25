@@ -6,7 +6,8 @@
 return function(mod)
   local optionSchema = {
     { key = "theme", label = "START MENU COLOUR", type = "choice",
-      default = "red", choices = {
+      default = "auto", choices = {
+        { "AUTOMATIC", "auto" },
         { "RED", "red" }, { "BLUE", "blue" }, { "GREEN", "green" },
         { "YELLOW", "yellow" }, { "GOLD", "gold" },
         { "SILVER", "silver" }, { "CRYSTAL", "crystal" },
@@ -25,7 +26,7 @@ return function(mod)
         { "RIGHT", "right" },
       } },
     { key = "clock", label = "START MENU CLOCK", type = "choice",
-      default = "play", choices = {
+      default = "device", choices = {
         { "PLAY", "play" }, { "DEVICE", "device" },
       } },
     { key = "pokebox", label = "POKEBOX", type = "toggle",
@@ -145,7 +146,7 @@ return function(mod)
   end
 
   local THEME_OK = {
-    red = true, blue = true, dmg = true,
+    auto = true, red = true, blue = true, dmg = true,
     green = true, yellow = true, gold = true, silver = true, crystal = true,
   }
   local themeCache = { byGame = {}, bySave = {} }
@@ -244,11 +245,19 @@ return function(mod)
       end
     end
     if THEME_OK[stored] then return stored end
-    return "red"
+    return "auto"
   end
 
+  -- AUTOMATIC: the colour of the cart being played (Green when Blue is
+  -- launched as Green).
+  local CART_THEME = {
+    red = "red", blue = "blue", green = "green", yellow = "yellow",
+    gold = "gold", silver = "silver", crystal = "crystal",
+  }
   local function currentTheme(game)
-    return storedTheme(game)
+    local stored = storedTheme(game)
+    if stored == "auto" then return CART_THEME[cartId(game)] or "red" end
+    return stored
   end
 
   local function writeTheme(game, value)
@@ -277,7 +286,7 @@ return function(mod)
     for _, choice in ipairs(optionRows.theme.choices) do
       if choice[2] == current then return choice[1] end
     end
-    return "RED"
+    return "AUTOMATIC"
   end
   local function positionLabel() return choiceLabel("position") end
   local function clockLabel() return choiceLabel("clock") end

@@ -1,4 +1,4 @@
--- Typed Move Colors is deliberately presentation-only. Move definitions,
+-- Move Colours (Battle Screen) is deliberately presentation-only. Move definitions,
 -- PP, effects, targeting and battle behavior stay owned by the engine; every
 -- tint is resolved from the live merged move table so content mods compose.
 return function(mod)
@@ -14,8 +14,6 @@ return function(mod)
         { "WIDE", "wide" }, { "GAME", "game" },
       } },
     { key = "effect_hints", label = "MOVE EFFECT", type = "toggle",
-      default = true },
-    { key = "menu_colors", label = "MENU COLORS", type = "toggle",
       default = true },
     { key = "strength", label = "COLOR STRENGTH", type = "choice",
       default = "bold", choices = {
@@ -33,16 +31,16 @@ return function(mod)
     { key = "text_only", label = "TEXT ONLY", type = "toggle",
       default = false },
     { key = "text_position", label = "TEXT POSITION", type = "choice",
-      default = "left", choices = {
+      default = "right", choices = {
         { "LEFT", "left" }, { "CENTER", "center" }, { "RIGHT", "right" },
       } },
     { key = "box_color", label = "BOX COLOR", type = "choice",
-      default = "original", choices = {
+      default = "white", choices = {
         { "DEFAULT", "original" }, { "GRAY", "gray" },
         { "WHITE", "white" }, { "BLACK", "black" },
       } },
     { key = "info_position", label = "INFO WINDOWS", type = "choice",
-      default = "original", choices = {
+      default = "right", choices = {
         { "ORIGINAL", "original" }, { "LEFT", "left" }, { "RIGHT", "right" },
       } },
   }
@@ -142,7 +140,7 @@ return function(mod)
         refresh(item.id)
       end
     end
-    menu = ListMenu.new(game, "TYPED MOVE COLORS", {}, {
+    menu = ListMenu.new(game, "MOVE COLOURS", {}, {
       wrap = true,
       keyRepeat = true,
       onChoose = function(item, activeMenu)
@@ -198,7 +196,7 @@ return function(mod)
     if submenuReady then
       local openRow = {
         id = "typed_move_colors_settings_open",
-        label = "TYPED MOVE COLORS",
+        label = "MOVE COLOURS",
         value = function() return "OPEN" end,
         -- Current OptionsMenu uses activate; older builds treated all rows
         -- as steppers. Providing both keeps the single submenu entry on each

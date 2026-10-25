@@ -1,4 +1,4 @@
--- QoL "Gen3 Catch Rate": replace stock RBY/GSC catch math with the Gen 3
+-- Battle Screen "Gen3 Catch Rate": replace stock RBY/GSC catch math with the Gen 3
 -- formula when the toggle is on. Apricorn balls use HGSS modifiers.
 -- Friend Ball is unchanged (friendship only). Failed throws always shake
 -- at least once so Gen 1 never prints "You missed the POKéMON!".

@@ -1,4 +1,4 @@
--- QoL: after a Repel wears off, ask to use another of the same kind.
+-- Overworld Screen: after a Repel wears off, ask to use another of the same kind.
 return function(mod)
   local STEPS = { REPEL = 100, SUPER_REPEL = 200, MAX_REPEL = 250 }
   local NAMES = {

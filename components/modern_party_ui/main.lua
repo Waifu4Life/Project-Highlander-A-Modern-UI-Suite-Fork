@@ -18,12 +18,12 @@ return function(mod)
     { key = "animate_icons", label = "ICON ANIMATION", type = "toggle",
       default = true },
     { key = "hp_text", label = "HP DISPLAY", type = "choice",
-      default = "bar", choices = {
+      default = "values", choices = {
         { "VALUES", "values" }, { "PERCENT", "percent" },
         { "BAR ONLY", "bar" },
       } },
     { key = "exp_text", label = "EXP DISPLAY", type = "choice",
-      default = "percent", choices = {
+      default = "values", choices = {
         { "VALUES", "values" }, { "PERCENT", "percent" },
         { "BAR ONLY", "bar" },
       } },

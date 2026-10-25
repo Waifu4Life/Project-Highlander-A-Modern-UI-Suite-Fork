@@ -1,4 +1,4 @@
--- Blue into Green (QoL toggle, off by default).
+-- Blue into Green (Other Settings, Blue only, off by default).
 --
 -- With it on and the Blue cart loaded, the title and intro look like
 -- Pokemon Green: Green on the title screen, "Green Version" under the logo,

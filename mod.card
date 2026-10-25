@@ -48,7 +48,6 @@ return {
     { who = "piftee / Ish", for_ = "Modern UI Suite 0.1.31 presentation work and 0.1.43 Bag item artwork" },
     { who = "Screen Smith", for_ = "CC0 Openmon Item Icons Set 1 (Bag item artwork)" },
     { who = "TRW", for_ = "Crystal Animated Sprites with Shiny Visuals (with permission)" },
-    { who = "masterwebx", for_ = "Controller Rumble (MIT)" },
     { who = "Game Freak", for_ = "interface and storage interaction inspiration" },
   },
   compat = { engine = ">=0.0.0-dev <1.0.0", modApi = 2 },

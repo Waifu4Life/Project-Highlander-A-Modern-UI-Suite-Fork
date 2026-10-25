@@ -1045,7 +1045,7 @@ return function(mod)
           -- at Battle Art's large integer scale.
           if side == "player" then
             -- Force the stock level row even if this bridge was hot-reloaded
-            -- on top of an older Battle Info HUD coordinate wrapper.
+            -- on top of an older Battle Screen coordinate wrapper.
             y = 64
           end
           return x, y

@@ -6,19 +6,19 @@
 --
 -- Where it appears (see classify below): Title screen, Options, Mods, Trainer
 -- ID, OG (non-wide) battles and the FULL SCREEN Start Menu. Never over the
--- overworld (Gen 1 or Gen 2) and never over the other Modern UI Suite screens.
+-- overworld (Gen 1 or Gen 2) and never over the other Project Highlander screens.
 return function(mod)
   local BORDERS = {
     { "AUTOMATIC", "auto" },
-    { "RED MODERN", "red_modern" }, { "RED MODERN 2", "red_modern2" },
-    { "RED CLASSIC", "red_classic" },
-    { "GREEN MODERN", "green_modern" }, { "GREEN MODERN 2", "green_modern2" },
-    { "GREEN CLASSIC", "green_classic" },
-    { "BLUE MODERN", "blue_modern" }, { "BLUE CLASSIC", "blue_classic" },
+    { "CLASSIC RED", "red_classic" }, { "MODERN RED 1", "red_modern" },
+    { "MODERN RED 2", "red_modern2" },
+    { "CLASSIC GREEN", "green_classic" }, { "MODERN GREEN 1", "green_modern" },
+    { "MODERN GREEN 2", "green_modern2" },
+    { "CLASSIC BLUE", "blue_classic" }, { "MODERN BLUE", "blue_modern" },
     { "YELLOW", "yellow" },
-    { "GOLD", "gold" }, { "GOLD CLASSIC", "gold_classic" },
-    { "SILVER", "silver" }, { "SILVER CLASSIC", "silver_classic" },
-    { "CRYSTAL", "crystal" }, { "CRYSTAL CLASSIC", "crystal_classic" },
+    { "CLASSIC GOLD", "gold_classic" }, { "MODERN GOLD", "gold" },
+    { "CLASSIC SILVER", "silver_classic" }, { "MODERN SILVER", "silver" },
+    { "CLASSIC CRYSTAL", "crystal_classic" }, { "MODERN CRYSTAL", "crystal" },
     { "CUSTOM 1", "custom1" }, { "CUSTOM 2", "custom2" },
     { "CUSTOM 3", "custom3" }, { "CUSTOM 4", "custom4" },
   }
@@ -85,7 +85,7 @@ return function(mod)
         if id == "blue" and name:lower():find("green", 1, true) then
           return "green"
         end
-        -- QoL "Blue into Green": the Blue cart dressed as Green gets the
+        -- Other Settings "Blue into Green": the Blue cart dressed as Green gets the
         -- Green Modern border on AUTOMATIC, like a patched Green launcher.
         if id == "blue" and mod.suite and type(mod.suite.option) == "function" then
           local okOpt, on = pcall(mod.suite.option, "unlimited_pp", "blue_into_green")
@@ -306,7 +306,7 @@ return function(mod)
       or layout == "centered" or layout == "original"
   end
 
-  -- Modern UI Suite screens are true 4:3 (or fill the window), not the square
+  -- Project Highlander screens are true 4:3 (or fill the window), not the square
   -- Game Boy shape these borders are made for, so they never get a frame.
   -- The Start menu floats over the overworld and is treated the same way.
   local SKIP_MARKERS = {

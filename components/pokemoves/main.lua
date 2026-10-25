@@ -1,15 +1,15 @@
 return function(mod)
   mod.options:define({
     { key = "forgettable_hms", label = "FORGETTABLE HMS", type = "toggle",
-      default = false },
+      default = true },
     { key = "tms_forever", label = "TMS FOREVER", type = "toggle",
-      default = false },
+      default = true },
     { key = "instant_tmhm", label = "INSTANT TMS/HMS", type = "toggle",
-      default = false },
+      default = true },
     { key = "no_learn_hms", label = "NO LEARN HMS", type = "toggle",
-      default = false },
+      default = true },
     { key = "move_relearning", label = "MOVE RELEARNING", type = "toggle",
-      default = false },
+      default = true },
   })
 
   local function forgettableOn()

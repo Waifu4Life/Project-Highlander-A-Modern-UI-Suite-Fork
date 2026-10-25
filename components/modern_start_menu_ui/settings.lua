@@ -60,6 +60,8 @@ return function(mod, presentation, config)
         or upper:find("GEAR", 1, true) then
       return "Pokégear"
     end
+    local plural = presentation.PLURAL_LABELS
+    raw = plural and plural[upper] or raw
     local text = presentation.normalizeText(raw)
     text = text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
     if #text > 12 then text = text:sub(1, 11) .. "." end

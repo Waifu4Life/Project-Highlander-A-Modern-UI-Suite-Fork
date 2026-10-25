@@ -1,3 +1,49 @@
+## [3.67.0]
+- Rumble (Gen 2) redone from scratch: it fires with the hit itself, when the target's damage shake and the hit sound start (in whichever order the game starts them), instead of when the HP bar starts dropping. No more delay, and getting hit always rumbles. The shake says who was hit, the hit sound how effective it was.
+- Rumble: the diagnostic rumble_log.txt is kept for now (components/rumble/ in the mod folder, or the save folder).
+- Gen 2 battle move box: POWER and PP use tighter spacing when the line doesn't fit, so double-digit PP (19/20) is no longer cut to "19/.".
+
+## [3.66.1] (diagnostic)
+- Rumble: temporary log. Every rumble writes an entry (time, cause, what the battle was doing) to components/rumble/rumble_log.txt in the mod folder, or rumble_log.txt in the game's save folder if the mod folder can't be written. Used to track down the Gen 2 rumble that fires before a move.
+
+## [3.66.0]
+- Rumble (Gen 2) rebuilt: it now fires when the HP bar starts dropping on a move's hit, using the battle's own damage record for who was hit and how effective it was. No more rumble when a move is chosen. Damage that isn't a move hit (poison, Wrap's turn damage, recoil) doesn't rumble.
+- Rumble: new WILD BATTLE START (one solid pulse when a wild battle begins: grass, caves, water, and Wilds of Kanto's visible Pokemon) and TRAINER BATTLE START (two strong pulses as the trainer battle wipe begins), Gen 1 and Gen 2, both On.
+
+## [3.65.0]
+- Rumble (Gen 2): no more extra rumble when a move is chosen; the controller now rumbles only on the hit shake. The same side hit twice within 0.4 s counts as one hit.
+- Other Settings: PIKACHU SOUND only appears in Yellow.
+- Custom Borders order and names: Automatic, Classic Red, Modern Red 1, Modern Red 2, Classic Green, Modern Green 1, Modern Green 2, Classic Blue, Modern Blue, Yellow, Classic Gold, Modern Gold, Classic Silver, Modern Silver, Classic Crystal, Modern Crystal, then Custom 1-4. Saved choices are unchanged.
+
+## [3.64.0]
+- No more global ON/OFF rows on Battle Screen (both the Battle Screen and the old Move Colours switch), Other Settings, Cont. Rumble and PokeMoves: every option on those pages works on its own. A switch you had turned off before no longer blocks the page.
+- Other Settings: BLUE INTO GREEN only appears in Blue.
+- Cont. Rumble: INTENSITY now has OFF (Off / Low / Medium / High).
+- Gen 1 FULL SCREEN / PHONE Start Menu: QUIT asks RETURN TO TITLE? YES/NO inside the menu, like Gen 2, instead of closing it and asking over the overworld (No is selected first).
+- New start_menu_icons_16.png.
+- OPTION is back to "OPTION" (OPTIONS was cut to "OPTIO."); ITEMS stays.
+- Gen 2 battles: the attacker's HUD no longer disappears while its move animation plays.
+- Clean-up: component folders renamed to today's names (battle_screen, move_colors, other_settings, rumble, shortcuts, custom_borders); comments, names and messages updated from Battle Info HUD / Typed Move Colors / QoL / Controller Rumble / Modern UI Suite. Component ids and saved setting keys are unchanged, so settings and other mods keep working.
+
+## [3.63.0]
+- Settings clean-up. Every option now starts On (defaults only change for settings you never touched; anything you set keeps your value). Kept Off: Blue Into Green, Unlimited PP, Text Only, Screen Ratio, Right Analog for D-Pad.
+- Start Menu: new COLOUR choice AUTOMATIC (the default) picks the cart's colour (Green when Blue is launched as Green). Clock defaults to Device. Default icon order: Pokedex, Pokemon, Items, PokeBox, ID card, Save, Options, Mods, Quit. The carts' "ITEM" and "OPTION" now read "ITEMS" and "OPTIONS".
+- Party: HP and EXP display default to Values. Bag: Open On defaults to Medicine; default pocket order Items, Balls, Medicine, TMs/HMs, Key Items; Hide All Items On. PC: Box Exclusive On.
+- Battle HUD is now BATTLE SCREEN: Low HP Beeping defaults to Reduce, Enemy HP Counter On, and it holds all of the old Move Colours page (Box Colour White, Info Windows Right, Text Position Right by default, plus a MOVE COLORS on/off row) and Gen3 Catch Rate, Get Boosted EXP, Modern EXP Share and Unlimited PP.
+- Move Colours sub-menu removed; MENU COLORS is gone (always off).
+- New OVERWORLD SCREEN sub-menu: Infinite Safari, Modern Stores, Rematch Anyone, Running Shoes (Hold B by default), Show Area Names, Sparkling Hidden Items, Use Repel Again.
+- QoL renamed OTHER SETTINGS. Game Corner defaults: 2x Coins, Bigger Payouts, All Lucky On, Slot Odds Lucky.
+- Get All Pokemon: only the running generation's page is shown, named GET ALL POKEMON; every feature defaults On.
+- Cont. Rumble rebuilt from Project Highlander Gen3's Rumble: ENABLE, INTENSITY (Low/Medium/High), PRESS SELECT TO TEST, WHEN I GET HIT, WHEN I HIT. Rumbles on the hit sound; not very effective = a tap, effective = a pulse, super effective = two strong pulses; your side leads with the left motor, the foe's with the right. Replaces masterwebx's Controller Rumble (credit and license removed with its code).
+- Full Control: new SELECT VISUAL COMBOS (On): SELECT + A/B/X/Y/LB run the game's display shortcuts again while Full Control is on; Off lets those buttons act normally.
+- Shortcuts and Custom Borders are enabled by default. PokeMoves options and Crystal Front Sprites default On.
+- Fishing with a custom character (Green, Kris, ...) no longer shows Red's / Chris's body in the character's colours: the pose keeps the character's own bottom row and takes only the hands and rod from the vanilla fishing art.
+
+## [3.62.0]
+- Gen 2 "Get Exclusive PKMN From Other Gen2 Games" fixed in Gold, Silver and Crystal. The old per-route encounter tables never loaded (Gen 2 only accepts the encounter kinds grass/water/... as ids, and the error was silenced), so all that worked was a 50% swap with the cart's own counterpart, at that counterpart's routes and times. Crystal got nothing at all for Mareep, Flaaffy, Girafarig or Remoraid.
+- The missing species now turn up where the Pokedex says they are (it lists the other cart's spots with this option on), at half the other cart's rate so the cart's own Pokemon still appear. Crystal: Mareep (Routes 32/42/43), Flaaffy (42/43), Girafarig (43), Mankey (42/9), Primeape (9), Vulpix (36/37/7/8, any time) and Remoraid (Route 44, Good/Super Rod). Gold: Ledyba in the morning, Meowth on Routes 5-8/38/39, Delibird in Ice Path, plus Phanpy, Skarmory, Donphan, Ledian, Persian, Arbok. Silver: Spinarak at night, Mankey on Routes 42/9, Mantine surfing on Route 41, plus Teddiursa, Gligar, Ursaring, Ariados, Primeape, Sandslash.
+- The Growlithe/Vulpix-style 50% swap is gone (it put Delibird on the water in Gold and Mantine in Ice Path in Silver).
+
 ## [3.61.0] — Milestone build
 - Milestone covering 3.45.0 to 3.60.0: FULL SCREEN Start Menu with Custom Borders support, Party header with full type names, Modern Bag 0.1.43 item artwork, Gold/Silver/Crystal Classic borders, Screen Ratio 16:9, Game Corner options and the Decapitalize fixes.
 - RELEASE_NOTES.md rewritten for Project Highlander 3.61.0 (it still showed the old Modern UI Suite 0.1.23 notes).

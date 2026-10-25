@@ -1,8 +1,9 @@
 return function(parent, settings, state, component)
+  local folder = "components/" .. (component.folder or component.id)
   local api = {
     id = component.id,
     version = component.version,
-    path = parent.path .. "/components/" .. component.id,
+    path = parent.path .. "/" .. folder,
     manifest = { id = component.id, version = component.version },
     exports = {},
     DELETE = parent.DELETE,
@@ -177,15 +178,15 @@ return function(parent, settings, state, component)
 
   api.assets = setmetatable({
     path = function(_, relative)
-      return parent.assets:path("components/" .. component.id .. "/" .. relative)
+      return parent.assets:path(folder .. "/" .. relative)
     end,
     image = function(_, relative)
-      return parent.assets:image("components/" .. component.id .. "/" .. relative)
+      return parent.assets:image(folder .. "/" .. relative)
     end,
   }, { __index = parent.assets })
 
   function api:read(relative)
-    return parent:read("components/" .. component.id .. "/" .. relative)
+    return parent:read(folder .. "/" .. relative)
   end
 
   function api:load(relative)

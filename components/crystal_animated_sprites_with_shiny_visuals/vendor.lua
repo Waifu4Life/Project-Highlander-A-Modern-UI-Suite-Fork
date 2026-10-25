@@ -3529,6 +3529,68 @@ function crystalFishPoseTiles(sources, walkSheet)
   return out
 end
 
+-- Girl (and every other custom) characters: the vanilla fishing strips are
+-- Red's / Chris's whole bottom row -- legs, shorts, body -- so recoloring
+-- them put a boy's body under Green or Kris.  Instead keep the character's
+-- OWN bottom row and take from the vanilla strip only the pixels where it
+-- differs from the vanilla STANDING frame: the hands and the rod.  Returns
+-- { facing = ImageData } for crystalFishPoseTiles, or nil (then the old
+-- whole-strip recolor is used).  Global for the same 200-local reason.
+function crystalFishPoseMerge(sources, walkSheet, vanillaSheet, ownH, vanH)
+  local function load(src)
+    if type(src) == "userdata" and src.getPixel then return src end
+    if type(src) ~= "string" then return nil end
+    local ok, id = pcall(love.image.newImageData, src)
+    if ok and id then return id end
+    return nil
+  end
+  local own, van = load(walkSheet), load(vanillaSheet)
+  if not (own and van) then return nil end
+  ownH, vanH = ownH or 16, vanH or 16
+  local FRAME = { down = 0, up = 1, left = 2 }
+  local function same(r1, g1, b1, a1, r2, g2, b2, a2)
+    if (a1 > 0) ~= (a2 > 0) then return false end
+    if a1 == 0 then return true end
+    return math.abs(r1 - r2) < 0.06 and math.abs(g1 - g2) < 0.06
+      and math.abs(b1 - b2) < 0.06
+  end
+  local out, any = {}, false
+  for facing, strip in pairs(sources) do
+    local frame = FRAME[facing]
+    if frame then
+      local ok = pcall(function()
+        local w, h = strip:getWidth(), strip:getHeight()
+        local merged = love.image.newImageData(w, h)
+        local oy = frame * ownH + ownH - h
+        local vy = frame * vanH + vanH - h
+        local ow, vw = own:getWidth(), van:getWidth()
+        for y = 0, h - 1 do
+          for x = 0, w - 1 do
+            local r, g, b, a = 0, 0, 0, 0
+            if x < ow and oy + y >= 0 and oy + y < own:getHeight() then
+              r, g, b, a = own:getPixel(x, oy + y)
+            end
+            local fr, fg, fb, fa = strip:getPixel(x, y)
+            if fa > 0 then
+              local vr, vg, vb, va = 0, 0, 0, 0
+              if x < vw and vy + y >= 0 and vy + y < van:getHeight() then
+                vr, vg, vb, va = van:getPixel(x, vy + y)
+              end
+              if not same(fr, fg, fb, fa, vr, vg, vb, va) then
+                r, g, b, a = fr, fg, fb, fa
+              end
+            end
+            merged:setPixel(x, y, r, g, b, a)
+          end
+        end
+        out[facing] = merged
+      end)
+      if ok and out[facing] then any = true end
+    end
+  end
+  return any and out or nil
+end
+
 -- The engine's rod sheet, once.  Headless-safe: a missing file just means
 -- no rod is pasted (the pose still shows the character's own row).
 local function fishingRodData(gameData)
@@ -3610,7 +3672,7 @@ end
 -- rod pass behind the head, so the gap through the torso is authentic),
 -- and out the side for LEFT (rod tile 1; RIGHT mirrors via the existing
 -- drawTile flip).
-local function overworldFishingTiles(sheetPath, gameData, frameWidth, frameHeight)
+local function overworldFishingTiles(sheetPath, gameData, frameWidth, frameHeight, vanillaSheet)
   local cached = generatedFishTiles[sheetPath]
   if cached ~= nil then return cached or nil end
   local out
@@ -3630,7 +3692,9 @@ local function overworldFishingTiles(sheetPath, gameData, frameWidth, frameHeigh
       end
     end
     if ids.down or ids.up or ids.left then
-      out = crystalFishPoseTiles(ids, sheetPath)
+      local merged = vanillaSheet and crystalFishPoseMerge(ids, sheetPath,
+        vanillaSheet, frameHeight, 16)
+      out = crystalFishPoseTiles(merged or ids, sheetPath)
     end
   end
   if not out then
@@ -3795,8 +3859,10 @@ if not isGen2 then
       player.__crystalOwFishVanilla = player.fishTiles
       if player.__crystalOwWalkSheet and player.sprite and player.sprite.def then
         local def = player.sprite.def
+        local vanilla = player.__crystalOwVanilla
         local tiles = overworldFishingTiles(player.__crystalOwWalkSheet, data,
-          def.frameWidth or 16, def.frameHeight or 16)
+          def.frameWidth or 16, def.frameHeight or 16,
+          vanilla and vanilla.image)
         if tiles then player.fishTiles = tiles end
       end
       return player
@@ -3870,7 +3936,7 @@ if isGen2 then
     -- shape that connect to the loose rod tile at ROD_OAM's offsets, so
     -- serving it per character needs no pasted stubs at all -- only the
     -- shared recolor from Chris's palette to the custom sheet's.
-    local function gen2FishingTiles(walkSheet, fishPath)
+    local function gen2FishingTiles(walkSheet, fishPath, _, frameHeight, vanillaSheet)
       local cached = gen2FishTiles[walkSheet]
       if cached ~= nil then return cached or nil end
       local fishId = gen2FishRodData(fishPath)
@@ -3889,8 +3955,10 @@ if isGen2 then
           ids[key] = id
         end
       end
+      local merged = (ids.down or ids.up or ids.left) and vanillaSheet
+        and crystalFishPoseMerge(ids, walkSheet, vanillaSheet, frameHeight, 16)
       local out = (ids.down or ids.up or ids.left)
-        and crystalFishPoseTiles(ids, walkSheet) or nil
+        and crystalFishPoseTiles(merged or ids, walkSheet) or nil
       if not out then
         gen2FishTiles[walkSheet] = false
         return nil
@@ -3906,8 +3974,10 @@ if isGen2 then
           or type(self.fishSheet) ~= "string" then
         return innerDrawFishing(self, yOffset)
       end
+      local vanilla = self.__crystalOwVanilla
       local tiles = gen2FishingTiles(def.image, self.fishSheet,
-        self.sprite.frameWidth or 16, self.sprite.frameHeight or 16)
+        self.sprite.frameWidth or 16, self.sprite.frameHeight or 16,
+        vanilla and vanilla.image)
       if not tiles then
         return innerDrawFishing(self, yOffset)
       end
@@ -3993,9 +4063,11 @@ local function reskinLivePlayer()
     if player.__crystalOwFishVanilla then
       if sheet then
         local def = player.sprite and player.sprite.def
+        local vanilla = player.__crystalOwVanilla
         local tiles = overworldFishingTiles(sheet,
           owSkin.game and owSkin.game.data,
-          (def and def.frameWidth) or 16, (def and def.frameHeight) or 16)
+          (def and def.frameWidth) or 16, (def and def.frameHeight) or 16,
+          vanilla and vanilla.image)
         player.fishTiles = tiles or nil
       else
         player.fishTiles = player.__crystalOwFishVanilla

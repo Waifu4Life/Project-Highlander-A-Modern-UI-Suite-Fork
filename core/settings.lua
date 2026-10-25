@@ -31,8 +31,10 @@ return function(parent, components)
     bag = "BAG",
     pc = "PC",
     pokedex = "DEX",
-    battle_hud = "HUD",
-    move_colors = "MOVE",
+    battle_hud = "BATTLE",
+    move_colors = "BATTLE",
+    qol = "OTHER",
+    rumble = "RUMBLE",
     letterbox = "BORDERS",
   }
   local MANAGER_DETAIL = {
@@ -62,9 +64,7 @@ return function(parent, components)
       other_gen1_moves = "OTHER GEN1 MOVES",
     },
     rumble = {
-      enabled = "RUMBLE", intensity = "INTENSITY",
-      battle_fx = "BATTLE FX", ambient = "AMBIENT",
-      story = "STORY", menus = "MENUS",
+      intensity = "INTENSITY", when_hit = "GET HIT", when_hitting = "HIT FOE",
     },
     letterbox = {
       border = "BORDER", border_scope = "SCOPE", screen_ratio = "RATIO",
@@ -109,7 +109,7 @@ return function(parent, components)
     },
     move_colors = {
       battle_colors = "BATTLE", layout = "LAYOUT", effect_hints = "EFFECT",
-      menu_colors = "MENUS", strength = "TINT", opacity = "OPACITY",
+      strength = "TINT", opacity = "OPACITY",
       text_only = "TEXT ONLY",
       text_position = "TEXT ALIGN", box_color = "BOX COLOR", info_position = "INFO SIDE",
       colored_pokeballs = "POKEBALLS",
@@ -189,6 +189,7 @@ return function(parent, components)
 
 
   function Settings:isEnabled(component)
+    if componentFor(self, component).alwaysOn then return true end
     return self:get(component, "__enabled") ~= false
   end
 
@@ -217,6 +218,9 @@ return function(parent, components)
 
   function Settings:get(component, key)
     component = componentFor(self, component)
+    if component.alwaysOn and (key == "__enabled" or key == component.enabledOption) then
+      return true
+    end
     local fullKey = self:keyFor(component, key)
     if Settings._values[fullKey] ~= nil then return Settings._values[fullKey] end
     local game = self.activeGame
@@ -238,7 +242,7 @@ return function(parent, components)
   function Settings:set(game, component, key, value, quiet)
     component = componentFor(self, component)
     game = game or self.activeGame
-    assert(game, "Modern UI Suite settings need the live game")
+    assert(game, "Project Highlander settings need the live game")
     local fullKey = self:keyFor(component, key)
     local saved, live = optionTables(game, self.parent.id, true)
     -- Structured preferences (currently Start Menu icon overrides) must not
@@ -333,7 +337,7 @@ return function(parent, components)
   function Settings:setAll(game, value)
     for _, component in ipairs(self.components) do
       -- Bulk UI actions must not opt a player into gameplay changes or
-      -- disable an independently selected QoL option with the renderers.
+      -- disable an independently selected Other Settings option with the renderers.
       if component.bulkUI ~= false then self:setEnabled(game, component, value, false) end
     end
     return true
@@ -354,7 +358,7 @@ return function(parent, components)
     if not saved and not live then return false end
     local changed = false
     -- qol.enabled used to be Unlimited PP and the component gate at once.
-    -- Keep the PP value on qol.unlimited_pp and turn the QoL component on.
+    -- Keep the PP value on qol.unlimited_pp and turn the Other Settings component on.
     for _, bucket in pairs({ saved, live }) do
       if bucket then
         if bucket["qol.unlimited_pp"] == nil and type(bucket["qol.enabled"]) == "boolean" then
@@ -439,12 +443,12 @@ return function(parent, components)
         default = "battle_art", choices = copy(spriteSources) },
     }
     for _, component in ipairs(self.components) do
-      schema[#schema + 1] = {
+      if not component.alwaysOn then schema[#schema + 1] = {
         key = self:keyFor(component, "__enabled"),
         label = self:managerLabel(component),
         type = "toggle",
         default = component.defaultEnabled ~= false,
-      }
+      } end
     end
     for _, component in ipairs(self.components) do
       for _, source in ipairs(component.schema or {}) do

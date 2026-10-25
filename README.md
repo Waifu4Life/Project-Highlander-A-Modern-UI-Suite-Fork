@@ -1,231 +1,346 @@
 # Project Highlander
 
-A Modern UI Suite fork for the [Pokémon Gen 1 Recompilation Project](https://github.com/pret).  
-Hub: **Options → Mods → PROJECT HIGHLANDER**.
+A Modern UI Suite fork for the **Pokémon Gen 1 Recompilation Project** (G1R Deluxe), covering **Red, Blue, Yellow, Gold, Silver and Crystal**.
 
-Do not install next to `modern_ui_suite`. This package conflicts with it.
+Modern menus, quality-of-life options, every Pokémon obtainable in a single cartridge, controller rumble, Steel/Fairy typing, Crystal animated sprites and more — all from one hub.
 
-Current release: **2.88.0**  
-Repo: https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
+**Hub:** `Options → Mods → PROJECT HIGHLANDER`
+
+> [!WARNING]
+> Do not install next to `modern_ui_suite`. Project Highlander replaces it and the two conflict.
+
+**Current release:** 3.67.0
+**Repo:** https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
+**Looking for FireRed / LeafGreen / Ruby / Sapphire / Emerald?** See *Project Highlander Gen3*, a separate mod.
 
 ---
 
-## Always on or on by default
+## Table of contents
 
-These run whenever the matching UI / event is in play. There is no extra toggle.
+- [Defaults](#defaults)
+- [Always on](#always-on)
+- [Hub layout](#hub-layout)
+- [Start Menu](#start-menu)
+- [Party](#party)
+- [Bag](#bag)
+- [PC](#pc)
+- [Pokédex](#pokédex)
+- [Battle Screen](#battle-screen)
+- [Overworld Screen](#overworld-screen)
+- [Other Settings](#other-settings)
+- [Cont. Rumble](#cont-rumble)
+- [PokéMoves](#pokémoves)
+- [Full Control](#full-control)
+- [Steel / Fairy](#steel--fairy)
+- [Crystal](#crystal)
+- [Shortcuts](#shortcuts)
+- [Custom Borders](#custom-borders)
+- [Poké Icons](#poké-icons)
+- [Game Corner](#game-corner)
+- [Get All Pokémon](#get-all-pokémon)
+- [Credits](#credits)
+
+---
+
+## Defaults
+
+Everything is **On** out of the box, except:
+
+- **Blue Into Green**
+- **Unlimited PP**
+- **Text Only** (Battle Screen)
+- **Screen Ratio** (Custom Borders)
+- **Right Analog for D-Pad** (Full Control)
+
+Changing a default never overwrites a setting you have already picked.
+
+Only sub-menus that replace a whole screen (Start Menu, Party, Bag, PC, Pokédex…) have a global **ENABLE** switch. Everywhere else, every option stands on its own.
+
+---
+
+## Always on
+
+These run whenever the matching screen or event is in play. There is no toggle.
 
 | Area | What you get |
-| --- | --- |
-| Start Menu | **PokéBox** shortcut (Bill’s PC, modern PC UI). Backing out of PokéBox or Mods returns to the Start Menu. |
-| New game | Boy / Girl before Oak (Red / Blue / Yellow / Gold / Silver) when Crystal sprites are present. Crystal’s own gender prompt is left alone. Default name lists follow gender and version. |
-| Script | Gender-neutral lines: “All children leave home some day.” / “Whoa, kid!” |
-| Trainer ID | Colored Kanto Gym Leaders + spinning badges. Gen 2 also has a Johto page; Left / Right flips pages. |
-| Pokégear map | **Select** swaps Johto and Kanto (same rule as Fly: unvisited towns stay locked). |
+|---|---|
+| New game | Boy / Girl choice before Oak in Red / Blue / Yellow / Gold / Silver when Crystal sprites are present. Crystal's own prompt is left alone. Default names follow gender and version. |
+| Script | Gender-neutral lines: "All children leave home some day." / "Whoa, kid!" |
+| Trainer ID | Colored Kanto Gym Leaders and spinning badges. Gen 2 adds a Johto page; Left / Right flips pages. |
+| Pokégear map | **Select** swaps Johto and Kanto (unvisited towns stay locked, same rule as Fly). |
 | Party | **Select** on the Moves tab reorders moves. |
-| Pokédex | **Start** opens locations (one row per slot: place, levels, rate%). **Select** explains color codes. **A** sorts. Unseen species stay blank. Catch rate sits under the nickname on Info. |
-| Bag | Gen 2 modern bag cap **255**. TM / HM descriptions. Pocket-switch sound. EXP.ALL lives in Key Items with no quantity prompt. |
-| PC | Left pane: sprite, scrolling name, Lv (+ gender in Gen 2), types (type-colored). No “in party / box / moving” chrome, no HP bar, no confirm spam. |
-| Battle | OG letterbox still works with Battle Layout **OG**. Gen 2 Fight menu keeps typed move colors. |
-| Game Corner | RBY coin clerk offers 50 and 500 (or 100 / 1000 with **2× Coins**). |
-| Boxes | Gen 2 expanded boxes (50 slots, scrollbar). |
-| Text | Aspect ratio Fill / 16:9 / 4:3 applies across modern windows. |
+| Pokédex | **Start** opens locations (place, levels, rate %). **Select** explains the color codes. **A** sorts. Catch rate on the Info page. |
+| Bag | 255-item cap, TM / HM descriptions, pocket-switch sound, EXP.ALL in Key Items. |
+| Boxes | Gen 2 expanded boxes (50 slots with a scrollbar). |
+| Battle | Gen 2 keeps both HUDs on screen during move animations (the attacker's HUD no longer vanishes). |
+| Fishing | Custom player sprites (Green, Kris…) keep their own body while fishing; only the hands and rod come from the original art. |
+| Game Corner | RBY coin clerk offers 50 and 500 (100 / 1000 with **2× Coins**). |
 
 ---
 
-## Hub root
+## Hub layout
 
-| Row | Role |
-| --- | --- |
-| Start Menu, Party, Bag, PC, Pokédex, Battle HUD, Move Colors | Presentation packs. Each opens with **Enabled**. |
-| QoL | Highlander gameplay toggles. |
-| Cont. Rumble | masterwebx rumble pack. |
-| PokeMoves | HM / TM / relearn tools. |
-| Full Control | Rebind overlay. Hides the stock Controls page while On. |
-| Steel / Fairy | zyrancz typing pack. |
-| Crystal | TRW animated sprites + shinies. |
-| Shortcuts | Select Menu Shortcuts and Pokeball usage shortcuts in battles |
-| Custom Borders | Different Modern and Vintage borders based on the Super Game Boy ones |
-| Poké Icons | Dex / Party / PC icon source. |
-| Game Corner | Different options to stack the odds in your favor |
-| Gen1 Get All the Pokémon | Split Gen 1 unlocks. |
-| Gen2 Get All the Pokémon | Split Gen 2 unlocks. |
+| Sub-menu | What it covers |
+|---|---|
+| Start Menu, Party, Bag, PC, Pokédex | Modern screens. Each has its own **ENABLE** switch. |
+| Battle Screen | HUD, move colors and battle gameplay options. |
+| Overworld Screen | Travel and exploration options. |
+| Other Settings | Everything else. |
+| Cont. Rumble | Controller rumble. |
+| PokéMoves | HM / TM / relearn tools. |
+| Full Control | Button rebinding. |
+| Steel / Fairy | Typing pack. |
+| Crystal | Animated sprites and shinies. |
+| Shortcuts | Ball shortcuts in battle and Key Item shortcuts on Select. |
+| Custom Borders | Super Game Boy–style borders. |
+| Poké Icons | Icon source for Pokédex / Party / PC. |
+| Game Corner | Stack the odds in your favor. |
+| Get All Pokémon | Shows only the page for the generation you are playing. |
 
-Sub-menus sort alphabetically except **Enabled** (always first) and copyright lines (always last).
+Options inside a sub-menu are sorted alphabetically.
 
 ---
 
 ## Start Menu
 
-- Theme: Red, Blue, Green, Yellow, Gold, Silver, Crystal, DMG.
-- Save theme per game or per save.
-- Icon overrides and start-icon order.
-- Clock on / off.
-- Icon Position.
-- PokéBox (always listed when the modern Start Menu is on).
-- Choose between a small Start Menu in the overworld or a fullscreen one.
+| Option | Values |
+|---|---|
+| Start Menu Style | **Full Screen** (default) or Phone |
+| Start Menu Colour | **Automatic** (follows the cartridge, Green when Blue runs as Green), Red, Blue, Green, Yellow, Gold, Silver, Crystal, DMG |
+| Colour Scope | **By Game** or By Save |
+| Start Menu Position | Left, Mid-L, Center, Mid-R, **Right** |
+| Start Menu Clock | Play time or **Device** time |
+| PokéBox | Bill's PC straight from the Start Menu, in the modern PC screen |
+| Start Icon Order | Default: Pokédex, Pokémon, Items, PokéBox, ID card, Save, Option, Mods, Quit |
+| Icon Overrides | Pick the icon used for each entry |
+
+- In Gen 1, **Quit** asks *Return to title? Yes / No* inside the Start Menu, like Gen 2.
+- Backing out of PokéBox or Mods returns to the Start Menu.
 
 ## Party
 
-- Modern party screen (Gen 1 layout on Gen 2 as well).
-- Pressing Select allows you to re-order PKMN in main screen.
-- Scrolling Menus when there's more than 8 items in Gen2.
-- Gen2: HP / EXP as amount or percent, values in the bars.
-- Pressing Select reorders moves on PKMN move screen.
+- Modern party screen, in Gen 1 and Gen 2.
+- **Select** reorders Pokémon on the main screen and moves on the Moves tab.
+- Scrolling menus when there are more than 8 entries (Gen 2).
+
+| Option | Default |
+|---|---|
+| Aspect Ratio | Fill |
+| Card Color | Type |
+| HP Display | Values |
+| EXP Display | Values |
+| EXP Strip, Empty Slots, Icon Animation, Widescreen | On |
+| Rename Style | Classic |
 
 ## Bag
 
-- Modern tab bag or classic backpack chrome (Gen 2 keeps the OG backpack look with a money cover).
-- Open-on pocket (honored in battle).
-- Pocket order editor.
-- 255 item cap on the modern bag.
+- Modern tab bag or classic backpack look (Gen 2 keeps its backpack with a money cover).
+- **Start** sorts the items in a pocket.
 - TM / HM descriptions from the move they teach.
-- Pressing Start allows for sorting the items in Tabs/Pockets
+
+| Option | Default |
+|---|---|
+| Aspect Ratio | Fill |
+| Bag Skin | Modern |
+| Bag Pocket Order | Items, Balls, Medicine, TMs/HMs, Key Items |
+| Open On | Medicine (also in battle) |
+| Hide All Items | On |
 
 ## PC
 
-- Modern box UI, 50-slot Gen 2 windows.
-- Follower or original icons (see Poké Icons).
-- Animated species art in the info pane.
+- Modern box screen with 50-slot Gen 2 boxes.
+- Left pane: animated sprite, scrolling name, level (and gender in Gen 2), type-colored types.
+- **Box Exclusive** (On): the PC shows boxes only.
+- Aspect Ratio: Fill.
 
 ## Pokédex
 
-- Info / Stats / Family / Moves.
-- Locations (Start), color legend (Select), sort (A).
-- Catch rate on Info.
-- L / R still skip pages on the main list.
+- Info / Stats / Family / Moves pages, locations, color legend and sorting.
+- L / R skip pages on the main list.
+- Aspect Ratio: Fill. Pokédex Colours: Light.
 
-## Battle HUD
+---
 
-- Modern player HUD (thicker Gen 1 HP en XP bars where that pack is on).
-- **Enemy HP Counter** — current / max inside the enemy bar.
-- **Reduce Low HP Beeping** — On / Off / Reduce (double beep).
-- Aspect ratio shared with other modern windows.
+## Battle Screen
 
-## Move Colors
-
-- Typed move colors (Gen 2 palette available in Gen 1 fight lists).
-- **Colored Pokéballs**
-- **Colors to Pokémoves**
-- Long move names scroll instead of truncating to a dot.
-
-## QoL
+**HUD**
 
 | Option | What it does |
-| --- | --- |
-| Unlimited PP | PP does not drop. |
-| Always Boosted EXP | Trade-boosted EXP for your own Pokémon, with the boosted line. |
-|Blue to Green | This is purely cosmetic, it will replace Jigglypuff by Nidorino the intro video, Red (protagonist) by Green (protagonist) and "Blue version" by "Green version" on the title screen. If you use "Auto" in the "Custom Borders" it will put the Modern Green border instead of Modern Blue. |
-| Modern EXP Sharing | Switch-style share. Off = use the Gen 1 EXP.ALL item. Bench mons get a grouped line. |
-| Running Shoes | Off / Hold B / Toggle B at 2×. Locked until getting starter then talking to Mom. |
-| Decapitalize Words | Sentence case on dialogue. |
-| Display Area Names | White box, two seconds, wraps long names, spaced town names. |
-| Modern Stores | Shows how many you already hold. Every mart including Indigo. |
-| Infinite Safari | Steps do not end the Safari; out of balls or leaving do. |
-| Sparkling Hidden Items | Sparkles on hidden items. No Itemfinder required. |
-| Use Repel Again? | One reuse prompt when a Repel expires. |
-| Rematch Anyone | Defeated trainers / Gym Leaders offer a rematch. Teams scale to your weakest mon. |
-| Gen3 Catch Rate | Gen 3 formula; Gen 1 ball order fixed. |
-| Pikachu Sound | Yellow cry or original (Yellow only). |
-| Force Crystal Settings | On by default when Crystal is installed. Locks Replace Sprites = All and the player sheet to Red / Green / Gold / Kris. Other Crystal options stay free. |
+|---|---|
+| Battle Info | Modern HUD with the level kept beside a status condition. |
+| Enemy HP Counter | Current / max HP inside the enemy bar. |
+| Low HP Beeping | On / Off / **Reduce** (a short double beep). |
+| Aspect Ratio | Fill. |
 
-## PokeMoves
+**Move colors**
+
+| Option | Default |
+|---|---|
+| Battle Colors, Colored Moves, Colored Pokéballs, Move Effect | On |
+| Battle Opacity | 100 |
+| Box Color | White |
+| Color Strength | Bold |
+| Info Windows | Right |
+| Move Layout | Wide |
+| Text Only | Off |
+| Text Position | Right |
+
+- Long move names scroll instead of being cut off.
+- The Power / PP line tightens its spacing so double-digit PP always fits.
+
+**Gameplay**
 
 | Option | What it does |
-| --- | --- |
-| Forgettable HMs | HMs can be overwritten. |
-| TMs Forever | TMs are not consumed. |
-| Instant TMs and HMs | A in front of water / trees / boulders. Select menu for Dig, Teleport, Fly, Flash (and Sweet Scent in Gen 2). Field prompts stripped where the engine allows. |
-| No Learn HMs | Badge + compatible species can Cut / Surf / Strength / Fly / Flash without the HM on the moveset. |
-| Move Relearning | Party A-menu. Includes stone-evolution misses.|
+|---|---|
+| Gen3 Catch Rate | Gen 3 catch formula; Gen 1 ball order fixed. |
+| Get Boosted EXP | Trade-boosted EXP for your own Pokémon. |
+| Modern EXP Share | Switch-style EXP sharing. Off = use the Gen 1 EXP.ALL item. |
+| Unlimited PP | PP never drops (Off by default). |
 
-## Full Control
+## Overworld Screen
 
-- Rebinds Up, Down, Left, Right, B, A, Start, Select, Speed+, Speed−.  
-Analog sticks as D-pad. Delete clears a bind. Select+ visual combos can be disabled. Stock Controls page is hidden while this is On.
+| Option | What it does |
+|---|---|
+| Infinite Safari | Steps don't end the Safari Game; running out of balls or leaving does. |
+| Modern Stores | Shows how many of an item you already hold, in every mart. |
+| Rematch Anyone | Defeated trainers and Gym Leaders offer a rematch; teams scale to your party. |
+| Running Shoes | Off / **Hold B** / Toggle B at 2× speed. Unlocks after you get your starter and talk to Mom. |
+| Show Area Names | Area name in a white box for two seconds when you enter a new place. |
+| Sparkling Hidden Items | Hidden items sparkle. No Itemfinder needed. |
+| Use Repel Again? | One reuse prompt when a Repel runs out. |
 
-## Shortcuts
+## Other Settings
 
-- Allows PokéBall shortcuts in battle by pressing Select + one of the directions on the D-pad. Up to 4 can be configured with the exceptions of the Master Ball, Safari Balls and Sport Ball. Cannot be used in the Safari Zone, National Park Bug-Catching Contest or against other trainers. Message in red will indicate when the feature is active.
+| Option | What it does |
+|---|---|
+| Blue Into Green | **Blue only.** Cosmetic: Nidorino in the intro, Green as the protagonist, "Green Version" on the title screen. With Custom Borders on Automatic, uses the Modern Green border. Off by default. |
+| Decapitalize Words | Sentence case in dialogue. |
+| Force Crystal Settings | Locks Crystal's Replace Sprites to All and the player sheet to Red / Green / Gold / Kris. |
+| Pikachu Sound | **Yellow only.** Yellow's Pikachu cry or the original. |
 
-- Also, 3 Key Item shortcuts can be added to the Select menu in the overworld. These can only be the following: Old Rod, Good Rod, Super Rod, Item Finder, Bicycle and Map (even in Gen2, the map will be a choice even if it's not a key item).
-
-## Game Corner
-- 2X Coins for cash" moved there from QoL
-- Slot Odds: (Normal / Generous / Lucky)
-- Bigger Payouts (double wins)
-- All Lucky Slot M.
+---
 
 ## Cont. Rumble
 
-- Full masterwebx option set. Credit line: `Copyright (c) 2026 masterwebx`.
+Rumbles your controller in time with the action. With no controller (phones), the device vibrates instead.
+
+| Option | What it does |
+|---|---|
+| Intensity | Off / Low / **Medium** / High — strength and length. |
+| Press Select to Test | Left / Right picks a hit type; **Select** plays it. |
+| When I Get Hit | Rumble when your Pokémon is hit (left motor leads). |
+| When I Hit | Rumble when you hit the foe (right motor leads). |
+| Wild Battle Start | One pulse when a wild battle begins, including Wilds of Kanto encounters. |
+| Trainer Battle Start | Two strong pulses as a trainer battle begins. |
+
+Hits follow effectiveness: not very effective = a light tap, effective = one pulse, super effective = two strong pulses, no effect = nothing.
+
+> [!NOTE]
+> Known issue in Gen 2: an extra rumble can happen right before your move and before a trainer's Pokémon's move.
+
+## PokéMoves
+
+| Option | What it does |
+|---|---|
+| Forgettable HMs | HMs can be overwritten. |
+| TMs Forever | TMs are not used up. |
+| Instant TMs and HMs | Press A in front of water / trees / boulders. Dig, Teleport, Fly, Flash (and Sweet Scent in Gen 2) from the Select menu. |
+| No Learn HMs | With the badge and a compatible Pokémon, use Cut / Surf / Strength / Fly / Flash without the move. |
+| Move Relearning | From the Party A-menu, including moves missed by stone evolutions. |
+
+## Full Control
+
+- Rebind Up, Down, Left, Right, A, B, Start, Select, Speed+ and Speed−. Delete clears a binding.
+- Left Analog for D-Pad (On), Right Analog for D-Pad (Off).
+- **Select Visual Combos** (On): Select + A / B / X / Y / LB keep the game's display shortcuts. Turn it off to use those buttons normally while Select is held.
+- The stock Controls page is hidden while Full Control is on.
 
 ## Steel / Fairy
 
-- zyrancz charts plus **Other Gen 1 Move Changes** (Gust, Karate Chop, Sand-Attack, Struggle). Credit line: `Copyright (c) zyrancz`.
+- Steel, Dark and Fairy types for Gen 1, with presets.
+- Fixes: Ghost vs Steel, Dark vs Steel, Ghost vs Psychic, Bug vs Poison, Ice vs Fire.
+- **Other Gen 1 Move Changes** (Gust, Karate Chop, Sand-Attack, Struggle).
 
 ## Crystal
 
-- TRW Crystal Animated Sprites with Shiny Visuals (integrated with permission). Playable sheets: Red, Green, Gold, Kris only. Credit line: `Copyright (c) TRW`.
+- TRW's Crystal Animated Sprites with Shiny Visuals, integrated with permission.
+- Front sprites, animated party / PC art, shinies.
+- Playable sheets: Red, Green, Gold, Kris.
 
-## Custom Borders — New sub-menu of its own, separate from QoL, with its own ENABLED toggle (off by default).
+## Shortcuts
 
-- Custom Borders: Automatic (follows the cartridge — Red / Blue / Yellow / Green / Gold / Silver / Crystal), 3 classics for Red, Blue and Green, a fixed Automatic choice and 4 custom slots.
+- **Ball shortcuts:** Select + a D-pad direction throws a ball in battle. Up to 4 can be set (not the Master Ball, Safari Ball or Sport Ball). Not usable in the Safari Zone, the Bug-Catching Contest or trainer battles. A red message shows when it's active.
+- **Key Item shortcuts:** up to 3 on the overworld Select menu: Old Rod, Good Rod, Super Rod, Itemfinder, Bicycle and Map (Map works in Gen 2 too).
 
-- BORDER SCOPE: By Save or By Game, remembered the same way as the Start Menu colour.
-Shown on the Title screen, Options, Mods, Trainer ID and OG (non-widescreen) battles. Never drawn over the overworld in Gen 1 or Gen 2, and never over the Modern UI Suite screens (Party / Bag / PC / Pokédex / Start menu), since those are true 4:3 rather than the square Game Boy shape the border art is made for.
+## Custom Borders
 
-- All borders are hand-retouched pixel art.
-- A 16:9 Ratio toggle in Custom Borders sub-menu to help out oddball ratio portable gaming PCs like the Steam Deck to be able to use the Custom Borders. This will not work on mobile phones (I tried to make it work).
+Hand-retouched pixel art based on the Super Game Boy borders.
+
+| Option | Values |
+|---|---|
+| Border | Automatic, Classic Red, Modern Red 1, Modern Red 2, Classic Green, Modern Green 1, Modern Green 2, Classic Blue, Modern Blue, Yellow, Classic Gold, Modern Gold, Classic Silver, Modern Silver, Classic Crystal, Modern Crystal, Custom 1–4 |
+| Border Scope | By Game or By Save |
+| Screen Ratio | Off / 16:9 — for odd-ratio handhelds like the Steam Deck (does not work on phones) |
+
+Borders show on the title screen, Options, Mods, Trainer ID, original-style battles and the Full Screen Start Menu. They never cover the overworld or the other modern screens.
 
 ## Poké Icons
 
 | Option | Values |
-| --- | --- |
+|---|---|
 | Icons for Pokédex | Original / Wild followers |
 | Icons for Party | Original / Wild followers |
 | Icons for PC | Original / Wild followers |
 
-- Art is bundled (`assets/poke_followers`). Credit: `Copyright (c) YoDrehDenSwagAuf`.
+## Game Corner
 
-## Gen1 Get All the Pokémon
+| Option | What it does |
+|---|---|
+| 2× Coins | Double coins for your cash. |
+| Slot Odds | Normal / Generous / **Lucky** |
+| Bigger Payouts | Double wins. |
+| All Lucky Slot M. | Every slot machine is a lucky one. |
 
-Turning a row **Off** does not take away anything already unlocked.
+---
 
-| Toggle | Rules |
-| --- | --- |
-| Exclusive PKMN from other Gen 1 games | Counterpart wild slots are **appended**, not 50/50 overwritten. Yellow Pikachu stays Power Plant only. Dontae in Cerulean Center trades Jynx for Poliwhirl. |
-| All starters (Red / Blue) | Oak leftover balls, Lv 5. Yellow does not get extra Oak gifts. |
-| Other fossil | Super Nerd after the ticket is in Key Items. |
-| Other fighting PKMN | Dojo leftover after the Karate Master rematch (Lv 70, best natural moves). |
-| More Eevees | Mr. Fuji after each bird; greed line if you grab extra balls. |
-| Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
-| Trade with Link C. | Celadon Department 3F Game Boy Kid. Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
-| Get ??? | Get the final Pokémon |
+## Get All Pokémon
 
-## Gen2 Get All the Pokémon
+Every Pokémon of the generation you are playing, in a single cartridge, no trading needed. Only the page for the running generation is shown. Turning an option off never takes back what you already unlocked.
 
-Same keep-on-disable rule.
+### Gen 1 (Red / Blue / Yellow)
 
-| Toggle | Rules |
-| --- | --- |
-| Exclusive PKMN from other Gen 2 games | Gold / Silver tables; Crystal exclusives from those tables. |
-| Other Johto starters | Elm leftovers, Lv 5. |
-| Kim fossil trades | Route 14. Extra Chansey → Omanyte, then Kabuto. Same trade rules as Aerodactyl. |
-| GS Ball | Get the GS Ball. |
-| Trade with Link C. | Replaces the Ecruteak Center bench guy (Game Boy Kid, PAL_OW_RED). Player and NPC must hold the evolution item when the trade needs one. |
-| Oak Kanto starters | Show him the Legendary Beasts in slot 1. |
-| Kanto legendary birds | Find them in Johto and Kanto. |
-| Mew and Mewtwo | Mew and Mewtwo are now available, find them!. |
-| Infinite Tries for Limited Encounters | Gives you infinite tries to catch Pokémon with limited encounters that were not added to the game by another mod in this suite. |
-| Roaming Hunter | 100% on the current route, no flee, no Roar. Does not invent map pins. |
+| Option | How it works |
+|---|---|
+| Get Exclusive PKMN from Other Gen1 Games | The other versions' wild Pokémon are added to the encounter tables (not 50/50 swaps). Yellow's Pikachu stays in the Power Plant. Dontae in the Cerulean Center trades Jynx for Poliwhirl. |
+| Get All Starters | Oak's leftover Poké Balls, Lv 5 (Red / Blue). |
+| Get Other Fossil | From the Super Nerd once the ticket is in Key Items. |
+| Get Other Fighter | The Dojo's other fighter after the Karate Master rematch (Lv 70). |
+| Get More Eevees | Mr. Fuji, after each legendary bird. |
+| Trade with Link C. | Celadon Dept. Store 3F Game Boy Kid: Kadabra / Haunter / Graveler / Machoke out and back with the evolution scene. |
+| Get ??? | The final Pokémon. |
+| Infinite Tries for Limited Encounters | One-time Pokémon come back if you don't catch them. |
+
+### Gen 2 (Gold / Silver / Crystal)
+
+| Option | How it works |
+|---|---|
+| Get Exclusive PKMN from Other Gen2 Games | Each game gets the Pokémon it's missing, where and when the Pokédex says (half the other game's rate). Crystal also gets Mareep, Flaaffy, Girafarig and Remoraid (Route 44, Good / Super Rod). |
+| Get All Starters | Elm's leftover Poké Balls, Lv 5. |
+| Kim Fossil Trades | Route 14: Chansey → Omanyte, then Kabuto. |
+| GS Ball / Celebi | Get the GS Ball. |
+| Trade with Link C. | Game Boy Kid in the Ecruteak Center. Both sides hold the item when the evolution needs one. |
+| Get OG Starters | Show Oak the Legendary Beasts in party slot 1. |
+| Get Legend. Birds | Find them in Johto and Kanto. |
+| Get Mew / Mewtwo | Both are now available. Find them! |
+| Roaming Hunter | Roaming beasts are 100% on your current route, never flee and ignore Roar. |
+| Infinite Tries for Limited Encounters | One-time Pokémon come back if you don't catch them. |
 
 ---
 
 ## Credits
 
-- Ish — Modern UI Suite (presentation core).
-- TRW — Crystal Animated Sprites with Shiny Visuals.
-- masterwebx — Controller Rumble.
-- zyrancz — Steel / Fairy typing.
-- YoDrehDenSwagAuf — poke_followers icons.
-- Waifu4Life — Highlander QoL, All-Pokémon quests, integration.
+- **Ish** — Modern UI Suite (presentation core and 0.1.43 bag artwork)
+- **TRW** — Crystal Animated Sprites with Shiny Visuals
+- **zyrancz** — Steel / Fairy typing
+- **YoDrehDenSwagAuf** — Wild follower icons (`assets/poke_followers`)
+- **Waifu4Life** — Project Highlander: menus, QoL, Get All Pokémon, rumble, integration

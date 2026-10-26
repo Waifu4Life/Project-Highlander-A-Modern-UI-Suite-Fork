@@ -327,7 +327,7 @@ Every Pokémon of the generation you are playing, in a single cartridge, no trad
 | Get Exclusive PKMN from Other Gen2 Games | Each game gets the Pokémon it's missing, where and when the Pokédex says (half the other game's rate). Crystal also gets Mareep, Flaaffy, Girafarig and Remoraid (Route 44, Good / Super Rod). |
 | Get All Starters | Elm's leftover Poké Balls, Lv 5. |
 | Kim Fossil Trades | Route 14: Chansey → Omanyte, then Kabuto. |
-| GS Ball / Celebi | Get the GS Ball. |
+| GS Ball | Get the GS Ball. |
 | Trade with Link C. | Game Boy Kid in the Ecruteak Center. Both sides hold the item when the evolution needs one. |
 | Get OG Starters | Show Oak the Legendary Beasts in party slot 1. |
 | Get Legend. Birds | Find them in Johto and Kanto. |

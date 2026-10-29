@@ -4,12 +4,15 @@ A Modern UI Suite fork for the **Pokémon Gen 1 Recompilation Project** (G1R Del
 
 Modern menus, quality-of-life options, every Pokémon obtainable in a single cartridge, controller rumble, Steel/Fairy typing, Crystal animated sprites and more — all from one hub.
 
+> [!NOTE]
+> Crystal's Pokémon sprites are read from your own **Pokémon Crystal** install in G1R Deluxe. Install Crystal there to use them in the other games. See [Crystal](#crystal).
+
 **Hub:** `Options → Mods → PROJECT HIGHLANDER`
 
 > [!WARNING]
 > Do not install next to `modern_ui_suite`. Project Highlander replaces it and the two conflict.
 
-**Current release:** 3.69.0
+**Current release:** 3.71.0
 **Repo:** https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
 **Looking for FireRed / LeafGreen / Ruby / Sapphire / Emerald?** See *Project Highlander Gen3*, a separate mod.
 
@@ -65,7 +68,7 @@ These run whenever the matching screen or event is in play. There is no toggle.
 
 | Area | What you get |
 |---|---|
-| New game | Boy / Girl choice before Oak in Red / Blue / Yellow / Gold / Silver when Crystal sprites are present. Crystal's own prompt is left alone. Default names follow gender and version. |
+| New game | Boy / Girl choice before Oak in Red / Blue / Yellow / Gold / Silver while [Gender Mod](#other-settings) is on. Crystal's own prompt is left alone. Default names follow gender and version. |
 | Script | Gender-neutral lines: "All children leave home some day." / "Whoa, kid!" |
 | Trainer ID | Colored Kanto Gym Leaders and spinning badges. Gen 2 adds a Johto page; Left / Right flips pages. |
 | Pokégear map | **Select** swaps Johto and Kanto (unvisited towns stay locked, same rule as Fly). |
@@ -91,7 +94,7 @@ These run whenever the matching screen or event is in play. There is no toggle.
 | PokéMoves | HM / TM / relearn tools. |
 | Full Control | Button rebinding. |
 | Steel / Fairy | Typing pack. |
-| Crystal | Animated sprites and shinies. |
+| Crystal | Crystal battle sprites, animations and Gen 2-style trainers. |
 | Shortcuts | Ball shortcuts in battle and Key Item shortcuts on Select. |
 | Custom Borders | Super Game Boy–style borders. |
 | Poké Icons | Icon source for Pokédex / Party / PC. |
@@ -217,7 +220,7 @@ Options inside a sub-menu are sorted alphabetically.
 |---|---|
 | Blue Into Green | **Blue only.** Cosmetic: Nidorino in the intro, Green as the protagonist, "Green Version" on the title screen. With Custom Borders on Automatic, uses the Modern Green border. Off by default. |
 | Decapitalize Words | Sentence case in dialogue. |
-| Force Crystal Settings | Locks Crystal's Replace Sprites to All and the player sheet to Red / Green / Gold / Kris. |
+| Gender Mod | Keeps your Boy / Girl choice in Red, Blue, Yellow, Gold and Silver: player portrait, battle back pic and overworld walk / bike sprites (Red / Green, Gold / Kris; Gold / Silver keep the game's own Gold walker). Off = the game's own player. Not shown in Crystal. |
 | Pikachu Sound | **Yellow only.** Yellow's Pikachu cry or the original. |
 
 ---
@@ -266,9 +269,18 @@ Hits follow effectiveness: not very effective = a light tap, effective = one pul
 
 ## Crystal
 
-- TRW's Crystal Animated Sprites with Shiny Visuals, integrated with permission.
-- Front sprites, animated party / PC art, shinies.
-- Playable sheets: Red, Green, Gold, Kris.
+TRW's Crystal Animated Sprites with Shiny Visuals, integrated with permission. Every option works on its own (no global switch).
+
+| Option | Values |
+|---|---|
+| Animations | **Loop** / Play Once — all 6 games, at Crystal's own timing. |
+| Battle Sprites | OG / **Crystal** — Crystal's Pokémon sprites, animations and shiny colors in battle, Pokédex, Party and PC. OG keeps the game's own sprites (and the original Pokémon Tower ghost). Not shown in Crystal. |
+| Front NPCs | OG / **GEN2** — Gen 2-style trainer pictures in battle. Gen 1 only. |
+| Overworld NPCs | OG / **GEN2** — Gen 2-style trainer sprites on the overworld. Gen 1 only. |
+
+- **Battle Sprites needs Pokémon Crystal installed in G1R Deluxe.** The sprites are read from Crystal's own files, the same way Project Highlander Gen3 uses Emerald's. Without Crystal, a *No Crystal Installed* line shows in the menu and the games keep their own sprites.
+- Shiny Pokémon always get the shiny sparkle.
+- The player's own pictures (Red / Green, Gold / Kris) are set by [Gender Mod](#other-settings).
 
 ## Shortcuts
 
@@ -370,7 +382,7 @@ Every Pokémon of the generation you are playing, in a single cartridge, no trad
 ## Credits
 
 - **Ish** — Modern UI Suite (presentation core and 0.1.43 bag artwork)
-- **TRW** — Crystal Animated Sprites with Shiny Visuals
+- **TRW** — Crystal Animated Sprites with Shiny Visuals (trainer and overworld art, shiny visuals)
 - **zyrancz** — Steel / Fairy typing
 - **YoDrehDenSwagAuf** — Wild follower icons (`assets/poke_followers`)
 - **Waifu4Life** — Project Highlander: menus, QoL, Get All Pokémon, rumble, integration

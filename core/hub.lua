@@ -107,7 +107,19 @@ return function(mod, settings, state, components)
           end)())
           and not (row.key == "force_crystal_settings"
             and not (mod.find("crystal_animated_sprites_with_shiny_visuals")
-              or (settings.byId and settings.byId["crystal_animated_sprites_with_shiny_visuals"]))) then
+              or (settings.byId and settings.byId["crystal_animated_sprites_with_shiny_visuals"])))
+          -- GENDER MOD and BATTLE SPRITES mean nothing in Crystal (its own
+          -- Boy/Girl and sprites); the NPC rows are Gen 1 only.
+          and not ((row.key == "force_crystal_settings"
+              or row.key == "crystalBattleSprites") and (function()
+            local ok, GV = pcall(require, "src.core.GameVersion")
+            return ok and type(GV.get) == "function" and GV.get() == "crystal"
+          end)())
+          and not ((row.key == "crystalFrontNPCs" or row.key == "crystalOverworldNPCs")
+            and (function()
+              local ok, GV = pcall(require, "src.core.GameVersion")
+              return ok and type(GV.generation) == "function" and GV.generation() == 2
+            end)()) then
         local source = row
         if component.id == "modern_start_menu_ui" and source.key == "theme" then
           body[#body + 1] = {
@@ -369,6 +381,18 @@ return function(mod, settings, state, components)
       }
     end
     if component.key == "crystal" then
+      -- Battle Sprites needs Crystal's files; say so when they're missing.
+      local exports = component.exports or {}
+      local okV, GV = pcall(require, "src.core.GameVersion")
+      local onCrystal = okV and type(GV.get) == "function" and GV.get() == "crystal"
+      if not onCrystal and type(exports.crystalAvailable) == "function"
+          and not exports.crystalAvailable() then
+        rows[#rows + 1] = {
+          id = "crystal.missing",
+          label = "NO CRYSTAL INSTALLED",
+          value = function() return "" end,
+        }
+      end
       rows[#rows + 1] = {
         id = "crystal.copyright",
         label = "Copyright (c) TRW",

@@ -54,7 +54,7 @@ return function(mod)
       choices = {
         { "YELLOW", "yellow" }, { "ORIGINAL", "original" },
       } },
-    { key = "force_crystal_settings", label = "FORCE CRYSTAL SETTINGS",
+    { key = "force_crystal_settings", label = "GENDER MOD",
       type = "toggle", default = true },
     { key = "gen1_all_pkmn", label = "GEN1 GET ALL THE POKEMON",
       type = "toggle", default = true },
@@ -774,7 +774,7 @@ return function(mod)
     PKMN=true, OT=true, LV=true, DV=true, EV=true, IV=true, NPC=true,
     HUD=true, UI=true, AI=true, RNG=true, CPU=true, SFX=true, BGM=true,
     GB=true, GBC=true, SGB=true, DMG=true, VS=true, UFO=true,
-    USA=true, SOS=true, DJ=true, MC=true,
+    USA=true, SOS=true, DJ=true, MC=true, OG=true,
   }
   local KEEP_FORM = {
     TMS="TMs", HMS="HMs", QOL="QoL", DVS="DVs", EVS="EVs", IVS="IVs",

@@ -166,35 +166,28 @@ return function(mod)
       -- Crystal's own Gen 2 menu renderer bakes the gray ramp for DMG/CLASSIC.
       if palette.mode ~= "gbc" then colors, paletteKey = GRAY, "gray" end
     end
-    local folder = root .. "/assets/front/" .. variant .. "/" .. dex .. "/"
-    local sequence, hit = cached(sequences, folder)
+    -- Frames and timings come from Crystal's own files (the mod no longer
+    -- ships PNG frames); nothing while BATTLE SPRITES is OG / no Crystal.
+    local source = api.crystalSource
+    if not (source and source.active()) then return nil end
+    local art = variant
+    if art ~= "normal" and art ~= "shiny" then art = "normal" end
+    local key = "crystal:" .. art .. ":" .. dex
+    local sequence, hit = cached(sequences, key)
     if not hit then
-      local fs = game.mods.fs or love.filesystem
-      local function exists(path) return fs.getInfo and fs.getInfo(path) or fs.read(path) end
-      if not exists(folder .. "001.png") then
-        folder = root .. "/assets/front/normal/" .. dex .. "/"
-      end
-      if not exists(folder .. "001.png") then return nil end
-      local count = 1
-      while count < 64 and exists(folder .. string.format("%03d.png", count + 1)) do
-        count = count + 1
-      end
-      local metadata = dataFile(game, root .. "/animation_data.lua") or {}
-      local durations = metadata[variant] or metadata.normal or {}
-      sequence = { folder = folder, frames = count, durations = durations[tostring(dex)],
+      local count = source.frameCount(dex)
+      if count < 1 then return nil end
+      sequence = { variant = art, frames = count, durations = source.durations(dex),
         start = love.timer.getTime() }
-      remember(sequences, root .. "/assets/front/" .. variant .. "/" .. dex .. "/", sequence, 32)
+      remember(sequences, key, sequence, 32)
     end
     local index = 1
     if animate then
       local once = game.save and game.save.options and game.save.options.crystalAnimations == "once"
       if once and not sequence.once then sequence.start = love.timer.getTime() end
       sequence.once = once
-      if generation == 2 then
-        local t = love.timer.getTime()
-        index = once and math.min(sequence.frames, math.floor((t - sequence.start) * 12) + 1)
-          or math.floor(t * 12) % sequence.frames + 1
-      elseif once then
+      -- Crystal's own timing on both generations (Gen 2 used a 12 fps clock)
+      if once then
         local elapsed = (love.timer.getTime() - sequence.start) * 1000
         while index < sequence.frames and elapsed >= ((sequence.durations or {})[index] or 100) do
           elapsed = elapsed - ((sequence.durations or {})[index] or 100); index = index + 1
@@ -203,8 +196,13 @@ return function(mod)
         index = frameIndex(sequence, true)
       end
     end
-    return decode(sequence.folder .. string.format("%03d.png", index), nil, 1,
-      paletteKey or "color", function(cell)
+    local frameKey = ("crystal/%s/%d/%03d"):format(sequence.variant, dex, index)
+    local fkey = table.concat({ frameKey, tostring(paletteKey or "color") }, "|")
+    local done, seen = cached(frames, fkey)
+    if seen then return done end
+    local cell = source.imageData(("front/%s/%d/%03d.png"):format(sequence.variant, dex, index))
+    if not cell then return remember(frames, fkey, nil, 96) end
+    return remember(frames, fkey, (function(cell)
         if colors then
           cell:mapPixel(function(_, _, r, g, b, a)
             if a == 0 then return r, g, b, a end
@@ -214,7 +212,7 @@ return function(mod)
           end)
         end
         return image(cell)
-      end)
+      end)(cell), 96)
   end
   local function resolve(game, subject, animate)
     local source = mod.options:get("menu_sprite_source") or "battle_art"

@@ -166,13 +166,15 @@ return {
     key = "crystal",
     name = "Crystal Animated Sprites",
     short = "CRYSTAL",
-    version = "2.0.3",
+    version = "2.1.0",
     installOrder = 13,
     defaultEnabled = true,
+    -- 3.71.0: no global ON/OFF row; every CRYSTAL option works on its own.
+    alwaysOn = true,
     bulkUI = false,
     files = {
       "main.lua", "vendor.lua", "options_screen.lua",
-      "species_map.lua", "animation_data.lua", "dimensions.lua",
+      "species_map.lua", "crystal_source.lua", "portrait.lua",
     },
   },
   {

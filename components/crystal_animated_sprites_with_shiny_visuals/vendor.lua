@@ -57,7 +57,82 @@ local function crystalRequire(name)
   return assert(load(src, "@crystal/" .. name))()
 end
 local speciesMap = crystalRequire("species_map")
-local animationData = crystalRequire("animation_data")
+-- Pokémon pictures and timings now come from Crystal's own files (see
+-- crystal_source.lua); the mod no longer ships its PNG frames.  Kept as
+-- globals so the install closure's upvalue count does not grow.
+CrystalSource = crystalRequire("crystal_source")(mod)
+local animationData = CrystalSource.animationData
+
+-- BATTLE SPRITES: OG keeps the game's own Pokémon sprites, CRYSTAL uses
+-- Crystal's (needs Crystal installed in G1R Deluxe).  The Crystal cart has
+-- no row: it always shows its own sprites through this mod.
+function battleSpritesOn()
+  if isCrystalCart then return true end
+  local ok, v = pcall(mod.options.get, mod.options, "crystalBattleSprites")
+  return not (ok and v == "og")
+end
+CrystalSource.setGate(battleSpritesOn)
+if type(mod.exports) == "table" then mod.exports.crystalSource = CrystalSource end
+
+function crystalOption(key)
+  local ok, v = pcall(mod.options.get, mod.options, key)
+  if ok then return v end
+  return nil
+end
+
+-- Every picture this file loads by path goes through these two, so an old
+-- assets/front|back path is answered from Crystal instead of a file.
+local rawNewImage = love.graphics.newImage
+local rawNewImageData = love.image.newImageData
+function gfxNewImage(a, ...)
+  if type(a) == "string" then
+    local rel = CrystalSource.claim(a)
+    if rel then
+      local d = CrystalSource.imageData(rel)
+      if not d then error("no Crystal art for " .. rel, 2) end
+      return rawNewImage(d, ...)
+    end
+  end
+  return rawNewImage(a, ...)
+end
+function imgNewImageData(a, ...)
+  if type(a) == "string" then
+    local rel = CrystalSource.claim(a)
+    if rel then
+      local d = CrystalSource.imageData(rel)
+      if not d then error("no Crystal art for " .. rel, 2) end
+      return d
+    end
+  end
+  return rawNewImageData(a, ...)
+end
+
+-- Paths handed to the engine (the pokemon.sprite hook) are loaded by its
+-- Assets cache, so they are registered there as built pictures.  The
+-- images it makes from them are marked as this mod's art, the way the
+-- old files were recognised by their folder.
+local okAssets, EngineAssets = pcall(require, "src.render.Assets")
+local composedPaths = {}
+function registerCrystalPath(path)
+  if composedPaths[path] or not (okAssets and EngineAssets
+      and type(EngineAssets.compose) == "function") then return end
+  local rel = CrystalSource.claim(path)
+  if not (rel and CrystalSource.exists(rel)) then return end
+  composedPaths[path] = true
+  EngineAssets.compose(path, function()
+    return CrystalSource.imageData(rel) or rawNewImageData(1, 1)
+  end)
+end
+if okAssets and EngineAssets and type(EngineAssets.image) == "function"
+    and not EngineAssets.__crystalMarkHook then
+  EngineAssets.__crystalMarkHook = true
+  local innerAssetImage = EngineAssets.image
+  EngineAssets.image = function(path, ...)
+    local img = innerAssetImage(path, ...)
+    if img and composedPaths[path] and markCrystal then markCrystal(img) end
+    return img
+  end
+end
 -- The recolor pipeline (PaletteFX) is Gen 1 renderer internals.  Without
 -- it the mod loads raw art and lets the engine's own palette passes
 -- handle it, which is what the grayscale set is authored for.
@@ -117,7 +192,7 @@ local playerSprite = DEFAULT_PLAYER_SPRITE
 -- from assets/trainers/back/{name}.png, keyed by the portrait stem
 -- (gold_flip.png -> gold.png).  A missing back file falls back to the
 -- front portrait.  Synced from the save like the other options.
-local battlePicPref = "front"
+local battlePicPref = "back"
 
 -- OPTIONS > ANIMATIONS: LOOP cycles the Crystal sprites continuously;
 -- PLAY ONCE runs each animation through its frames a single time and
@@ -130,26 +205,38 @@ local animMode = "loop"
 -- battle back pic (the old FLIP SPRITE toggle is gone): the suffix
 -- marks art that faces the wrong way for the back slot.
 
+-- Who gets replacement trainer art (3.70.0):
+--   the player   OTHER SETTINGS > GENDER MOD (Red/Green, Gold/Kris); never
+--                on the Crystal cart, which has its own Boy/Girl
+--   battle NPCs  CRYSTAL > FRONT NPCS     (Gen 1 only)
+--   overworld    CRYSTAL > OVERWORLD NPCS (Gen 1 only)
+function genderModOn()
+  if isCrystalCart then return false end
+  local v = true
+  if mod.suite and type(mod.suite.option) == "function" then
+    local ok, got = pcall(mod.suite.option, "unlimited_pp", "force_crystal_settings")
+    if ok then v = got end
+  end
+  return v ~= false
+end
+
 function customPlayer()
-  return trainerMode == "player" or trainerMode == "both"
-      or trainerMode == "all"
+  return genderModOn()
 end
 
 function customOpponents()
-  return trainerMode == "trainers" or trainerMode == "both"
-      or trainerMode == "all"
+  if isGen2 then return false end
+  return crystalOption("crystalFrontNPCs") ~= "og"
 end
 
 function customOverworld()
-  return trainerMode == "overworld" or trainerMode == "all"
+  if isGen2 then return false end
+  return crystalOption("crystalOverworldNPCs") ~= "og"
 end
 
--- Any battle trainer portrait replacement at all (the mod's shipped
--- fallback art included).  "none" and "overworld" both leave the battle
--- portraits alone.
+-- Any battle trainer portrait replacement at all.
 function customTrainerPortraits()
-  return trainerMode == "player" or trainerMode == "trainers"
-      or trainerMode == "both" or trainerMode == "all"
+  return customPlayer() or customOpponents()
 end
 
 local reveal = {
@@ -211,7 +298,7 @@ function variant(mon)
   return isShiny(mon) and "shiny" or "normal"
 end
 
-function dexFor(species)
+function rawDexFor(species)
   if species == nil then return nil end
   -- speciesMap is keyed by NAME strings (e.g. "FARFETCHD"), but Gen 2
   -- sometimes passes numeric species (e.g. 83) or variant spellings
@@ -234,6 +321,13 @@ function dexFor(species)
     end
   end
   return nil
+end
+
+-- The species this mod draws: none while BATTLE SPRITES is OG or Crystal
+-- isn't installed, so every screen keeps the game's own art.
+function dexFor(species)
+  if not CrystalSource.active() then return nil end
+  return rawDexFor(species)
 end
 
 function colorMode()
@@ -407,13 +501,17 @@ function markCrystalBattlers(battle)
 end
 
 function frontPath(dex, which, frame)
-  return ("%s/front/%s/%d/%03d.png"):format(
+  local p = ("%s/front/%s/%d/%03d.png"):format(
     SPRITE_BASE, which, dex, frame or 1)
+  registerCrystalPath(p)
+  return p
 end
 
 function backPath(dex, which)
-  return ("%s/back/%s/%d.png"):format(
+  local p = ("%s/back/%s/%d.png"):format(
     SPRITE_BASE, which, dex)
+  registerCrystalPath(p)
+  return p
 end
 
 -- The art folder the mod draws in the current COLORS mode: the full-color
@@ -436,7 +534,7 @@ function ghostFrontPath()
 end
 
 function isGhostBattle(battle)
-  return battle and battle.ghost == true
+  return battle and battle.ghost == true and battleSpritesOn()
 end
 
 -- Outside ADVANCED the shiny variant collapses to the normal one: the
@@ -484,8 +582,8 @@ function loadImage(path, data, species, battle)
   local key = pal and (path .. "#" .. pal.name) or path
   if imageCache[key] then return imageCache[key] end
   local ok, image = pcall(function()
-    if not pal then return love.graphics.newImage(path) end
-    local id = love.image.newImageData(path)
+    if not pal then return gfxNewImage(path) end
+    local id = imgNewImageData(path)
     local c = pal.colors
     id:mapPixel(function(_, _, r, g, b, a)
       if a == 0 then return r, g, b, a end
@@ -494,11 +592,11 @@ function loadImage(path, data, species, battle)
         or yy > 0.17 and c[3] or c[4]
       return col[1] / 255, col[2] / 255, col[3] / 255, a
     end)
-    return love.graphics.newImage(id)
+    return gfxNewImage(id)
   end)
   if not ok or not image then
     if pal then return nil end
-    local okRaw, raw = pcall(love.graphics.newImage, path)
+    local okRaw, raw = pcall(gfxNewImage, path)
     if not (okRaw and raw) then return nil end
     image = raw
   end
@@ -513,7 +611,7 @@ end
 function loadImageRaw(path)
   local key = path .. "#raw"
   if imageCache[key] then return imageCache[key] end
-  local ok, image = pcall(love.graphics.newImage, path)
+  local ok, image = pcall(gfxNewImage, path)
   if not (ok and image) then return nil end
   image:setFilter("nearest", "nearest")
   imageCache[key] = image
@@ -528,7 +626,7 @@ end
 -- by the trainer-portrait loader (modTrainerPic) and the player back-pic
 -- bake (lumaTrainerBackPic).
 function lumaBakeImage(path, colors)
-  local okId, id = pcall(love.image.newImageData, path)
+  local okId, id = pcall(imgNewImageData, path)
   if not (okId and id) then return nil end
   local okMap = pcall(function()
     id:mapPixel(function(_, _, r, g, b, a)
@@ -540,7 +638,7 @@ function lumaBakeImage(path, colors)
     end)
   end)
   if not okMap then return nil end
-  local okNew, baked = pcall(love.graphics.newImage, id)
+  local okNew, baked = pcall(gfxNewImage, id)
   if not (okNew and baked) then return nil end
   baked:setFilter("nearest", "nearest")
   markCrystal(baked)
@@ -636,7 +734,7 @@ function gen2GrayImage(img)
     end)
   end)
   if not okMap then gen2GrayCache[img] = false return nil end
-  local okNew, baked = pcall(love.graphics.newImage, data)
+  local okNew, baked = pcall(gfxNewImage, data)
   if not (okNew and baked) then gen2GrayCache[img] = false return nil end
   baked:setFilter("nearest", "nearest")
   markCrystal(baked)
@@ -706,7 +804,7 @@ local function trimGround(img, side, battle)
     return img
   end
   local nw, nh = w - padL, bottom + 1
-  local okC, cropped = pcall(love.image.newImageData, nw, nh)
+  local okC, cropped = pcall(imgNewImageData, nw, nh)
   if not (okC and cropped) then
     hit[key] = img
     return img
@@ -723,7 +821,7 @@ local function trimGround(img, side, battle)
     hit[key] = img
     return img
   end
-  local okNew, trimmed = pcall(love.graphics.newImage, cropped)
+  local okNew, trimmed = pcall(gfxNewImage, cropped)
   if not (okNew and trimmed) then
     hit[key] = img
     return img
@@ -776,7 +874,7 @@ local function bakeTitleTrainer(title)
     end)
   end)
   if not okMap then return false end
-  local okNew, baked = pcall(love.graphics.newImage, data)
+  local okNew, baked = pcall(gfxNewImage, data)
   if not (okNew and baked) then return false end
   baked:setFilter("nearest", "nearest")
   title.player = baked
@@ -792,6 +890,10 @@ end
 -- read at all) -- the tri-state the headless best-effort paths key off.
 local MOD_ASSET_PREFIX = mod.path .. "/"
 local function modReadBytes(path)
+  local claimed = CrystalSource.claim(path)
+  if claimed then
+    return CrystalSource.exists(claimed) and "crystal" or false
+  end
   if type(path) ~= "string"
       or path:sub(1, #MOD_ASSET_PREFIX) ~= MOD_ASSET_PREFIX then
     return nil
@@ -886,6 +988,13 @@ end
 -- Time-indexed frame pick shared by the battle hook (which needs the path)
 -- and the menu screens (which need the image).  Crystal anims run at
 -- roughly 12 fps.
+-- One frame's time on screen, in ms, from Crystal's animation.
+function durationsOf(dex, which, i)
+  local list = (animationData[which] and animationData[which][tostring(dex)])
+    or animationData.normal[tostring(dex)]
+  return math.max(1, (list and list[i]) or 100)
+end
+
 local function frontFrameIndex(dex, which)
   local base, count = frontFrameInfo(dex, which)
   if not base or count <= 0 then return nil, nil end
@@ -899,11 +1008,25 @@ local function frontFrameIndex(dex, which)
       start = t
       animStart[key] = start
     end
-    local frame = math.floor((t - start) * 12) + 1
-    if frame > count then frame = count end
+    local elapsed = (t - start) * 1000
+    local frame = 1
+    while frame < count do
+      local d = durationsOf(dex, base, frame)
+      if elapsed < d then break end
+      elapsed = elapsed - d
+      frame = frame + 1
+    end
     return base, frame
   end
-  return base, math.floor(t * 12) % count + 1
+  -- LOOP: Crystal's own timing (the old 12 fps clock ignored it)
+  local total = 0
+  for i = 1, count do total = total + durationsOf(dex, base, i) end
+  local elapsed = (t * 1000) % math.max(1, total)
+  for i = 1, count do
+    elapsed = elapsed - durationsOf(dex, base, i)
+    if elapsed < 0 then return base, i end
+  end
+  return base, count
 end
 
 local function frontFrameForTime(dex, which)
@@ -927,7 +1050,7 @@ local function menuFrameImageForTime(dex, which)
   local path = frontPath(dex, base, frame)
   local img = menuFrameImages[path]
   if img == nil then
-    local ok, image = pcall(love.graphics.newImage, path)
+    local ok, image = pcall(gfxNewImage, path)
     if ok and image then
       image:setFilter("nearest", "nearest")
       markCrystal(image)
@@ -949,8 +1072,9 @@ end
 
 -- ------- PNG-frame animation
 --
--- The front art ships as PNG frame folders (assets/front/<variant>/<dex>/NNN.png)
--- with the per-frame durations in animation_data.  Load a dex's whole frame
+-- The front art is addressed as PNG frame paths (assets/front/<variant>/<dex>/NNN.png)
+-- that crystal_source.lua builds from Crystal's files, with the per-frame
+-- durations from Crystal's animation scripts (animationData).  Load a dex's whole frame
 -- set as ready images -- raw, or luminance-baked onto a palette -- paired
 -- with the durations, in the same { images, durations } shape every animated
 -- screen consumes.  Cached per variant + palette (the bake is fixed by the
@@ -973,7 +1097,7 @@ end
 -- palette so it survives the engine's recolor passes (which bucket by red
 -- channel and flatten full-color art).
 local function bakeFrameImage(path, colors)
-  local ok, data = pcall(love.image.newImageData, path)
+  local ok, data = pcall(imgNewImageData, path)
   if not (ok and data) then return nil end
   local okMap = pcall(function()
     data:mapPixel(function(_, _, r, g, b, a)
@@ -985,7 +1109,7 @@ local function bakeFrameImage(path, colors)
     end)
   end)
   if not okMap then return nil end
-  local okNew, baked = pcall(love.graphics.newImage, data)
+  local okNew, baked = pcall(gfxNewImage, data)
   if not (okNew and baked) then return nil end
   baked:setFilter("nearest", "nearest")
   markCrystal(baked)
@@ -1170,7 +1294,7 @@ local function lumaPng(dex, colors, tag)
     lumaPngCache[key] = false
     return nil
   end
-  local ok, data = pcall(love.image.newImageData, path)
+  local ok, data = pcall(imgNewImageData, path)
   if not (ok and data) then
     lumaPngCache[key] = false
     return nil
@@ -1188,7 +1312,7 @@ local function lumaPng(dex, colors, tag)
     lumaPngCache[key] = false
     return nil
   end
-  local okNew, baked = pcall(love.graphics.newImage, data)
+  local okNew, baked = pcall(gfxNewImage, data)
   if not (okNew and baked) then
     lumaPngCache[key] = false
     return nil
@@ -1414,7 +1538,7 @@ local function bakeStagedPic(img)
     end)
   end)
   if not okM then return img end
-  local okN, baked = pcall(love.graphics.newImage, id)
+  local okN, baked = pcall(gfxNewImage, id)
   if not (okN and baked) then return img end
   baked:setFilter("nearest", "nearest")
   monoBaked[img] = { mode, baked }
@@ -1466,13 +1590,13 @@ local function bakeBall(mon)
   local hit = ballBaked[key]
   if hit then return hit end
   if not ballSheetData then
-    local ok, id = pcall(love.image.newImageData,
+    local ok, id = pcall(imgNewImageData,
       "assets/generated/battle/balls.png")
     if not (ok and id) then return nil end
     ballSheetData = id
   end
   local ok, img = pcall(function()
-    local id = love.image.newImageData(8, 8)
+    local id = imgNewImageData(8, 8)
     for y = 0, 7 do
       for x = 0, 7 do
         local r, g, b, a = ballSheetData:getPixel(tile * 8 + x, y)
@@ -1484,7 +1608,7 @@ local function bakeBall(mon)
         end
       end
     end
-    local out = love.graphics.newImage(id)
+    local out = gfxNewImage(id)
     out:setFilter("nearest", "nearest")
     return out
   end)
@@ -1566,7 +1690,7 @@ end
 
 local function loadSparkles()
   if sparkleImage then return true end
-  local ok, image = pcall(love.graphics.newImage,
+  local ok, image = pcall(gfxNewImage,
     SHINY_BASE .. "/gen2_sparkles.png")
   if not ok or not image then return false end
   image:setFilter("nearest", "nearest")
@@ -1585,32 +1709,36 @@ end
 -- for each of them.  The engine resolves the sprite hook for any dex the
 -- mod has no art for by falling back to its own art, so a missing file
 -- is never a hard failure.
+-- The game's own records keep their own pictures: the pokemon.sprite hook
+-- below swaps in Crystal's art only while BATTLE SPRITES is CRYSTAL (and
+-- Crystal is installed), so OG shows the game's sprites untouched.  The
+-- records' trueColor flag follows the same switch.
 local crystalDefs = {}
+local crystalDefTrueColor = {}
 pcall(function()
-  for species, dex in pairs(speciesMap) do
+  for species in pairs(speciesMap) do
     local def = mod.content.pokemon:get(species)
     if def then
       crystalDefs[species] = def
-      mod.content.pokemon:patch(species, {
-        spriteFront = frontPath(dex, "normal", 1),
-        spriteBack = backPath(dex, "normal"),
-        battleScaleFront = 1,
-        battleScaleBack = 1,
-        trueColor = true,
-      })
+      crystalDefTrueColor[species] = def.trueColor and true or false
     end
   end
 end)
 
 local function syncTrueColor()
+  local on = CrystalSource.active()
   for species in pairs(crystalDefs) do
-    crystalDefs[species].trueColor = colorMode()
+    if on then
+      crystalDefs[species].trueColor = colorMode()
+    else
+      crystalDefs[species].trueColor = crystalDefTrueColor[species]
+    end
   end
 end
 syncTrueColor()
 
 mod.hooks:wrap("pokemon.sprite", function(next, originalPath, ctx)
-  if ctx and ctx.species == GHOST_SPECIES then
+  if ctx and ctx.species == GHOST_SPECIES and battleSpritesOn() then
     local p = ghostFrontPath()
     if artExists(p) then
       ctx.trueColor = colorMode()
@@ -1718,7 +1846,7 @@ end, 930)
 -- DPI-scaled transform is active, and drawing the pic through that
 -- transform into a readback canvas crops the copy.
 -- Flip a sprite FILE horizontally by loading its pixels straight from
--- disk (love.image.newImageData) and mirroring them on the ImageData, the
+-- disk (imgNewImageData) and mirroring them on the ImageData, the
 -- same primitives the DMG grayscale bake and the pokeball bake use -- both
 -- proven on every engine build.  Cached per path: battle animation cycles
 -- a small set of frame files, so each one flips once.  Returns nil (never
@@ -1728,7 +1856,7 @@ function flipFileImage(path)
   if type(path) ~= "string" then return nil end
   local hit = gen2FlipFileCache[path]
   if hit ~= nil then return hit or nil end
-  local okId, id = pcall(love.image.newImageData, path)
+  local okId, id = pcall(imgNewImageData, path)
   if not (okId and id) then
     gen2FlipFileCache[path] = false
     return nil
@@ -1748,7 +1876,7 @@ function flipFileImage(path)
     gen2FlipFileCache[path] = false
     return nil
   end
-  local okImg, flipped = pcall(love.graphics.newImage, id)
+  local okImg, flipped = pcall(gfxNewImage, id)
   if not (okImg and flipped) then
     gen2FlipFileCache[path] = false
     return nil
@@ -1773,7 +1901,7 @@ local function flipHImage(img, srcPath)
     -- engine builds return a non-ImageData userdata on success).  Try
     -- the source FILE next, then a canvas readback as last resort.
     if type(srcPath) == "string" then
-      local okLoad, loaded = pcall(love.image.newImageData, srcPath)
+      local okLoad, loaded = pcall(imgNewImageData, srcPath)
       if okLoad and loaded and type(loaded.getDimensions) == "function" then
         data = loaded
       end
@@ -1802,7 +1930,7 @@ local function flipHImage(img, srcPath)
     end)
   end)
   if not okWrite then return img end
-  local okImg, newImg = pcall(love.graphics.newImage, out)
+  local okImg, newImg = pcall(gfxNewImage, out)
   if not (okImg and newImg) then return img end
   newImg:setFilter("nearest", "nearest")
   -- Deliberately NOT marked crystal: the bake paths key off
@@ -1936,7 +2064,7 @@ end
 -- draws at a clean 1:1 scale.  resolveBattleScale is the one
 -- seam every back-pic draw goes through, so wrapping it is deterministic
 -- regardless of the content registry.  The _flip mirror rebuilds
--- playerBackPic through love.graphics.newImage, which has no imageMeta
+-- playerBackPic through gfxNewImage, which has no imageMeta
 -- entry, so imagePathOf hands back nil and the scale lookup would lose the
 -- path -- the trainer back pic is the only back-slot draw that passes no
 -- species, so when both are nil the mod's own back-pic resolver recovers
@@ -1947,6 +2075,9 @@ if not isGen2 and type(BattleState.resolveBattleScale) == "function"
   BattleState.__crystalBackScaleHook = true
   local innerResolve = BattleState.resolveBattleScale
   function BattleState.resolveBattleScale(data, side, path, species)
+    if side == "back" and species ~= nil and dexFor(species) then
+      if path == nil or CrystalSource.claim(path) then return 1 end
+    end
     if side == "back" then
       local p = path
       if not p and species == nil then
@@ -2018,7 +2149,7 @@ local function bakeFrontBack(image)
     return image
   end
   local cw, ch = w, bottom + 1
-  local okC, cropped = pcall(love.image.newImageData, cw, ch)
+  local okC, cropped = pcall(imgNewImageData, cw, ch)
   if not (okC and cropped) then
     frontBackBakeCache[image] = image
     return image
@@ -2035,7 +2166,7 @@ local function bakeFrontBack(image)
     frontBackBakeCache[image] = image
     return image
   end
-  local okImg, out = pcall(love.graphics.newImage, cropped)
+  local okImg, out = pcall(gfxNewImage, cropped)
   if not (okImg and out) then
     frontBackBakeCache[image] = image
     return image
@@ -2863,7 +2994,10 @@ if isGen2 then
     if originalPic2 then
       BattleState2.pic = function(self, mon, back)
         local image, trueColor, path = originalPic2(self, mon, back)
-        if back and image and (isCrystalImage(image)
+        -- Only the old FRONT SPRITES mode put front art in the back slot.
+        -- Crystal's own back pics already face the right way (3.70.1: they
+        -- were being mirrored because they count as this mod's art).
+        if back and frontPref and image and (isCrystalImage(image)
             or (type(path) == "string"
               and path:find(SPRITE_BASE .. "/front/", 1, true))) then
           local flipped = gen2BackFlipCache[path or image]
@@ -3312,8 +3446,16 @@ end
 -- follows REPLACE SPRITES: only OVERWORLD / ALL skin the on-foot sprite
 -- (the other modes keep the vanilla character), instead of always swapping
 -- the sheet whenever one matched the chosen portrait.
+-- The player's walk/bike sheets follow GENDER MOD.  Gold/Silver keep the
+-- game's own Gold walker and only swap in Kris.
+local function customPlayerOverworld()
+  if not customPlayer() then return false end
+  if isGen2 then return overworldSheetStem() == "kris" end
+  return true
+end
+
 local function overworldSheetPath()
-  if not customOverworld() then return nil end
+  if not customPlayerOverworld() then return nil end
   local stem = overworldSheetStem()
   if not stem then return nil end
   local p = ("%s/overworld/player/%s.png"):format(BASE, stem)
@@ -3323,7 +3465,7 @@ end
 
 -- The bicycle sheet, named after the walk sheet: brock.png -> brock_bike.png.
 local function overworldBikeSheetPath()
-  if not customOverworld() then return nil end
+  if not customPlayerOverworld() then return nil end
   local stem = overworldSheetStem()
   if not stem then return nil end
   local p = ("%s/overworld/player/%s_bike.png"):format(BASE, stem)
@@ -3364,7 +3506,7 @@ local owSheetBake = {}  -- [path] = ImageData | false
 local function owSheetBakeData(path)
   local hit = owSheetBake[path]
   if hit ~= nil then return hit or nil end
-  local okS, id = pcall(love.image.newImageData, path)
+  local okS, id = pcall(imgNewImageData, path)
   if not (okS and id) then
     owSheetBake[path] = false
     return nil
@@ -3402,7 +3544,7 @@ if okAssets and Assets and type(Assets.imageData) == "function"
         local okC, clone = pcall(baked.clone, baked)
         if not (okC and clone) then
           local w, h = baked:getDimensions()
-          clone = love.image.newImageData(w, h)
+          clone = imgNewImageData(w, h)
           local okP = pcall(clone.paste, clone, baked, 0, 0, 0, 0, w, h)
           if not okP then clone = nil end
         end
@@ -3451,7 +3593,7 @@ local fishingRodSheet = nil    -- cached ImageData of the engine's rod sheet
 -- 200-local budget.
 function crystalFishPoseTiles(sources, walkSheet)
   local dst
-  local okW, ws = pcall(love.image.newImageData, walkSheet)
+  local okW, ws = pcall(imgNewImageData, walkSheet)
   if okW and ws then
     local seen, list = {}, {}
     pcall(function()
@@ -3490,7 +3632,7 @@ function crystalFishPoseTiles(sources, walkSheet)
   end
   local function strip(id)
     local w, h = id:getWidth(), id:getHeight()
-    local ok, tile = pcall(love.image.newImageData, w, h)
+    local ok, tile = pcall(imgNewImageData, w, h)
     if not (ok and tile) then return nil end
     local okPix = pcall(function()
       for y = 0, h - 1 do
@@ -3516,7 +3658,7 @@ function crystalFishPoseTiles(sources, walkSheet)
       end)
       if not okBake then return nil end
     end
-    local okI, img = pcall(love.graphics.newImage, tile)
+    local okI, img = pcall(gfxNewImage, tile)
     if not (okI and img) then return nil end
     img:setFilter("nearest", "nearest")
     return img
@@ -3540,7 +3682,7 @@ function crystalFishPoseMerge(sources, walkSheet, vanillaSheet, ownH, vanH)
   local function load(src)
     if type(src) == "userdata" and src.getPixel then return src end
     if type(src) ~= "string" then return nil end
-    local ok, id = pcall(love.image.newImageData, src)
+    local ok, id = pcall(imgNewImageData, src)
     if ok and id then return id end
     return nil
   end
@@ -3560,7 +3702,7 @@ function crystalFishPoseMerge(sources, walkSheet, vanillaSheet, ownH, vanH)
     if frame then
       local ok = pcall(function()
         local w, h = strip:getWidth(), strip:getHeight()
-        local merged = love.image.newImageData(w, h)
+        local merged = imgNewImageData(w, h)
         local oy = frame * ownH + ownH - h
         local vy = frame * vanH + vanH - h
         local ow, vw = own:getWidth(), van:getWidth()
@@ -3598,7 +3740,7 @@ local function fishingRodData(gameData)
   local fx = gameData and gameData.field and gameData.field.overworldFx
   local path = fx and fx.fishingRod and fx.fishingRod.path
   if type(path) ~= "string" or path == "" then return nil end
-  local ok, id = pcall(love.image.newImageData, path)
+  local ok, id = pcall(imgNewImageData, path)
   if not (ok and id) then return nil end
   fishingRodSheet = id
   return id
@@ -3610,9 +3752,9 @@ end
 -- 0 (rows 0-7, up/down) or tile 1 (rows 8-15, the sides).
 local function buildFishingTile(sheetPath, frameY, frameWidth, frameHeight,
                                 rod, rodX, rodY, rowBlock)
-  local okS, sheet = pcall(love.image.newImageData, sheetPath)
+  local okS, sheet = pcall(imgNewImageData, sheetPath)
   if not (okS and sheet) then return nil end
-  local okT, tile = pcall(love.image.newImageData, 16, 8)
+  local okT, tile = pcall(imgNewImageData, 16, 8)
   if not (okT and tile) then return nil end
   local row0 = frameY + frameHeight - 8
   local okPix = pcall(function()
@@ -3659,7 +3801,7 @@ local function buildFishingTile(sheetPath, frameY, frameWidth, frameHeight,
       end
     end)
   end
-  local okI, img = pcall(love.graphics.newImage, tile)
+  local okI, img = pcall(gfxNewImage, tile)
   if not (okI and img) then return nil end
   img:setFilter("nearest", "nearest")
   return img
@@ -3687,7 +3829,7 @@ local function overworldFishingTiles(sheetPath, gameData, frameWidth, frameHeigh
       local def = fx[name]
       local path = def and def.path
       if type(path) == "string" and path ~= "" then
-        local ok, id = pcall(love.image.newImageData, path)
+        local ok, id = pcall(imgNewImageData, path)
         if ok and id then ids[key] = id end
       end
     end
@@ -3927,7 +4069,7 @@ if isGen2 then
     local gen2FishRod = nil   -- ImageData of the vanilla fishing sheet
     local function gen2FishRodData(fishPath)
       if gen2FishRod then return gen2FishRod end
-      local ok, id = pcall(love.image.newImageData, fishPath)
+      local ok, id = pcall(imgNewImageData, fishPath)
       if not (ok and id) then return nil end
       gen2FishRod = id
       return id
@@ -3949,7 +4091,7 @@ if isGen2 then
       -- helper; right reuses left's row, X-flipped by drawTile.
       local ids = {}
       for key, row in pairs({ down = 0, up = 1, left = 2 }) do
-        local ok, id = pcall(love.image.newImageData, 16, 8)
+        local ok, id = pcall(imgNewImageData, 16, 8)
         if ok and id then
           pcall(id.paste, id, fishId, 0, 0, 0, row * 8, 16, 8)
           ids[key] = id
@@ -4378,7 +4520,7 @@ local function lumaTrainerBackPic(battle, img)
         end)
       end)
       if okM then
-        local okN, baked = pcall(love.graphics.newImage, id)
+        local okN, baked = pcall(gfxNewImage, id)
         if okN and baked then
           baked:setFilter("nearest", "nearest")
           markCrystal(baked)
@@ -4519,6 +4661,8 @@ local function exportHelpers()
 
   mod.exports.dexFor = dexFor
 
+  mod.exports.crystalSource = CrystalSource
+
   mod.exports.hasCrystalArt = hasCrystalArt
 
   mod.exports.frontHookPath = frontHookPath
@@ -4583,11 +4727,12 @@ return function()
 
   -- keep the FRONT SPRITES pref in step with the real save (game.ready's
   -- save is a skeleton; save.created / save.loaded carry the player's)
+  -- FRONT SPRITES was removed in 3.70.0: always OFF.
+  -- 3.70.1: the save keeps 3.69's own value (ON) so an older build that
+  -- still has the row reads what it always did.
   local function readFrontPref(save)
-    frontPref = save
-                and save.options
-                and save.options.crystalFront
-                or false
+    frontPref = false
+    if save and save.options then save.options.crystalFront = true end
   end
 
   -- REPLACE SPRITES defaults to "both": a save that predates the option
@@ -4641,9 +4786,10 @@ return function()
 
   -- BATTLE PIC defaults to "front" so a save that predates the option
   -- (or a skeleton save) keeps showing the front portrait in battle.
+  -- BATTLE PIC was removed in 3.70.0: always BACK.
   local function readBattlePicPref(save)
-    local v = save and save.options and save.options.crystalBattlePic
-    battlePicPref = (v == "back") and "back" or "front"
+    battlePicPref = "back"
+    if save and save.options then save.options.crystalBattlePic = "front" end
   end
 
   -- ANIMATIONS defaults to "loop" so a save that predates the option
@@ -4662,8 +4808,13 @@ return function()
   end
 
   mod.exports.applyOption = function(key, val)
-    if key == "crystalFront" then
-      frontPref = val
+    if key == "crystalFront" or key == "crystalBattlePic" then
+      -- removed options: stay OFF / BACK
+      frontPref, battlePicPref = false, "back"
+    elseif key == "crystalBattleSprites" or key == "crystalFrontNPCs"
+        or key == "crystalOverworldNPCs" or key == "genderMod" then
+      syncTrueColor()
+      resetCaches({ reason = "colors" })
     elseif key == "crystalTrainers" then
       trainerMode = val
       owSkin.player()
@@ -4671,8 +4822,6 @@ return function()
     elseif key == "crystalPlayerSprite" then
       playerSprite = normalizePlayerSprite(val)
       owSkin.player()
-    elseif key == "crystalBattlePic" then
-      battlePicPref = (val == "back") and "back" or "front"
     elseif key == "crystalAnimations" then
       animMode = (val == "once") and "once" or "loop"
     end
@@ -5158,7 +5307,7 @@ return function()
       -- love.filesystem is sandboxed away from mods, so detect Yellow's
       -- blank placeholder frames (fully transparent PNGs) by decoding and
       -- scanning for any opaque pixel instead of reading the on-disk size.
-      local okI, data = pcall(love.image.newImageData, entry.path)
+      local okI, data = pcall(imgNewImageData, entry.path)
       if not (okI and data) then return true end
       local w, h = data:getWidth(), data:getHeight()
       if not (w and h and w > 0 and h > 0) then return true end

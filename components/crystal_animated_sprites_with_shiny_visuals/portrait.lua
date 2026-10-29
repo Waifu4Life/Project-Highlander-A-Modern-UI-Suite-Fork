@@ -1,5 +1,6 @@
 -- Shared Crystal front-sprite drawer for PC / Dex / Party portraits.
--- Uses crystal_animated_sprites_with_shiny_visuals frame folders.
+-- Frames and timings come from Crystal's own files (crystal_source.lua);
+-- no picture is drawn while BATTLE SPRITES is OG or Crystal isn't installed.
 return function(mod)
   local speciesMap, animData
   local imageCache = {}
@@ -36,9 +37,8 @@ return function(mod)
         or {}
     end
     if not animData then
-      animData = loadTable("animation_data.lua") or loadTable(
-        "components/crystal_animated_sprites_with_shiny_visuals/animation_data.lua")
-        or { normal = {} }
+      local src = mod.exports and mod.exports.crystalSource
+      animData = (src and src.animationData) or { normal = {} }
     end
     return speciesMap, animData
   end
@@ -78,8 +78,22 @@ return function(mod)
     return ok and img or nil
   end
 
+  local function source()
+    return mod.exports and mod.exports.crystalSource
+  end
+
   local function loadImage(rel)
     if imageCache[rel] ~= nil then return imageCache[rel] or nil end
+    local src = source()
+    if src and src.claim("crystal_animated_sprites_with_shiny_visuals/assets/" .. rel) then
+      local data = src.imageData(rel)
+      if not data then return nil end -- not cached: BATTLE SPRITES can change
+      local ok, img = pcall(love.graphics.newImage, data)
+      if not ok then return nil end
+      if img.setFilter then img:setFilter("nearest", "nearest") end
+      imageCache[rel] = img
+      return img
+    end
     -- Never use Assets.image: it bakes the engine palette onto full-color art.
     for _, prefix in ipairs(PREFIXES) do
       local img = imageFromBytes(tryRead(prefix .. rel), rel)
@@ -153,6 +167,8 @@ return function(mod)
     end
     local dex = dexOf(species)
     if not dex then return false end
+    local src = source()
+    if not (src and src.active()) then return false end
     local set = framesFor(dex, isShiny)
     if not set then return false end
     local img = currentFrame(set, dex)

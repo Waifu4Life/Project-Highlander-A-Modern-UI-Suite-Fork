@@ -54,11 +54,16 @@ aspect-ratio framing were adapted from piftee/gen1recomp-modern-ui-suite 0.1.31
 
 ## TRW — Crystal Animated Sprites with Shiny Visuals
 
-Bundled v2.0.3 (`crystal_animated_sprites_with_shiny_visuals`) with permission
+Bundled v2.0.3, adapted as 2.1.0 (`crystal_animated_sprites_with_shiny_visuals`) with permission
 from maintainer TRW (Discord, 2026-09-12). Original project:
 https://github.com/distilledorion-sketch/crystal_animated_sprites_with_shiny_visuals
 
 Copyright (c) TRW
+
+Since Project Highlander 3.70.0 the mod's Pokémon sprite PNGs are no longer
+bundled: the Pokémon pictures, animations and palettes are read from the
+player's own Pokémon Crystal install in G1R Deluxe. TRW's code, the trainer
+and overworld art, the Marowak ghost and the shiny sparkle still ship.
 
 
 ## Ish / Modern UI Suite 0.1.43 — Bag item artwork (2026-10-18)

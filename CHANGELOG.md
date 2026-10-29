@@ -1,3 +1,24 @@
+## [3.71.0]
+- CRYSTAL sub-menu: no more global ON/OFF row. ANIMATIONS, BATTLE SPRITES, FRONT NPCS and OVERWORLD NPCS each work on their own; a CRYSTAL switch you had turned off before no longer blocks them. To see the games' own art, set BATTLE SPRITES, FRONT NPCS and OVERWORLD NPCS to OG. GENDER MOD (Other Settings) no longer depends on the CRYSTAL switch either.
+
+## [3.70.1] (test build)
+- Gold/Silver/Crystal: your Pokémon's back sprite was sometimes mirrored. Crystal's back pics are no longer flipped.
+- The save now keeps FRONT SPRITES ON and BATTLE PIC FRONT (3.69's own values) even though 3.70 no longer uses them, so going back to 3.69 really restores 3.69. 3.70.0 had written OFF / BACK into the save.
+
+## [3.70.0] (test build)
+- CRYSTAL sprites no longer ship with the mod (about 36 MB and 8,000 files lighter). With Pokémon Crystal installed in G1R Deluxe, the Pokémon front and back sprites, their animations and their normal/shiny colours are read from Crystal's own files, like Project Highlander Gen3 does with Emerald. Without Crystal, the games keep their own sprites.
+- Animations now use Crystal's real timing (also in Gold, Silver, Crystal and the Dex/Party/PC portraits, which used a fixed speed before).
+- OTHER SETTINGS: FORCE CRYSTAL SETTINGS is now GENDER MOD (On). It handles the player's own pictures in Red, Blue, Yellow, Gold and Silver: portrait, battle back pic and overworld walk/bike (Red/Green, Gold/Kris; Gold/Silver keep the game's own Gold walker). Off: the game's own player. Hidden in Crystal.
+- CRYSTAL sub-menu is now:
+  - ANIMATIONS: LOOP / PLAY ONCE (all 6 games).
+  - BATTLE SPRITES: OG / CRYSTAL (not in Crystal). OG keeps the game's own Pokémon sprites and Pokémon Tower ghost; CRYSTAL uses Crystal's sprites and the mod's ghost.
+  - FRONT NPCS: OG / GEN2 (Gen 1 only): the trainers' battle pictures.
+  - OVERWORLD NPCS: OG / GEN2 (Gen 1 only): the trainers' overworld sprites.
+  - "NO CRYSTAL INSTALLED" shows when Crystal's files can't be found.
+  - PLAYER SPRITE and REPLACE SPRITES moved to GENDER MOD; FRONT SPRITES and BATTLE PIC were removed (always OFF / BACK).
+- Decapitalize keeps OG in capitals (NPC / NPCs were already kept).
+- New file: components/crystal_animated_sprites_with_shiny_visuals/crystal_source.lua. Removed: animation_data.lua, dimensions.lua, assets/front (except the ghost) and assets/back.
+
 ## [3.69.0]
 - JUKEBOX: the song note was drawn twice too big on high-DPI screens (Gen 1 gives the HUD its scale in screen pixels). It's now sized from the game area, so it's the same size as the game's own text boxes.
 

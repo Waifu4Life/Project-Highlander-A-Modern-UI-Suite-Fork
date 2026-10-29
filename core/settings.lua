@@ -45,11 +45,10 @@ return function(parent, components)
       pokebox = "POKEBOX",
     },
     crystal = {
-      crystalFront = "FRONT SPRITES",
-      crystalTrainers = "REPLACE",
-      crystalPlayerSprite = "PLAYER",
-      crystalBattlePic = "BATTLE PIC",
       crystalAnimations = "ANIMATIONS",
+      crystalBattleSprites = "BATTLE SPRITES",
+      crystalFrontNPCs = "FRONT NPCS",
+      crystalOverworldNPCs = "OVERWORLD NPCS",
     },
     steel = {
       preset = "PRESET",
@@ -90,7 +89,7 @@ return function(parent, components)
       sparkling_hidden = "SPARKLES",
       rematch_anyone = "REMATCH",
       pikachu_sound = "PIKACHU",
-      force_crystal_settings = "CRYSTAL",
+      force_crystal_settings = "GENDER",
     },
     party = {
       card_color = "CARD COLOR", animate_icons = "ANIMATION",

@@ -1,3 +1,7 @@
+-- OTHER SETTINGS > GENDER MOD (the key is still force_crystal_settings so
+-- saved choices carry over).  It picks the player's own pictures only:
+-- which trainers and overworld NPCs change is CRYSTAL > FRONT NPCS /
+-- OVERWORLD NPCS (3.70.0).
 -- Gender + Crystal art.
 -- Crystal: do not touch portraits or PLAYER SPRITE (native Boy/Girl + colors).
 -- Gold/Silver: Boy/Girl prompt; lock chosen hero; Kris Oak pic = Crystal
@@ -146,11 +150,9 @@ return function(mod)
       local girl = genderOf(game) == "girl"
       local sprite = girl and "kris_flip.png" or "gold_flip.png"
       game.save.options.crystalPlayerSprite = sprite
-      game.save.options.crystalTrainers = girl and "all" or "both"
       local apply = crystal.exports and crystal.exports.applyOption
       if type(apply) == "function" then
         pcall(apply, "crystalPlayerSprite", sprite)
-        pcall(apply, "crystalTrainers", girl and "all" or "both")
       end
       return
     end
@@ -159,12 +161,11 @@ return function(mod)
     if not (game and game.save) then return end
     game.save.options = game.save.options or {}
     local files = wantedFiles(game)
-    game.save.options.crystalTrainers = "all"
+    if game.save.options.crystalPlayerSprite == files.option then return end
     game.save.options.crystalPlayerSprite = files.option
     local crystal = crystalMod()
     local apply = crystal and crystal.exports and crystal.exports.applyOption
     if type(apply) == "function" then
-      pcall(apply, "crystalTrainers", "all")
       pcall(apply, "crystalPlayerSprite", files.option)
     end
   end
@@ -253,14 +254,11 @@ return function(mod)
       if isCrystalCart() then
         return orig(key, val)
       end
-      if forceOn() and (key == "crystalTrainers" or key == "crystalPlayerSprite") then
+      if forceOn() and key == "crystalPlayerSprite" then
         local game = liveGame(nil)
-        local files = wantedFiles(game)
-        if key == "crystalTrainers" then val = "all" end
-        if key == "crystalPlayerSprite" then val = files.option end
+        val = wantedFiles(game).option
         if game and game.save and game.save.options then
-          if key == "crystalTrainers" then game.save.options.crystalTrainers = val end
-          if key == "crystalPlayerSprite" then game.save.options.crystalPlayerSprite = val end
+          game.save.options.crystalPlayerSprite = val
         end
       end
       return orig(key, val)
@@ -550,12 +548,6 @@ return function(mod)
             if save.flags[FLAG] ~= "boy" then save.flags[FLAG] = "girl" end
             save.player.gender = "male"
           end
-        end
-        if crystalReady() and save and save.options and save.options.crystalTrainers == "all" then
-          save.options.crystalTrainers = "both"
-          local crystal = crystalMod()
-          local apply = crystal and crystal.exports and crystal.exports.applyOption
-          if type(apply) == "function" then pcall(apply, "crystalTrainers", "both") end
         end
       end
     end)

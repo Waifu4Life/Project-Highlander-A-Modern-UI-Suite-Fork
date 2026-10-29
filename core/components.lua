@@ -147,7 +147,7 @@ return {
     files = { "main.lua" },
     rowOrder = {
       "bind_up", "bind_down", "bind_left", "bind_right", "bind_a1", "bind_b1",
-      "bind_start", "bind_select", "bind_speedp", "bind_speedm",
+      "bind_start", "bind_select", "bind_speedp", "bind_speedm", "bind_jukebox",
     },
   },
   {
@@ -220,5 +220,19 @@ return {
       "assets/borders/custom1.png", "assets/borders/custom2.png",
       "assets/borders/custom3.png", "assets/borders/custom4.png",
     },
+  },
+  {
+    id = "jukebox",
+    -- No ON/OFF of its own: every song row stands alone. The JUKEBOX BUTTON
+    -- lives in Full Control (bind_jukebox).
+    alwaysOn = true,
+    key = "jukebox",
+    name = "Jukebox",
+    short = "JUKEBOX",
+    version = "1.0.0",
+    installOrder = 16,
+    defaultEnabled = true,
+    bulkUI = false,
+    files = { "main.lua" },
   },
 }

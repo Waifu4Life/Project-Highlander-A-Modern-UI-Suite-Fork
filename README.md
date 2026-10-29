@@ -9,7 +9,7 @@ Modern menus, quality-of-life options, every Pokémon obtainable in a single car
 > [!WARNING]
 > Do not install next to `modern_ui_suite`. Project Highlander replaces it and the two conflict.
 
-**Current release:** 3.67.0
+**Current release:** 3.69.0
 **Repo:** https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
 **Looking for FireRed / LeafGreen / Ruby / Sapphire / Emerald?** See *Project Highlander Gen3*, a separate mod.
 
@@ -37,6 +37,7 @@ Modern menus, quality-of-life options, every Pokémon obtainable in a single car
 - [Custom Borders](#custom-borders)
 - [Poké Icons](#poké-icons)
 - [Game Corner](#game-corner)
+- [Jukebox](#jukebox)
 - [Get All Pokémon](#get-all-pokémon)
 - [Credits](#credits)
 
@@ -95,6 +96,7 @@ These run whenever the matching screen or event is in play. There is no toggle.
 | Custom Borders | Super Game Boy–style borders. |
 | Poké Icons | Icon source for Pokédex / Party / PC. |
 | Game Corner | Stack the odds in your favor. |
+| Jukebox | Pick the songs you like and play them in place of the area music. |
 | Get All Pokémon | Shows only the page for the generation you are playing. |
 
 Options inside a sub-menu are sorted alphabetically.
@@ -253,6 +255,7 @@ Hits follow effectiveness: not very effective = a light tap, effective = one pul
 - Rebind Up, Down, Left, Right, A, B, Start, Select, Speed+ and Speed−. Delete clears a binding.
 - Left Analog for D-Pad (On), Right Analog for D-Pad (Off).
 - **Select Visual Combos** (On): Select + A / B / X / Y / LB keep the game's display shortcuts. Turn it off to use those buttons normally while Select is held.
+- **Jukebox Button** (last row, none by default): hold it with a D-pad direction to work the [Jukebox](#jukebox).
 - The stock Controls page is hidden while Full Control is on.
 
 ## Steel / Fairy
@@ -300,6 +303,33 @@ Borders show on the title screen, Options, Mods, Trainer ID, original-style batt
 | Slot Odds | Normal / Generous / **Lucky** |
 | Bigger Payouts | Double wins. |
 | All Lucky Slot M. | Every slot machine is a lucky one. |
+
+## Jukebox
+
+Tired of the same area music (hello, Safari Zone)? Play the songs you like instead, in Red, Blue, Yellow, Gold, Silver and Crystal.
+
+**The playlist**
+
+- **All Songs** sits on top: one press turns every song Off, or all On when none is. It shows On, Off or Some.
+- Below it, every background song of the game you're playing, A–Z, each **On** by default.
+- Each game keeps its own list. The songs that are On make the playlist, in the menu's order.
+- Jingles (healing, items, catching, Jigglypuff's song…), intros, credits and the evolution music aren't listed.
+
+**The controls**
+
+First set a **Jukebox Button** in [Full Control](#full-control) (none by default). It needs Full Control enabled and works on the overworld only. Hold it with a direction:
+
+| Jukebox Button + | What it does |
+|---|---|
+| Up | Play the playlist, from the song it was on last |
+| Down | Stop it and go back to the game's music |
+| Left | Previous song (from the first, goes round to the last) |
+| Right | Next song (from the last, goes round to the first) |
+
+- The button alone does nothing, and you stay put while it's held.
+- Left / Right do nothing while the playlist isn't playing.
+- A short note at the top of the screen shows the song's name.
+- The song stays on through new areas, Surf and the Bicycle. Battles, trainer encounters, evolutions, story events and jingles keep the game's music, and your song comes back after them.
 
 ---
 

@@ -591,6 +591,48 @@ return function(mod, settings, state, components)
     return true
   end
 
+  -- JUKEBOX: ALL SONGS on top (ON / OFF / SOME: one press turns them all
+  -- Off, or all On when none is), then this game's songs A-Z: the playlist.
+  -- The JUKEBOX BUTTON is in FULL CONTROL.
+  local function openJukeboxMenu(game)
+    local component = settings.byId.jukebox
+    local JB = component and component.exports
+    if not (JB and type(JB.list) == "function") then return false end
+    local pageRows = {
+      {
+        id = "jukebox.all",
+        label = "ALL SONGS",
+        value = function() return JB.allLabel() end,
+        step = function(activeGame)
+          activeGame = activeGame or game
+          JB.toggleAll(activeGame)
+          settings:persist(activeGame)
+          return true
+        end,
+      },
+    }
+    for _, entry in ipairs(JB.list()) do
+      local song = entry
+      pageRows[#pageRows + 1] = {
+        id = "jukebox." .. song.name,
+        label = song.label,
+        value = function() return JB.isOn(song.name) and "ON" or "OFF" end,
+        step = function(activeGame)
+          activeGame = activeGame or game
+          JB.toggle(activeGame, song.name)
+          settings:persist(activeGame)
+          return true
+        end,
+      }
+    end
+    local page = OptionsMenu.new(game)
+    page.rows, page.view = pageRows, pageRows
+    page.index, page.scroll, page.sub = 1, 0, true
+    page.modernUiSuiteComponent = "jukebox"
+    game.stack:push(page)
+    return true
+  end
+
   local function openPokeIconsMenu(game)
     local rows = {
       { key = "pokedex", label = "ICONS FOR POKEDEX" },
@@ -637,8 +679,9 @@ return function(mod, settings, state, components)
     local function buildItems()
       local items = {}
       for _, component in ipairs(components) do
-        -- Move Colors' rows live on the BATTLE SCREEN page now.
-        if component.id ~= "typed_move_colors" then
+        -- Move Colors' rows live on the BATTLE SCREEN page now; JUKEBOX has
+        -- its own entry below.
+        if component.id ~= "typed_move_colors" and component.id ~= "jukebox" then
           items[#items + 1] = {
             id = component.id,
             label = component.short,
@@ -662,6 +705,11 @@ return function(mod, settings, state, components)
         id = "game_corner_menu", label = "GAME CORNER",
         action = "game_corner",
       }
+      if settings.byId.jukebox then
+        items[#items + 1] = {
+          id = "jukebox_menu", label = "JUKEBOX", action = "jukebox",
+        }
+      end
       -- Only the running generation's page: Gen 1 carts get the Gen 1 one.
       local generation = 1
       pcall(function()
@@ -712,6 +760,8 @@ return function(mod, settings, state, components)
           })
         elseif item.action == "game_corner" then
           openGameCornerMenu(game)
+        elseif item.action == "jukebox" then
+          openJukeboxMenu(game)
         elseif item.action == "gen1_all" then
           openFeatureMenu(game, "GEN1 GET ALL PKMN", GEN1_FEATURE_ROWS)
         elseif item.action == "gen2_all" then

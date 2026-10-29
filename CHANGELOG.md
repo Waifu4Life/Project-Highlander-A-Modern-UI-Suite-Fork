@@ -1,3 +1,19 @@
+## [3.69.0]
+- JUKEBOX: the song note was drawn twice too big on high-DPI screens (Gen 1 gives the HUD its scale in screen pixels). It's now sized from the game area, so it's the same size as the game's own text boxes.
+
+## [3.68.0]
+- New sub-menu: JUKEBOX (Red, Blue, Yellow, Gold, Silver, Crystal), same rules as Project Highlander Gen3. ALL SONGS on top (ON / OFF / SOME: one press turns them all Off, or all On when none is), then every background song of the game you're playing, A-Z, each On by default. Each game keeps its own list. The songs that are On are the playlist, in the menu's order. Jingles (heal, item, caught, Jigglypuff's song...), intros, credits and the evolution music aren't listed.
+- FULL CONTROL: new JUKEBOX BUTTON (last row, NONE by default: set a key or pad). It needs Full Control enabled and works in the free overworld only; it's held with a direction (the button alone does nothing; while it's held you stay put and the directions only work the Jukebox):
+  - + UP: play the playlist, from the song it was on last (already playing: shows its name).
+  - + DOWN: stop it and go back to the game's own music.
+  - + LEFT: previous song (from the first, goes round to the last).
+  - + RIGHT: next song (from the last, goes round to the first).
+  - LEFT / RIGHT do nothing while the playlist isn't playing.
+  - The Jukebox song stays on through new maps, Surf and Bicycle. Battles, trainer encounters, evolutions, scripted events and jingles keep the game's music, and the Jukebox song comes back after them.
+  - A short note at the top of the screen shows the song's name.
+- HIGHLANDER menu: JUKEBOX sits after GAME CORNER.
+- New file: components/jukebox/main.lua.
+
 ## [3.67.0]
 - Rumble (Gen 2) redone from scratch: it fires with the hit itself, when the target's damage shake and the hit sound start (in whichever order the game starts them), instead of when the HP bar starts dropping. No more delay, and getting hit always rumbles. The shake says who was hit, the hit sound how effective it was.
 - Rumble: the diagnostic rumble_log.txt is kept for now (components/rumble/ in the mod folder, or the save folder).

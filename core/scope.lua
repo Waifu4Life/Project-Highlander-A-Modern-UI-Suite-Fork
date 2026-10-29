@@ -29,8 +29,10 @@ return function(parent, settings, state, component)
     get = function(_, key)
       return settings:get(component, key)
     end,
-    set = function(_, game, key, value)
-      return settings:set(game, component, key, value)
+    -- quiet (optional): no mod.options_changed event (bulk writes such as
+    -- JUKEBOX > ALL SONGS)
+    set = function(_, game, key, value, quiet)
+      return settings:set(game, component, key, value, quiet)
     end,
     enabled = function()
       return gated()

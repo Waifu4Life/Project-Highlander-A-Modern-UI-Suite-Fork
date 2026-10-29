@@ -1,4 +1,5 @@
 -- Full Control: overwrite official Controls + extras (N2, analog, combos, item shortcuts).
+-- JUKEBOX BUTTON (bind_jukebox, NONE by default) is read by components/jukebox.
 return function(mod)
   local ACTIONS = {
     { key = "bind_up",     action = "up",         label = "UP BUTTON" },
@@ -11,6 +12,8 @@ return function(mod)
     { key = "bind_select", action = "select",     label = "SELECT BUTTON" },
     { key = "bind_speedp", action = "speedUp",    label = "SPEED+ BUTTON", speed = true },
     { key = "bind_speedm", action = "speedDown",  label = "SPEED- BUTTON", speed = true },
+    -- JUKEBOX (components/jukebox): held with a direction; never sent to the game
+    { key = "bind_jukebox", action = "jukebox",   label = "JUKEBOX BUTTON", jukebox = true },
   }
 
   local DEFAULTS = {
@@ -25,6 +28,7 @@ return function(mod)
     bind_select = { key = "tab",     pad = "back" },
     bind_speedp = { key = "",        pad = "rightshoulder" },
     bind_speedm = { key = "",        pad = "leftshoulder" },
+    bind_jukebox = { key = "",       pad = "" },
     analog_right = false,
   }
 
@@ -106,7 +110,9 @@ return function(mod)
     local overlay = {}
     for _, row in ipairs(ACTIONS) do
       local p = packOf(row.key)
-      if row.item then
+      if row.jukebox then
+        -- read by the Jukebox itself, never mapped to a game button
+      elseif row.item then
         if p.key and p.key ~= "" then extras.key[p.key] = "item" .. row.item end
         if p.pad and p.pad ~= "" then extras.pad[p.pad] = "item" .. row.item end
       elseif row.extra then
@@ -131,11 +137,11 @@ return function(mod)
     local pads, acts, claimed = {}, {}, {}
     for _, row in ipairs(ACTIONS) do
       local p = packOf(row.key)
-      if p.pad and p.pad ~= "" then claimed[p.pad] = true end
+      if not row.jukebox and p.pad and p.pad ~= "" then claimed[p.pad] = true end
     end
     for _, row in ipairs(ACTIONS) do
       local p = packOf(row.key)
-      if p.pad and p.pad ~= "" then
+      if not row.jukebox and p.pad and p.pad ~= "" then
         if row.speed then
           acts[p.pad] = row.action
         elseif not row.item and not row.extra then

@@ -23,6 +23,23 @@ return function(mod, presentation, config)
   local COLUMNS, PAGE_SIZE = 4, 12
   local GRID_X, GRID_Y, CELL_W, CELL_H = 4, 18, 36, 30
   local COL_STEP, ROW_STEP = 38, 31
+  local FOOTER_Y = 115
+  -- FULL SCREEN style: the 16x16 icons of start_menu_icons_16.png, the ones
+  -- the Start Menu really shows. 7 x 5 = 35 cells, so every icon is on one page.
+  local FULL_GRID = {
+    columns = 7, page = 35, x = 4, y = 17, w = 20, h = 20,
+    colStep = 22, rowStep = 21, footer = 123,
+  }
+  local function fullStyle()
+    return presentation.drawFullIcon ~= nil and presentation.styleFor
+      and presentation.styleFor() == "full"
+  end
+  local function grid()
+    if fullStyle() then return FULL_GRID end
+    return { columns = COLUMNS, page = PAGE_SIZE, x = GRID_X, y = GRID_Y,
+      w = CELL_W, h = CELL_H, colStep = COL_STEP, rowStep = ROW_STEP,
+      footer = FOOTER_Y }
+  end
 
   local function beep(game)
     if game and game.data then
@@ -104,8 +121,8 @@ return function(mod, presentation, config)
       if not input then return end
       if input:wasPressed("left") then move(-1)
       elseif input:wasPressed("right") then move(1)
-      elseif input:wasPressed("up") then move(-COLUMNS)
-      elseif input:wasPressed("down") then move(COLUMNS)
+      elseif input:wasPressed("up") then move(-grid().columns)
+      elseif input:wasPressed("down") then move(grid().columns)
       elseif input:wasPressed("b") then
         beep(self.game)
         closeState(self)
@@ -127,45 +144,60 @@ return function(mod, presentation, config)
       love.graphics.rectangle("fill", 0, 0, SCREEN_W, SCREEN_H)
       love.graphics.setColor(0, 0, 0, 1)
       Font.draw("CHOOSE ICON", 8, 4)
-      local page = math.floor((self.index - 1) / PAGE_SIZE) + 1
-      local pages = math.max(1, math.ceil(#self.choices / PAGE_SIZE))
+      local g = grid()
+      local full = g == FULL_GRID
+      local page = math.floor((self.index - 1) / g.page) + 1
+      local pages = math.max(1, math.ceil(#self.choices / g.page))
       local pageText = ("%d/%d"):format(page, pages)
       Font.draw(pageText, SCREEN_W - 8 - Font.width(pageText), 4)
       love.graphics.rectangle("fill", 4, 15, 152, 1)
 
-      local first = (page - 1) * PAGE_SIZE + 1
-      for slot = 1, PAGE_SIZE do
+      local first = (page - 1) * g.page + 1
+      for slot = 1, g.page do
         local choiceIndex = first + slot - 1
         local choice = self.choices[choiceIndex]
         if not choice then break end
-        local col = (slot - 1) % COLUMNS
-        local row = math.floor((slot - 1) / COLUMNS)
-        local x, y = GRID_X + col * COL_STEP, GRID_Y + row * ROW_STEP
+        local col = (slot - 1) % g.columns
+        local row = math.floor((slot - 1) / g.columns)
+        local x, y = g.x + col * g.colStep, g.y + row * g.rowStep
         local selected = choiceIndex == self.index
         love.graphics.setColor(selected and 0 or 0.72,
           selected and 0 or 0.72, selected and 0 or 0.72, 1)
-        love.graphics.rectangle("fill", x, y, CELL_W, CELL_H)
+        love.graphics.rectangle("fill", x, y, g.w, g.h)
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.rectangle("fill", x + 2, y + 2, CELL_W - 4,
-          CELL_H - 4)
-        local iconSize = presentation.iconSize or 16
-        presentation.drawIcon(choice[2],
-          x + math.floor((CELL_W - iconSize) / 2),
-          y + math.floor((CELL_H - iconSize) / 2))
+        love.graphics.rectangle("fill", x + 2, y + 2, g.w - 4, g.h - 4)
+        if full then
+          local iconSize = presentation.fullIconSize or 16
+          presentation.drawFullIcon(choice[2],
+            x + math.floor((g.w - iconSize) / 2),
+            y + math.floor((g.h - iconSize) / 2), 0)
+          love.graphics.setColor(0, 0, 0, 1)
+        else
+          local iconSize = presentation.iconSize or 16
+          presentation.drawIcon(choice[2],
+            x + math.floor((g.w - iconSize) / 2),
+            y + math.floor((g.h - iconSize) / 2))
+        end
       end
 
       love.graphics.setColor(0, 0, 0, 1)
-      love.graphics.rectangle("fill", 4, 115, 152, 1)
+      love.graphics.rectangle("fill", 4, g.footer, 152, 1)
       local selected = self.choices[self.index]
-      centerText(selected and selected[1] or "AUTO", 119)
+      local textY = full and g.footer + 3 or 119
+      centerText(selected and selected[1] or "AUTO", textY)
       local entryLabel = fitText(compactLabel(self.entry.label), 144)
-      centerText(entryLabel, 132)
+      centerText(entryLabel, full and textY + 9 or 132)
       love.graphics.pop()
     end
     return picker
   end
 
   function Settings.openOrder(game)
+    -- the Sort Menu (same page as SELECT on the Start Menu)
+    if config.openSort then
+      local ok, opened = pcall(config.openSort, game)
+      if ok and opened then return true end
+    end
     if not (ListMenu and game and game.stack) then return false end
     local entries, rows = {}, {}
     for index, entry in ipairs(config.liveEntries(game)) do
@@ -234,6 +266,7 @@ return function(mod, presentation, config)
         },
       }
     end
+    if config.loadSavedEntries then pcall(config.loadSavedEntries) end
     for _, key in ipairs(config.customEntryOrder) do
       local entry = config.customEntries[key]
       if entry then
@@ -256,7 +289,7 @@ return function(mod, presentation, config)
       }
     end
     if not iconsOnly then
-      items[#items + 1] = { id = mod.id .. ":order", label = "START ICON ORDER",
+      items[#items + 1] = { id = mod.id .. ":order", label = "SORT MENU",
         right = "OPEN", kind = "order" }
     end
     items[#items + 1] = { id = mod.id .. ":back", label = "BACK", cancel = true }

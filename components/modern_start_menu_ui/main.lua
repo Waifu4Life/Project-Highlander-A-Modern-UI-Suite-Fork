@@ -61,6 +61,7 @@ return function(mod)
   local ICON_VALUES = {}
   for _, choice in ipairs(ICON_CHOICES) do ICON_VALUES[choice[2]] = true end
   local customEntries, customEntryOrder = {}, {}
+  local loadSavedEntries -- set below, next to rememberCustomEntries
   local presentation
   local liveMenus = setmetatable({}, { __mode = "k" })
 
@@ -105,7 +106,25 @@ return function(mod)
     liveMenus[game] = ordered
   end
 
+  -- The START menu that is open right now (under the Options screen, when
+  -- START ICON ORDER is opened from it), if any.
+  local function liveMenuOnStack(game)
+    local states = game and game.stack and game.stack.states
+    if type(states) ~= "table" then return nil end
+    for i = #states, 1, -1 do
+      local state = states[i]
+      if type(state) == "table" and state.modernStartMenuUI then return state end
+    end
+    return nil
+  end
+
+  -- START ICON ORDER lists what the open menu really holds, including items
+  -- other mods add after the menu was first put in order.
   local function liveEntries(game)
+    local menu = liveMenuOnStack(game)
+    if menu and type(mod.startMenuSync) == "function" then
+      pcall(mod.startMenuSync, menu)
+    end
     return liveMenus[game] or {}
   end
 
@@ -416,6 +435,13 @@ return function(mod)
       setLiveOrder = setLiveOrder,
       customEntries = customEntries,
       customEntryOrder = customEntryOrder,
+      openSort = function(g)
+        if mod.startMenuOpenSort then return mod.startMenuOpenSort(g) end
+        return false
+      end,
+      loadSavedEntries = function()
+        if loadSavedEntries then return loadSavedEntries() end
+      end,
       iconChoices = ICON_CHOICES,
       iconChoice = iconChoice,
       setIconChoice = setIconChoice,
@@ -495,18 +521,109 @@ return function(mod)
     return value ~= "auto" and value or nil
   end
 
+  -- Other mods' entries are also saved (option "icon_entries"), so CUSTOM
+  -- ICONS lists them even before START has been opened this session.
+  local savedEntriesLoaded = false
+  loadSavedEntries = function()
+    if savedEntriesLoaded then return end
+    local ok, saved = pcall(mod.options.get, mod.options, "icon_entries")
+    if not ok then return end
+    savedEntriesLoaded = true
+    if type(saved) ~= "table" then return end
+    for _, row in ipairs(saved) do
+      if type(row) == "table" and type(row[1]) == "string"
+          and not customEntries[row[1]] then
+        customEntries[row[1]] = { label = tostring(row[2] or "MENU") }
+        customEntryOrder[#customEntryOrder + 1] = row[1]
+      end
+    end
+  end
+
+  local function saveEntries(game)
+    local list = {}
+    for _, key in ipairs(customEntryOrder) do
+      local entry = customEntries[key]
+      if entry then list[#list + 1] = { key, entry.label } end
+    end
+    pcall(setOption, game, "icon_entries", list)
+    if game and type(game.writeOptions) == "function" then
+      pcall(game.writeOptions, game)
+    end
+  end
+
   local function rememberCustomEntries(menu, game)
+    loadSavedEntries()
+    local changed = false
     for _, item in ipairs(menu.items or {}) do
       if presentation.isCustomItem(item, game) then
         local key = presentation.entryKeyFor(item, game)
+        local label = tostring(item.label or item.shortLabel or item.id or "MENU")
         if not customEntries[key] then
-          customEntries[key] = {
-            label = tostring(item.label or item.shortLabel or item.id or "MENU"),
-          }
+          customEntries[key] = { label = label }
           customEntryOrder[#customEntryOrder + 1] = key
+          changed = true
+        elseif customEntries[key].label ~= label then
+          customEntries[key].label = label
+          changed = true
         end
       end
     end
+    if changed then saveEntries(game) end
+  end
+
+  -- Keep the open menu in the saved order: re-sort it when its items change
+  -- (another mod adding an entry late) or when START ICON ORDER changed the
+  -- order while it was open underneath. The cursor stays on the same item.
+  local function orderSignature(menu, game)
+    local parts = {}
+    for i, item in ipairs(menu.items or {}) do parts[i] = tostring(item) end
+    return table.concat(parts, "|") .. "#" .. table.concat(savedOrder(game), "|")
+  end
+
+  mod.startMenuSync = function(menu)
+    local game = menu and menu.game
+    if not (game and type(menu.items) == "table") then return false end
+    if menu.phOrderSignature == orderSignature(menu, game) then return false end
+    local current = presentation.currentIndex and presentation.currentIndex(menu)
+    local selected = current and menu.items[current]
+    rememberLiveMenu(menu, game)
+    rememberCustomEntries(menu, game)
+    menu.phOrderSignature = orderSignature(menu, game)
+    if selected and presentation.setIndex then
+      for index, item in ipairs(menu.items) do
+        if item == selected then
+          if index ~= current then presentation.setIndex(menu, index) end
+          break
+        end
+      end
+    end
+    return true
+  end
+
+  -- SORT MENU: SELECT on the Start Menu, or START MENU SETTINGS > SORT MENU.
+  mod.startMenuOpenSort = function(game)
+    if not (game and game.stack and type(game.stack.push) == "function"
+        and presentation.newSort) then
+      return false
+    end
+    local entries = {}
+    for i, entry in ipairs(liveEntries(game)) do entries[i] = entry end
+    local sort = presentation.newSort(game, {
+      entries = entries,
+      onSave = function(list)
+        setLiveOrder(game, list)
+        if game.writeOptions then pcall(game.writeOptions, game) end
+      end,
+      onReset = function(items)
+        local ordered = presentation.arrange(items, presentation.DEFAULT_ORDER, game)
+        setOption(game, "icon_order", {})
+        setLiveOrder(game, ordered)
+        if game.writeOptions then pcall(game.writeOptions, game) end
+        return ordered
+      end,
+    })
+    game.stack:push(sort)
+    return true
   end
 
   local function decorate(menu, game, source)
@@ -525,6 +642,7 @@ return function(mod)
       return menu
     end
     rememberCustomEntries(menu, game or menu.game)
+    if menu.game then menu.phOrderSignature = orderSignature(menu, menu.game) end
     return type(decorated) == "table" and decorated or menu
   end
 

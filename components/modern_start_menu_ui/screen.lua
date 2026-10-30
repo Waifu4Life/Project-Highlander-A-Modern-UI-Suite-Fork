@@ -560,6 +560,12 @@ return function(mod, icons)
     local full = fullActive(menu)
     menu.highlanderStartFull = full or nil
     menu.isOpaque = full and true or menu.classicStartMenuOpaque
+    -- 3.72.0: the full page is the whole 160x144 screen, so nothing opened on
+    -- top of it (Gen 1's SAVE panel, the Bag...) may slide the screen to the
+    -- window's right edge (UI LAYOUT: DYNAMIC's uiShiftRight) or dock its
+    -- boxes to the window edges. Game:draw reads this off the stack, like a
+    -- battle's own hold, so everything stays inside the Custom Borders frame.
+    menu.holdsUIAnchors = full or nil
     return full
   end
 
@@ -1325,6 +1331,10 @@ return function(mod, icons)
 
   local function update(menu, dt)
     menu.modernStartElapsed = (menu.modernStartElapsed or 0) + (dt or 0)
+    -- items added late by other mods / a new order from START ICON ORDER
+    if mod and type(mod.startMenuSync) == "function" then
+      pcall(mod.startMenuSync, menu)
+    end
     if menu.modernStartGen2 and menu.phase == "confirm" then
       menu.classicStartMenuUpdate(menu, dt)
       setIndex(menu, menu.list and menu.list.index or currentIndex(menu))
@@ -1367,6 +1377,10 @@ return function(mod, icons)
       move(menu, -COLUMNS)
     elseif input:wasPressed("down") then
       move(menu, COLUMNS)
+    elseif input:wasPressed("select") and #menu.items > 0
+        and mod and type(mod.startMenuOpenSort) == "function" then
+      if not menu.noSound then Sound.play(menu.game.data, "Press_AB") end
+      pcall(mod.startMenuOpenSort, menu.game)
     elseif input:wasPressed("a") and #menu.items > 0 then
       local index = currentIndex(menu)
       local item = menu.items[index]
@@ -1398,6 +1412,203 @@ return function(mod, icons)
       menu.classicStartMenuUpdate(menu, dt)
     end
     if #menu.items > 0 then setIndex(menu, currentIndex(menu)) end
+  end
+
+  ---------------------------------------------------------------------------
+  -- SORT MENU (like Project Highlander Gen3's): the Start Menu's own FULL
+  -- SCREEN page where the items are moved around. A picks an item up and A
+  -- again swaps it with the one under the cursor; B drops it / leaves;
+  -- SELECT puts the default order back. QUIT stays bottom-right of the last
+  -- page and can't be moved. Opened with SELECT on the Start Menu or from
+  -- START MENU SETTINGS > SORT MENU.
+  --   opts.entries  { { key, label, item }, ... } in the current order
+  --   opts.onSave(entries)        the new order, after every swap
+  --   opts.onReset(items) -> entries   the default order
+  ---------------------------------------------------------------------------
+  local function isQuit(state, item)
+    return detectedId(item, state.game) == "quit"
+  end
+
+  local function drawSort(state)
+    fullPalette = state.modernStartGen2 and THEME_PALETTES[selectedTheme()] or nil
+    love.graphics.push("all")
+    love.graphics.setShader()
+    ffill(0, 0, SCREEN_W, SCREEN_H, WHITE)
+    for y = FULL_BAR_H + 4, FULL_FOOTER_Y - 4, 8 do
+      for x = 4, SCREEN_W - 1, 8 do ffill(x, y, 1, 1, LIGHT) end
+    end
+    ffill(0, 0, SCREEN_W, FULL_BAR_H - 2, DARK)
+    ffill(0, FULL_BAR_H - 2, SCREEN_W, 2, LIGHT)
+    fullText(Strings("SORT MENU"), 4, 4, WHITE)
+
+    local count = #state.items
+    local slots, at, total = fullSlots(state)
+    local pages = math.max(1, math.floor(total / FULL_PAGE))
+    local current = at[state.index] or 1
+    local page = math.floor((current - 1) / FULL_PAGE) + 1
+    if pages > 1 then
+      local pageText = ("%d/%d"):format(page, pages)
+      fullText(pageText, SCREEN_W - 4 - Font.width(pageText), 4, WHITE)
+    end
+
+    if count == 0 then
+      local a, b = Strings("OPEN START"), Strings("ONCE FIRST")
+      fullText(a, math.floor((SCREEN_W - Font.width(a)) / 2), 60, INK)
+      fullText(b, math.floor((SCREEN_W - Font.width(b)) / 2), 72, INK)
+    else
+      local first = (page - 1) * FULL_PAGE
+      for slot = 1, FULL_PAGE do
+        local itemIndex = slots[first + slot]
+        local item = itemIndex and state.items[itemIndex]
+        if item then
+          local held = state.held == itemIndex
+          if held or (itemIndex == state.index and not state.held) then
+            drawFullTile(state, item, slot, true)
+            if held then
+              -- held: a small arrow above the label says it's picked up
+              local x, y = fullTileRect(slot)
+              ffill(x + FULL_TILE_W - 9, y + 3, 5, 1, WHITE)
+              ffill(x + FULL_TILE_W - 8, y + 4, 3, 1, WHITE)
+              ffill(x + FULL_TILE_W - 7, y + 5, 1, 1, WHITE)
+            end
+          else
+            drawFullTile(state, item, slot, false)
+            if itemIndex == state.index then
+              -- where the held item will go: a thick frame
+              local x, y, w, h = fullTileRect(slot)
+              ffill(x + 1, y + 1, w - 2, 1, INK)
+              ffill(x + 1, y + h - 2, w - 2, 1, INK)
+              ffill(x + 1, y + 1, 1, h - 2, INK)
+              ffill(x + w - 2, y + 1, 1, h - 2, INK)
+            end
+          end
+        end
+      end
+    end
+
+    ffill(0, FULL_FOOTER_Y, SCREEN_W, SCREEN_H - FULL_FOOTER_Y, DARK)
+    local hint
+    if count == 0 then
+      hint = Strings("B BACK")
+    elseif state.held then
+      hint = Strings("A PLACE  B CANCEL")
+    elseif math.floor((state.elapsed or 0) / 2) % 2 == 0 then
+      hint = Strings("A MOVE  B DONE")
+    else
+      hint = Strings("SELECT  RESET")
+    end
+    hint = fitFont(hint, SCREEN_W - 4)
+    fullText(hint, math.floor((SCREEN_W - Font.width(hint)) / 2), FULL_FOOTER_Y, WHITE)
+    love.graphics.pop()
+    fullPalette = nil
+  end
+
+  function Presentation.newSort(game, opts)
+    opts = opts or {}
+    local gen2 = false
+    pcall(function()
+      gen2 = require("src.core.GameVersion").generation() == 2
+    end)
+    local state = {
+      game = game,
+      isOpaque = true,
+      screenId = (mod and mod.id or "modern_start_menu_ui") .. ":sort_menu",
+      highlanderStartFull = true,
+      modernStartGen2 = gen2,
+      entries = {}, items = {}, index = 1, held = nil, elapsed = 0,
+    }
+    local function load(entries)
+      state.entries, state.items = {}, {}
+      for i, entry in ipairs(entries or {}) do
+        state.entries[i] = entry
+        state.items[i] = entry.item
+      end
+    end
+    load(opts.entries)
+    -- start on the first tile
+    if #state.items > 0 then
+      local slots = fullSlots(state)
+      state.index = slots[1] or 1
+    end
+
+    local function beep()
+      if game and game.data then pcall(Sound.play, game.data, "Press_AB") end
+    end
+
+    function state:uiSize() return SCREEN_W, SCREEN_H end
+    function state:sgbPalettes(g) return sgbPalettes(self, g or self.game) end
+    function state:drawWidescreen(w, h)
+      love.graphics.push("all")
+      love.graphics.setShader()
+      love.graphics.setColor(0, 0, 0, 1)
+      love.graphics.rectangle("fill", 0, 0, w or love.graphics.getWidth(),
+        h or love.graphics.getHeight())
+      love.graphics.pop()
+    end
+
+    local function close(self)
+      local stack = self.game and self.game.stack
+      if stack and type(stack.top) == "function" and stack:top() == self then
+        stack:pop()
+      end
+      if opts.onClose then pcall(opts.onClose) end
+    end
+
+    function state:update(dt)
+      self.elapsed = (self.elapsed or 0) + (dt or 0)
+      local input = self.game and self.game.input
+      if not input then return end
+      if #self.items == 0 then
+        if input:wasPressed("b") or input:wasPressed("a")
+            or input:wasPressed("start") then
+          beep(); close(self)
+        end
+        return
+      end
+      if input:wasPressed("left") then moveFull(self, -1, 0)
+      elseif input:wasPressed("right") then moveFull(self, 1, 0)
+      elseif input:wasPressed("up") then moveFull(self, 0, -1)
+      elseif input:wasPressed("down") then moveFull(self, 0, 1)
+      elseif input:wasPressed("a") then
+        local item = self.items[self.index]
+        if not item or isQuit(self, item) then return end
+        beep()
+        if not self.held then
+          self.held = self.index
+        else
+          local a, b = self.held, self.index
+          if a ~= b then
+            self.items[a], self.items[b] = self.items[b], self.items[a]
+            self.entries[a], self.entries[b] = self.entries[b], self.entries[a]
+            if opts.onSave then pcall(opts.onSave, self.entries) end
+          end
+          self.held = nil
+        end
+      elseif input:wasPressed("select") then
+        beep()
+        self.held = nil
+        if opts.onReset then
+          local current = self.items[self.index]
+          local ok, entries = pcall(opts.onReset, self.items)
+          if ok and type(entries) == "table" then
+            load(entries)
+            self.index = 1
+            for i, item in ipairs(self.items) do
+              if item == current then self.index = i break end
+            end
+          end
+        end
+      elseif input:wasPressed("b") or input:wasPressed("start") then
+        beep()
+        if self.held then self.held = nil else close(self) end
+      end
+    end
+
+    function state:draw()
+      drawSort(self)
+    end
+
+    return state
   end
 
   local function drawConfirm(menu, layout)
@@ -1550,6 +1761,20 @@ return function(mod, icons)
   Presentation.applyHudPalette = applyHudPalette
   Presentation.draw = draw
   Presentation.drawIcon = drawIcon
+  Presentation.currentIndex = currentIndex
+  Presentation.setIndex = setIndex
+  -- 16x16 strip icon (start_menu_icons_16.png) in plain grays: shade 0 =
+  -- black ink. Used by the ICON OVERRIDES picker in FULL SCREEN style.
+  Presentation.fullIconSize = FULL_ICON
+  Presentation.drawFullIcon = function(id, x, y, shade)
+    local saved = fullPalette
+    fullPalette = nil
+    local ok, err = pcall(drawFullIcon, id, x, y, shade or 0)
+    fullPalette = saved
+    if not ok and mod.log and mod.log.error then
+      mod.log:error("full icon draw failed: %s", tostring(err))
+    end
+  end
   Presentation.tileLabels = false
   Presentation.iconAsset = icons.asset
   Presentation.iconPaletteSize = icons.paletteSize

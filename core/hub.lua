@@ -320,7 +320,7 @@ return function(mod, settings, state, components)
     if component.id == "modern_start_menu_ui" then
       body[#body + 1] = {
         id = "start_menu.icon_overrides",
-        label = "ICON OVERRIDES",
+        label = "CUSTOM ICONS",
         value = function() return "OPEN" end,
         activate = function(activeGame)
           local exports = component.exports or {}
@@ -330,7 +330,7 @@ return function(mod, settings, state, components)
         end,
       }
       body[#body + 1] = {
-        id = "start_menu.icon_order", label = "START ICON ORDER",
+        id = "start_menu.icon_order", label = "SORT MENU",
         value = function() return "OPEN" end,
         activate = function(activeGame)
           local interface = component.exports and component.exports.settings

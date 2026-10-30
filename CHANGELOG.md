@@ -1,3 +1,20 @@
+## [3.75.0]
+- New SORT MENU, like Project Highlander Gen3's: the Start Menu's own full-screen page (2 x 5 tiles, pages when needed) where you move the items around. Open it with SELECT on the Start Menu (FULL SCREEN and PHONE styles), or from START MENU SETTINGS > SORT MENU (this replaces the old START ICON ORDER list).
+  - A picks an item up (a small arrow marks it), A on another item swaps the two; B drops it, or leaves when nothing is held. SELECT puts the default order back (other mods' items after the built-in ones).
+  - Other mods' items move like the built-in ones. QUIT stays bottom-right of the last page and can't be picked up.
+  - The footer alternates "A MOVE  B DONE" / "SELECT  RESET" every 2 seconds. Every swap is saved at once, and the Start Menu shows the new order as soon as you leave.
+  - SELECT on the Start Menu now opens the Sort Menu, so another mod's SELECT shortcut on the Start Menu (e.g. Gen1MenuManager's) no longer reaches it.
+
+## [3.74.0]
+- START ICON ORDER: the items other mods add to the Start Menu are listed and move like the others. The order list is now read from the Start Menu that's open (it used to be a copy taken when START opened, which missed items added a moment later, so they stayed between the built-in items and QUIT). The Start Menu also re-sorts itself when an item shows up late or when the order is changed while it's open underneath the Options, keeping the cursor on the same item.
+
+## [3.73.0]
+- START MENU SETTINGS: ICON OVERRIDES is now called CUSTOM ICONS. With START MENU STYLE: FULL SCREEN (the default), its CHOOSE ICON picker shows the 16x16 icons of start_menu_icons_16.png, the same ones the Start Menu shows, 7 x 5 on a single page (all 33 choices). PHONE style keeps the 24x24 picker.
+- CUSTOM ICONS remembers the items other mods add to the Start Menu, so they're listed even before START has been opened this session (it used to say NO MOD ENTRIES until then).
+
+## [3.72.0]
+- FULL SCREEN Start Menu: saving in Red, Blue, Yellow and Green with UI LAYOUT: DYNAMIC slid the whole screen to the right edge of the window, so the save boxes were cut off behind the Custom Borders. Anything opened from the full-screen menu now stays inside the normal 160x144 screen.
+
 ## [3.71.0]
 - CRYSTAL sub-menu: no more global ON/OFF row. ANIMATIONS, BATTLE SPRITES, FRONT NPCS and OVERWORLD NPCS each work on their own; a CRYSTAL switch you had turned off before no longer blocks them. To see the games' own art, set BATTLE SPRITES, FRONT NPCS and OVERWORLD NPCS to OG. GENDER MOD (Other Settings) no longer depends on the CRYSTAL switch either.
 

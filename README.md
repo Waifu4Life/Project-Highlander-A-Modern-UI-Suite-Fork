@@ -12,7 +12,7 @@ Modern menus, quality-of-life options, every Pokémon obtainable in a single car
 > [!WARNING]
 > Do not install next to `modern_ui_suite`. Project Highlander replaces it and the two conflict.
 
-**Current release:** 3.71.0
+**Current release:** 3.75.0
 **Repo:** https://github.com/Waifu4Life/Project-Highlander-A-Modern-UI-Suite-Fork
 **Looking for FireRed / LeafGreen / Ruby / Sapphire / Emerald?** See *Project Highlander Gen3*, a separate mod.
 
@@ -116,11 +116,28 @@ Options inside a sub-menu are sorted alphabetically.
 | Start Menu Position | Left, Mid-L, Center, Mid-R, **Right** |
 | Start Menu Clock | Play time or **Device** time |
 | PokéBox | Bill's PC straight from the Start Menu, in the modern PC screen |
-| Start Icon Order | Default: Pokédex, Pokémon, Items, PokéBox, ID card, Save, Option, Mods, Quit |
-| Icon Overrides | Pick the icon used for each entry |
+| Sort Menu | Move the Start Menu items around (see below). Default: Pokédex, Pokémon, Items, PokéBox, ID card, Save, Option, Mods, Quit |
+| Custom Icons | Pick the icon of each item other mods add to the Start Menu |
 
+- Full Screen: 2 columns × 5 rows. Items from other mods get their own tiles; with more than 10 items the menu gets more pages (Up / Down go from page to page).
+- **Quit** always stays bottom-right of the last page.
 - In Gen 1, **Quit** asks *Return to title? Yes / No* inside the Start Menu, like Gen 2.
 - Backing out of PokéBox or Mods returns to the Start Menu.
+
+**Sort Menu** (**Select** on the Start Menu, or Start Menu → Sort Menu)
+
+- A full-screen page with the same tiles as the Start Menu. A picks an item up (a small arrow marks it), A on another item swaps the two. B drops it, or leaves when nothing is held.
+- **Select** resets to the default order, with other mods' items after the built-in ones.
+- Other mods' items move like the built-in ones. Quit can't be moved.
+- Every swap is saved at once, and one order serves Gen 1 and Gen 2.
+
+> [!NOTE]
+> Select on the Start Menu opens the Sort Menu, so another mod's own Select shortcut on the Start Menu (e.g. Gen1MenuManager's) no longer reaches it.
+
+**Custom Icons**
+
+- Lists the items other mods add to the Start Menu, remembered once seen.
+- Pick one of 33 icons for each. With the Full Screen style the picker shows the same 16×16 icons the menu uses, all on one page; Phone style keeps the 24×24 picker.
 
 ## Party
 
@@ -382,6 +399,7 @@ Every Pokémon of the generation you are playing, in a single cartridge, no trad
 ## Credits
 
 - **Ish** — Modern UI Suite (presentation core and 0.1.43 bag artwork)
+- **NikoIchu** — Pixel Icons (CC0), the base of the Start Menu icons
 - **TRW** — Crystal Animated Sprites with Shiny Visuals (trainer and overworld art, shiny visuals)
 - **zyrancz** — Steel / Fairy typing
 - **YoDrehDenSwagAuf** — Wild follower icons (`assets/poke_followers`)
